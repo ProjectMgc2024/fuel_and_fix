@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:fuel_and_fix/user/intro.dart';
+import 'package:pin_code_fields/pin_code_fields.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:fuel_and_fix/user/intro.dart'; // Your existing screen
 
 class OTPPage extends StatefulWidget {
   const OTPPage({Key? key}) : super(key: key);
@@ -9,9 +11,14 @@ class OTPPage extends StatefulWidget {
 }
 
 class _OTPPageState extends State<OTPPage> {
-  final _formKey = GlobalKey<FormState>();
-  final List<TextEditingController> _otpControllers =
-      List.generate(6, (_) => TextEditingController());
+  final TextEditingController _otpController = TextEditingController();
+  String otp = "";
+  bool hasError = false;
+
+  // Function to check if the OTP is numeric
+  bool isNumeric(String str) {
+    return RegExp(r'^[0-9]+$').hasMatch(str);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,111 +27,91 @@ class _OTPPageState extends State<OTPPage> {
       body: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 30.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                const Text(
-                  'Please enter the OTP sent to your phone/email',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18, color: Colors.blueGrey),
-                ),
-                const SizedBox(height: 30),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              const Text(
+                'Please enter the OTP sent to your phone/email',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18, color: Colors.blueGrey),
+              ),
+              const SizedBox(height: 30),
 
-                // OTP Input Fields in separate boxes with styling and space between boxes
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(6, (index) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8.0), // Space between each box
-                      child: SizedBox(
-                        width: 50,
-                        child: TextFormField(
-                          controller: _otpControllers[index],
-                          decoration: InputDecoration(
-                            counterText: "",
-                            hintText: "-",
-                            hintStyle: TextStyle(
-                                fontSize: 24, color: Colors.grey[400]),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15.0),
-                              borderSide: BorderSide(color: Colors.blueAccent),
-                            ),
-                          ),
-                          keyboardType:
-                              TextInputType.number, // Ensures number input only
-                          maxLength: 1, // Only one character per box
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              fontSize: 24, fontWeight: FontWeight.bold),
-                          onChanged: (value) {
-                            if (value.length == 1 && index < 5) {
-                              FocusScope.of(context).nextFocus();
-                            } else if (value.isEmpty && index > 0) {
-                              FocusScope.of(context).previousFocus();
-                            }
-                          },
-                          // Validator to ensure the input is a number
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter a digit';
-                            }
-                            if (!RegExp(r'^[0-9]$').hasMatch(value)) {
-                              return 'Only digits are allowed';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                    );
-                  }),
+              // OTP Input using pin_code_fields
+              PinCodeTextField(
+                appContext: context,
+                length: 6,
+                obscureText: false,
+                animationType: AnimationType.fade,
+                pinTheme: PinTheme(
+                  shape: PinCodeFieldShape.box,
+                  borderRadius: BorderRadius.circular(15),
+                  fieldHeight: 50,
+                  fieldWidth: 40,
+                  activeFillColor: Colors.white,
+                  inactiveFillColor: Colors.grey[200]!,
+                  selectedFillColor: Colors.blueAccent,
+                  inactiveColor: Colors.blueAccent,
+                  selectedColor: Colors.blueAccent,
                 ),
-                const SizedBox(height: 30),
+                controller: _otpController,
+                onChanged: (value) {
+                  setState(() {
+                    otp = value;
+                  });
+                },
+                onCompleted: (value) {
+                  // Store the value when OTP is complete
+                  otp = value;
+                },
+              ),
+              const SizedBox(height: 30),
 
-                // Submit Button with gradient background and rounded corners
-                ElevatedButton(
-                  onPressed: () {
-                    if (_formKey.currentState?.validate() ?? false) {
-                      // Show a Snackbar and navigate to the next page
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('OTP Verified!')),
-                      );
-                      // Navigate to the home screen (or next page)
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => Introscreen()),
-                      );
-                    }
-                  },
-                  child: const Text('Verify OTP'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(200, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30.0),
-                    ),
-                    elevation: 5,
-                  ),
-                ),
-                const SizedBox(height: 20), // Spacer between buttons
-                // Resend OTP Button
-                TextButton(
-                  onPressed: () {
-                    // Resend OTP action - simulate resend
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('OTP has been resent!')),
+              // Submit Button with gradient background
+              ElevatedButton(
+                onPressed: () {
+                  // Check if OTP length is valid and if it contains only numbers
+                  if (otp.length == 6 && isNumeric(otp)) {
+                    // OTP is valid, show success toast
+                    Fluttertoast.showToast(
+                        msg: "OTP Verified!", gravity: ToastGravity.BOTTOM);
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => Introscreen()),
                     );
-                    // You can add an API call here to resend the OTP if needed
-                  },
-                  child: const Text(
-                    'Resend OTP?',
-                    style: TextStyle(color: Color.fromARGB(255, 243, 61, 33)),
+                  } else {
+                    // OTP is invalid or not numeric, show error toast
+                    Fluttertoast.showToast(
+                        msg: "Please enter a valid 6-digit OTP",
+                        gravity: ToastGravity.BOTTOM);
+                  }
+                },
+                child: const Text('Verify OTP'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(200, 50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30.0),
                   ),
+                  elevation: 5,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 20), // Spacer between buttons
+
+              // Resend OTP Button
+              TextButton(
+                onPressed: () {
+                  // Resend OTP action - simulate resend
+                  Fluttertoast.showToast(
+                      msg: "OTP has been resent!",
+                      gravity: ToastGravity.BOTTOM);
+                },
+                child: const Text(
+                  'Resend OTP?',
+                  style: TextStyle(color: Color.fromARGB(255, 243, 61, 33)),
+                ),
+              ),
+            ],
           ),
         ),
       ),

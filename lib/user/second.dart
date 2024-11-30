@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Import this package for FilteringTextInputFormatter
 import 'package:fuel_and_fix/user/otp.dart';
-
 
 class VehicleRegistrationPage extends StatefulWidget {
   const VehicleRegistrationPage({Key? key}) : super(key: key);
@@ -77,7 +77,7 @@ class _VehicleRegistrationPageState extends State<VehicleRegistrationPage> {
 
                     SizedBox(
                       width: 400,
-                      // Registration Number Input
+                      // Registration Number Input (Alphanumeric allowed)
                       child: TextFormField(
                         controller: _registrationController,
                         decoration: const InputDecoration(
@@ -86,16 +86,28 @@ class _VehicleRegistrationPageState extends State<VehicleRegistrationPage> {
                           prefixIcon: Icon(
                               Icons.confirmation_number), // Registration icon
                         ),
+                        keyboardType: TextInputType
+                            .text, // Allows both letters and numbers
+                        inputFormatters: [
+                          // Custom input formatter to allow alphanumeric characters
+                          FilteringTextInputFormatter.allow(RegExp(
+                              '[a-zA-Z0-9]*')), // Fixed regex to allow alphanumeric characters
+                        ],
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter a registration number';
+                          }
+                          // Ensure it contains both letters and numbers
+                          if (!RegExp(r'^(?=.*[a-zA-Z])(?=.*[0-9])')
+                              .hasMatch(value)) {
+                            return 'Registration number must contain both letters and numbers';
                           }
                           return null;
                         },
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // License Number Input
+                    // License Number Input (Alphanumeric allowed)
                     SizedBox(
                       width: 400,
                       child: TextFormField(
@@ -105,9 +117,21 @@ class _VehicleRegistrationPageState extends State<VehicleRegistrationPage> {
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.credit_card), // License icon
                         ),
+                        keyboardType: TextInputType
+                            .text, // Allows both letters and numbers
+                        inputFormatters: [
+                          // Custom input formatter to allow alphanumeric characters
+                          FilteringTextInputFormatter.allow(RegExp(
+                              '[a-zA-Z0-9]*')), // Fixed regex to allow alphanumeric characters
+                        ],
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter a license number';
+                          }
+                          // Ensure it contains both letters and numbers
+                          if (!RegExp(r'^(?=.*[a-zA-Z])(?=.*[0-9])')
+                              .hasMatch(value)) {
+                            return 'License number must contain both letters and numbers';
                           }
                           return null;
                         },
@@ -134,8 +158,6 @@ class _VehicleRegistrationPageState extends State<VehicleRegistrationPage> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // License Number Input (New Field)
-
                     // Register Button with normal size
                     ElevatedButton(
                       onPressed: () {

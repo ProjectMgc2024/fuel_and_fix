@@ -94,16 +94,16 @@ class _RegisterState extends State<Register> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:
-          Color.fromARGB(255, 168, 213, 158), // Light grey background color
       body: SingleChildScrollView(
         // Make the screen scrollable
         child: Container(
           // Set the background image
+          height:
+              MediaQuery.of(context).size.height, // Ensure full screen height
           decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage(
-                  'asset/IMG-20241112-WA0138.jpg'), // Set your background image here
+              image: AssetImage('asset/pic7.jpg'),
+              opacity: 0.6, // Set your background image here
               fit: BoxFit
                   .cover, // This will make the image cover the entire screen
             ),

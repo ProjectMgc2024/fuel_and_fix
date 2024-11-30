@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:fuel_and_fix/owner/screens/fuel_request.dart';
+import 'package:fuel_and_fix/owner/screens/payment.dart';
+import 'package:fuel_and_fix/owner/screens/provider_profile.dart';
+import 'package:fuel_and_fix/owner/screens/repair_request.dart';
 import 'package:fuel_and_fix/user/introduction.dart';
+
 
 class ServiceHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Scaffold( 
-      appBar: AppBar(                                                                          
+    return Scaffold(
+      appBar: AppBar(
         title: Text(
           'Service Dashboard',
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
@@ -42,7 +47,7 @@ class ServiceHomePage extends StatelessWidget {
           child: ListView(
             children: [
               _buildDashboardSection(context, 'Profile', 'Update your details',
-                  Icons.person, ProfilePage()),
+                  Icons.person, ServiceProviderProfilePage()),
               _buildDashboardSection(
                   context,
                   'Fuel Requests',
@@ -130,71 +135,6 @@ class ServiceHomePage extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-// Dummy Pages for Navigation
-
-class ProfilePage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Profile'),
-        backgroundColor: Colors.deepPurple,
-      ),
-      body: Center(
-        child: Text('Profile Details Page', style: TextStyle(fontSize: 24)),
-      ),
-    );
-  }
-}
-
-class FuelFillingRequest extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Fuel Requests'),
-        backgroundColor: Colors.deepPurple,
-      ),
-      body: Center(
-        child:
-            Text('Fuel Filling Requests Page', style: TextStyle(fontSize: 24)),
-      ),
-    );
-  }
-}
-
-class EmergencyRepairRequest extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Emergency Repair Requests'),
-        backgroundColor: Colors.deepPurple,
-      ),
-      body: Center(
-        child: Text('Emergency Repair Requests Page',
-            style: TextStyle(fontSize: 24)),
-      ),
-    );
-  }
-}
-
-class PaymentsAndEarningsPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Payments & Earnings'),
-        backgroundColor: Colors.deepPurple,
-      ),
-      body: Center(
-        child:
-            Text('Payments and Earnings Page', style: TextStyle(fontSize: 24)),
       ),
     );
   }
