@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart'; // Import url_launcher package
 
 class FuelFillingRequest extends StatefulWidget {
   @override
@@ -40,12 +41,9 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
     },
   ];
 
-  // Filters to show requests based on status
   String selectedStatus = 'All';
-
   TextEditingController searchController = TextEditingController();
 
-  // Calculate cost dynamically based on fuel amount and cost per liter
   String calculateCost(String fuelAmount) {
     double amount = double.tryParse(fuelAmount) ?? 0.0;
     double costPerLiter = 2.0; // Assuming a cost per liter value
@@ -54,7 +52,6 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
   }
 
   List<Map<String, String>> getFilteredRequests() {
-    // Filter requests based on status and search query
     String query = searchController.text.toLowerCase();
     return fuelRequests.where((request) {
       bool matchesStatus =
@@ -64,7 +61,6 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
     }).toList();
   }
 
-  // Update request status and show a notification
   void updateStatus(int index, String newStatus) {
     setState(() {
       fuelRequests[index]['status'] = newStatus;
@@ -72,6 +68,17 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Status updated to $newStatus')),
     );
+  }
+
+  Future<void> _launchPhoneDialer(String phoneNumber) async {
+    final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+    if (await canLaunch(phoneUri.toString())) {
+      await launch(phoneUri.toString());
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to make the call')),
+      );
+    }
   }
 
   @override
@@ -84,7 +91,6 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
           IconButton(
             icon: Icon(Icons.filter_list),
             onPressed: () async {
-              // Show status filter options
               String? selected = await showDialog<String>(
                 context: context,
                 builder: (context) {
@@ -144,7 +150,6 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Search bar to filter requests
             TextField(
               controller: searchController,
               decoration: InputDecoration(
@@ -159,7 +164,6 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
               },
             ),
             SizedBox(height: 16),
-            // List of fuel requests with dynamic filtering
             Expanded(
               child: ListView.builder(
                 itemCount: getFilteredRequests().length,
@@ -176,7 +180,6 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Vehicle Info
                           Text(
                             request['vehicle']!,
                             style: TextStyle(
@@ -186,7 +189,6 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
                             ),
                           ),
                           SizedBox(height: 8),
-                          // Priority Badge
                           Container(
                             padding: EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 4),
@@ -204,7 +206,6 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
                             ),
                           ),
                           SizedBox(height: 8),
-                          // Fuel amount and cost
                           Text(
                             'Fuel Requested: ${request['fuelAmount']} liters',
                             style:
@@ -216,7 +217,6 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
                                 TextStyle(fontSize: 14, color: Colors.black45),
                           ),
                           SizedBox(height: 8),
-                          // Status Section with Progress Bar
                           LinearProgressIndicator(
                             value: request['status'] == 'Pending'
                                 ? 0.2
@@ -237,7 +237,6 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
                             ),
                           ),
                           SizedBox(height: 12),
-                          // Action buttons for Pending, Approved, In Progress
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -282,18 +281,28 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
                             ],
                           ),
                           SizedBox(height: 8),
-                          // Customer's contact info
                           Text(
                             'Contact: ${request['contact']}',
                             style:
                                 TextStyle(fontSize: 14, color: Colors.black54),
                           ),
                           SizedBox(height: 8),
-                          // Customer's location with a link to maps
+                          Row(
+                            children: [
+                              ElevatedButton(
+                                onPressed: () {
+                                  _launchPhoneDialer(request['contact']!);
+                                },
+                                child: Text('Call Customer'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 8),
                           TextButton(
-                            onPressed: () {
-                              // Open in Google Maps or other map application
-                            },
+                            onPressed: () {},
                             child: Text(
                               'Location: ${request['location']}',
                               style: TextStyle(
@@ -301,7 +310,6 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
                             ),
                           ),
                           SizedBox(height: 8),
-                          // Notes section
                           if (request['notes'] != '') ...[
                             Text(
                               'Notes: ${request['notes']}',
