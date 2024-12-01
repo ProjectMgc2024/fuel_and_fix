@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class EmergencyRepairRequest extends StatefulWidget {
   @override
@@ -15,6 +16,8 @@ class _EmergencyRepairRequestsPageState extends State<EmergencyRepairRequest> {
       'location': '123 Main St',
       'status': 'Pending',
       'time': '12:45 PM',
+      'latitude': 37.7749, // Example latitude
+      'longitude': -122.4194, // Example longitude
     },
     {
       'customer': 'Sarah Connor',
@@ -23,6 +26,8 @@ class _EmergencyRepairRequestsPageState extends State<EmergencyRepairRequest> {
       'location': '456 Elm St',
       'status': 'In Progress',
       'time': '1:30 PM',
+      'latitude': 37.7758, // Example latitude
+      'longitude': -122.4210, // Example longitude
     },
     // Add more requests here...
   ];
@@ -37,6 +42,17 @@ class _EmergencyRepairRequestsPageState extends State<EmergencyRepairRequest> {
         duration: Duration(seconds: 2),
       ),
     );
+  }
+
+  // Method to launch Google Maps with specific coordinates
+  void _launchMapsUrl(double latitude, double longitude) async {
+    final String googleUrl =
+        'https://www.google.com/maps?q=$latitude,$longitude';
+    if (await canLaunch(googleUrl)) {
+      await launch(googleUrl);
+    } else {
+      throw 'Could not open the map.';
+    }
   }
 
   void _viewDetails(int index) {
@@ -58,7 +74,8 @@ class _EmergencyRepairRequestsPageState extends State<EmergencyRepairRequest> {
               SizedBox(height: 10),
               ElevatedButton.icon(
                 onPressed: () {
-                  // Add map navigation functionality here
+                  // Navigate to Google Maps with the location coordinates
+                  _launchMapsUrl(request['latitude'], request['longitude']);
                 },
                 icon: Icon(Icons.map),
                 label: Text('View Location on Map'),
