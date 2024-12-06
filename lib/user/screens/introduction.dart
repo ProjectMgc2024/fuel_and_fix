@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/owner/screens/owner_login.dart';
-import 'package:fuel_and_fix/user/login_screen.dart';
+import 'package:fuel_and_fix/user/screens/login_screen.dart';
 
 // Home Page
 class IntroductionPage extends StatelessWidget {

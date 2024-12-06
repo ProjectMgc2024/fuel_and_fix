@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:fuel_and_fix/user/home_screen.dart';
+import 'package:fuel_and_fix/user/screens/home_screen.dart';
 
 class FuelStationApp extends StatelessWidget {
   @override

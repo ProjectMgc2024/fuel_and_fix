@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:fuel_and_fix/user/about.dart';
-import 'package:fuel_and_fix/user/fuel.dart';
-import 'package:fuel_and_fix/user/history.dart';
-import 'package:fuel_and_fix/user/profile.dart';
-import 'package:fuel_and_fix/user/repair.dart';
-import 'package:fuel_and_fix/user/setting.dart';
-import 'package:fuel_and_fix/user/tow.dart';
+import 'package:fuel_and_fix/user/screens/about.dart';
+import 'package:fuel_and_fix/user/screens/fuel.dart';
+import 'package:fuel_and_fix/user/screens/history.dart';
+import 'package:fuel_and_fix/user/screens/profile.dart';
+import 'package:fuel_and_fix/user/screens/repair.dart';
+import 'package:fuel_and_fix/user/screens/setting.dart';
+import 'package:fuel_and_fix/user/screens/tow.dart';
 
 class HomeScreen extends StatelessWidget {
   @override

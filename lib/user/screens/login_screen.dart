@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/admin/screens/admin_home.dart';
-import 'package:fuel_and_fix/user/register.dart';
-import 'package:fuel_and_fix/user/second.dart';
+import 'package:fuel_and_fix/user/screens/register.dart';
+import 'package:fuel_and_fix/user/screens/second.dart';
 
 class LoginScreen extends StatefulWidget {
   @override

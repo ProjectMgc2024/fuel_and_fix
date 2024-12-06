@@ -3,7 +3,7 @@ import 'package:fuel_and_fix/owner/screens/fuel_request.dart';
 import 'package:fuel_and_fix/owner/screens/payment.dart';
 import 'package:fuel_and_fix/owner/screens/provider_profile.dart';
 import 'package:fuel_and_fix/owner/screens/repair_request.dart';
-import 'package:fuel_and_fix/user/introduction.dart';
+import 'package:fuel_and_fix/user/screens/introduction.dart';
 
 class ServiceHomePage extends StatelessWidget {
   @override

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:fuel_and_fix/user/login_screen.dart';
+import 'package:fuel_and_fix/user/screens/login_screen.dart';
 
 class Settings extends StatefulWidget {
   const Settings({super.key});

@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "520031501923",
+    "project_id": "fuel-and-fix-assist",
+    "storage_bucket": "fuel-and-fix-assist.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:520031501923:android:c81b69032a55225d12c256",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuGxZdEFSN-5t4xgXUslO6zgTAOC3vWLA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:520031501923:android:4424dbb198bf633312c256",
+        "android_client_info": {
+          "package_name": "com.example.fuel_and_fix"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuGxZdEFSN-5t4xgXUslO6zgTAOC3vWLA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

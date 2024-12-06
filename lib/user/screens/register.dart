@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:fuel_and_fix/user/home_screen.dart';
-import 'package:fuel_and_fix/user/second.dart';
+import 'package:fuel_and_fix/user/screens/home_screen.dart';
+import 'package:fuel_and_fix/user/screens/second.dart';
+
+import '../services/firebase_user_auth.dart';
 
 class Register extends StatefulWidget {
   const Register({super.key});
@@ -81,6 +83,13 @@ class _RegisterState extends State<Register> {
       print('Username: ${usernameController.text}');
       print('Password: ${passwordController.text}');
       print('Phone Number: ${phoneController.text}');
+
+      UserAuthServices().register(
+          context: context,
+          username: usernameController.text,
+          phoneno: passwordController.text,
+          email: emailController.text,
+          password: passwordController.text);
 
       Navigator.push(
         context,

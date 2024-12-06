@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Import this package for FilteringTextInputFormatter
-import 'package:fuel_and_fix/user/otp.dart';
+import 'package:fuel_and_fix/user/screens/otp.dart';
 
 class VehicleRegistrationPage extends StatefulWidget {
   const VehicleRegistrationPage({Key? key}) : super(key: key);

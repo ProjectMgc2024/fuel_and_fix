@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:fuel_and_fix/user/intro.dart'; // Your existing screen
+import 'package:fuel_and_fix/user/screens/intro.dart'; // Your existing screen
 
 class OTPPage extends StatefulWidget {
   const OTPPage({Key? key}) : super(key: key);
