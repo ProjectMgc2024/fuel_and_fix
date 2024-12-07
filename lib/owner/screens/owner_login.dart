@@ -13,12 +13,14 @@ class _ServiceProviderLoginPageState extends State<ServiceProviderLoginPage> {
   final _formKey = GlobalKey<FormState>();
 
   void _loginServiceProvider() {
-    if (_formKey.currentState!.validate()) {
-      String email = _emailController.text.trim();
-      String password = _passwordController.text.trim();
+    if (_formKey.currentState?.validate() ?? false) {
+      print('email: ${_emailController.text}');
+      print('Password: ${_passwordController.text}');
 
       // Dummy service provider credentials (Replace with actual backend authentication)
-      if (email == "provider@example.com" && password == "provider123") {
+      // ignore: unrelated_type_equality_checks
+      if (_emailController.text == "provider@example.com" &&
+          _passwordController.text == "provider123") {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => ServiceHomePage()),

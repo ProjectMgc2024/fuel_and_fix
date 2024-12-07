@@ -77,19 +77,28 @@ class _RegisterState extends State<Register> {
     return null;
   }
 
+  bool loading = false;
+
   // Form submit function
-  void submitForm() {
+  void submitForm() async {
     if (_formKey.currentState?.validate() ?? false) {
+      setState(() {
+        loading = true;
+      });
       print('Username: ${usernameController.text}');
       print('Password: ${passwordController.text}');
       print('Phone Number: ${phoneController.text}');
 
-      UserAuthServices().register(
+      await UserAuthServices().register(
           context: context,
           username: usernameController.text,
           phoneno: passwordController.text,
           email: emailController.text,
           password: passwordController.text);
+
+      setState(() {
+        loading = false;
+      });
 
       Navigator.push(
         context,
@@ -292,14 +301,18 @@ class _RegisterState extends State<Register> {
                           ),
                         ),
                         SizedBox(height: 20),
-                        ElevatedButton(
-                          onPressed: submitForm,
-                          style: ElevatedButton.styleFrom(
-                            elevation: 7.0,
-                            shadowColor: const Color.fromARGB(255, 255, 0, 0),
-                          ),
-                          child: Text('Register'),
-                        ),
+
+                        loading
+                            ? CircularProgressIndicator()
+                            : ElevatedButton(
+                                onPressed: submitForm,
+                                style: ElevatedButton.styleFrom(
+                                  elevation: 7.0,
+                                  shadowColor:
+                                      const Color.fromARGB(255, 255, 0, 0),
+                                ),
+                                child: Text('Register'),
+                              ),
 
                         SizedBox(height: 20),
                         // Add a TextButton to navigate to the login screen

@@ -1,7 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:fuel_and_fix/admin/screens/admin_home.dart';
+import 'package:fuel_and_fix/user/screens/home_screen.dart';
 import 'package:fuel_and_fix/user/screens/register.dart';
 import 'package:fuel_and_fix/user/screens/second.dart';
+import 'package:fuel_and_fix/user/services/firebase_user_auth.dart';
+// Add your screen here
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -9,16 +12,34 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  TextEditingController usernameController = TextEditingController();
+  TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   // Variable to manage password visibility
   bool isPasswordVisible = false;
 
-  // Admin credentials (you can change these as needed)
-  final String adminUsername = "admin";
-  final String adminPassword = "admin123";
+  void login() async {
+    if (_formKey.currentState!.validate()) {
+      String email = emailController.text.trim();
+      String password = passwordController.text.trim();
+
+      print("$email $password");
+
+      bool loginSuccess = await UserAuthServices()
+          .userLogin(context: context, email: email, password: password);
+
+      if (loginSuccess) {
+        // Navigate to the normal user page if login is successful
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,7 +94,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     SizedBox(
                       width: 300,
                       child: TextFormField(
-                        controller: usernameController,
+                        controller: emailController,
                         style: TextStyle(color: Colors.black),
                         decoration: InputDecoration(
                           labelText: 'Username',
@@ -166,32 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     SizedBox(height: 20.0),
                     ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          String username = usernameController.text;
-                          String password = passwordController.text;
-
-                          // Check if the entered username and password match the admin credentials
-                          if (username == "admin@example.com" &&
-                              password == "admin123") {
-                            // Navigate to the admin page
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) =>
-                                      AdminPage()), // Replace with your admin page widget
-                            );
-                          } else {
-                            // Proceed to normal screen if not admin
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) =>
-                                      VehicleRegistrationPage()),
-                            );
-                          }
-                        }
-                      },
+                      onPressed: login,
                       style: ElevatedButton.styleFrom(
                         elevation: 8.0,
                         shadowColor: const Color.fromARGB(255, 4, 0, 255),
