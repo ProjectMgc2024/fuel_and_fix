@@ -1,8 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/user/screens/home_screen.dart';
 import 'package:fuel_and_fix/user/screens/register.dart';
-import 'package:fuel_and_fix/user/screens/second.dart';
+
 import 'package:fuel_and_fix/user/services/firebase_user_auth.dart';
 // Add your screen here
 

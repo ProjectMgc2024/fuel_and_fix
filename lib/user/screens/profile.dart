@@ -2,12 +2,19 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class ProfileScree extends StatelessWidget {
+import 'package:fuel_and_fix/user/screens/edit_screen.dart';
+
+class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Profile"),
+        backgroundColor: Colors.blueGrey,
+        title: Text(
+          "Profile",
+          style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+        ),
+
         centerTitle: true, // Center the AppBar title
       ),
       body: StreamBuilder<DocumentSnapshot>(
@@ -35,7 +42,7 @@ class ProfileScree extends StatelessWidget {
           else {
             final profileData = snapshot.data!.data() as Map<String, dynamic>;
             final userEmail = profileData['email'] ?? 'No email provided';
-            final userPhoneNo =
+            final userPhoneno =
                 profileData['phoneno'] ?? 'No phone number provided';
             final userName = profileData['username'] ?? 'No username provided';
 
@@ -48,53 +55,64 @@ class ProfileScree extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
+                      CircleAvatar(
+                        radius: 50, // Size of the circle avatar
+                        backgroundColor:
+                            Colors.grey, // Background color of the circle
+                        child: Icon(
+                          Icons.person, // The profile icon
+                          size: 60, // Size of the icon
+                          color: Colors.black, // Icon color
+                        ),
+                      ),
+                      SizedBox(
+                          height: 40), // Space between icon and form fields
+
                       // Display username
                       Text(
                         'Username: $userName',
                         style: TextStyle(
                           fontSize: 20,
-
-                          color: Colors
-                              .black87, // Darker text color for readability
+                          color: Colors.black,
                         ),
                       ),
-                      SizedBox(height: 22), // Space between username and email
+                      SizedBox(height: 20), // Space between username and email
 
                       // Display email
                       Text(
                         'Email: $userEmail',
                         style: TextStyle(
                           fontSize: 20,
-
-                          // Slightly lighter weight than username
-                          color: Colors.black54, // Lighter text color for email
+                          color: Colors.black,
                         ),
                       ),
                       SizedBox(
-                          height: 10), // Space between email and phone number
+                          height: 20), // Space between email and phone number
 
                       // Display phone number
                       Text(
-                        'Phone Number: $userPhoneNo',
+                        'Phone Number: $userPhoneno',
                         style: TextStyle(
                           fontSize: 20,
                           // Similar weight to email
-                          color: const Color.fromARGB(137, 0, 0,
-                              0), // Light black color for phone number
+
+                          color: Colors.black,
                         ),
                       ),
                       SizedBox(height: 20), // Space before log out button
-
-                      // Log out button
+                      // Edit Profile button
                       ElevatedButton(
-                        onPressed: () async {
-                          // Handle log out
-                          await FirebaseAuth.instance.signOut();
-                          // Optionally, navigate to a login screen after sign out
-                          Navigator.pushReplacementNamed(context, '/login');
+                        onPressed: () {
+                          // Navigate to the EditProfileScreen
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EditProfile(),
+                            ),
+                          );
                         },
-                        child: Text('Log Out'),
-                      ),
+                        child: Text('Edit Profile'),
+                      )
                     ],
                   ),
                 ),

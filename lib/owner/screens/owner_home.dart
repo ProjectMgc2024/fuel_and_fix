@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/owner/screens/fuel_request.dart';
-import 'package:fuel_and_fix/owner/screens/payment.dart';
+import 'package:fuel_and_fix/owner/screens/managefuel.dart';
+import 'package:fuel_and_fix/owner/screens/managerepair.dart';
+import 'package:fuel_and_fix/owner/screens/managetow.dart';
+
 import 'package:fuel_and_fix/owner/screens/provider_profile.dart';
 import 'package:fuel_and_fix/owner/screens/repair_request.dart';
 import 'package:fuel_and_fix/user/screens/introduction.dart';
@@ -45,26 +48,16 @@ class ServiceHomePage extends StatelessWidget {
           padding: EdgeInsets.all(16.0),
           child: ListView(
             children: [
-              _buildDashboardSection(context, 'Profile', 'Update your details',
-                  Icons.person, ServiceProviderProfilePage()),
               _buildDashboardSection(
                   context,
-                  'Fuel Requests',
+                  'Fuel Poviders',
                   'Manage fuel services',
                   Icons.local_gas_station,
-                  FuelFillingRequest()),
-              _buildDashboardSection(
-                  context,
-                  'Emergency Repairs',
-                  'Handle urgent repairs',
-                  Icons.build,
-                  EmergencyRepairRequest()),
-              _buildDashboardSection(
-                  context,
-                  'Payments & Earnings',
-                  'Track earnings and payments',
-                  Icons.account_balance_wallet,
-                  PaymentsAndEarningsPage()),
+                  FuelManagement()),
+              _buildDashboardSection(context, 'Emergency Repairs providers',
+                  'Handle urgent repairs', Icons.build, RepairManagementPage()),
+              _buildDashboardSection(context, 'Tow service providers',
+                  'Handle urgent services', Icons.build, TowManagementPage()),
             ],
           ),
         ),
