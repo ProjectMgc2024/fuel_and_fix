@@ -1,33 +1,74 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:fuel_and_fix/owner/screens/owner_home.dart';
+import 'package:fuel_and_fix/admin/screens/fuel.dart';
+import 'package:fuel_and_fix/owner/screens/managefuel.dart';
+import 'package:fuel_and_fix/owner/screens/managerepair.dart';
+import 'package:fuel_and_fix/owner/screens/managetow.dart';
 
-class ServiceProviderLoginPage extends StatefulWidget {
+class ServiceProviderRegisterPage extends StatefulWidget {
   @override
-  _ServiceProviderLoginPageState createState() =>
-      _ServiceProviderLoginPageState();
+  _ServiceProviderRegisterPageState createState() =>
+      _ServiceProviderRegisterPageState();
 }
 
-class _ServiceProviderLoginPageState extends State<ServiceProviderLoginPage> {
+class _ServiceProviderRegisterPageState
+    extends State<ServiceProviderRegisterPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController =
+      TextEditingController(); // New controller for confirming password
   final _formKey = GlobalKey<FormState>();
 
-  void _loginServiceProvider() {
+  // New variable to store the selected service
+  String? _selectedService;
+
+  void _registerServiceProvider() async {
     if (_formKey.currentState?.validate() ?? false) {
       print('email: ${_emailController.text}');
       print('Password: ${_passwordController.text}');
+      print(
+          'Selected Service: $_selectedService'); // Print the selected service
 
-      // Dummy service provider credentials (Replace with actual backend authentication)
-      // ignore: unrelated_type_equality_checks
-      if (_emailController.text == "provider@example.com" &&
-          _passwordController.text == "provider123") {
-        Navigator.push(
+      // Check if passwords match
+      if (_passwordController.text != _confirmPasswordController.text) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Passwords do not match")),
+        );
+        return;
+      }
+
+      // Proceed with the registration logic
+      await FirebaseFirestore.instance.collection('service_providers').add({
+        'email': _emailController.text,
+        'password':
+            _passwordController.text, // Store password in a secure manner
+        'service': _selectedService,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      // Navigate based on the selected service
+      if (_selectedService == 'Fuel') {
+        Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => ServiceHomePage()),
+          MaterialPageRoute(builder: (context) => FuelManagement()),
+          (Route<dynamic> route) => false, // Removes all the previous routes
+        );
+      } else if (_selectedService == 'Emergency') {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => RepairManagementPage()),
+          (Route<dynamic> route) => false,
+        );
+      } else if (_selectedService == 'Tow') {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => TowManagementPage()),
+          (Route<dynamic> route) => false,
         );
       } else {
+        // Handle the case where no service is selected
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Invalid email or password")),
+          SnackBar(content: Text("Please select a service")),
         );
       }
     }
@@ -52,7 +93,7 @@ class _ServiceProviderLoginPageState extends State<ServiceProviderLoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'Service Provider Login',
+                  'Service Provider Registration',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 20),
@@ -96,9 +137,69 @@ class _ServiceProviderLoginPageState extends State<ServiceProviderLoginPage> {
                   },
                 ),
                 SizedBox(height: 20),
+                // Confirm Password field
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: const Color.fromARGB(255, 181, 180, 180),
+                    labelText: 'Confirm Password',
+                    border: OutlineInputBorder(),
+                  ),
+                  obscureText: true,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please confirm your password';
+                    }
+                    if (value != _passwordController.text) {
+                      return 'Passwords do not match';
+                    }
+                    return null;
+                  },
+                ),
+                SizedBox(height: 20),
+
+                // Radio buttons for service selection
+                Text(
+                  'Choose Your Service',
+                  style: TextStyle(fontSize: 18),
+                ),
+                RadioListTile<String>(
+                  title: Text('Fuel'),
+                  value: 'Fuel',
+                  groupValue: _selectedService,
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedService = value;
+                    });
+                  },
+                ),
+                RadioListTile<String>(
+                  title: Text('Emergency'),
+                  value: 'Emergency',
+                  groupValue: _selectedService,
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedService = value;
+                    });
+                  },
+                ),
+                RadioListTile<String>(
+                  title: Text('Tow'),
+                  value: 'Tow',
+                  groupValue: _selectedService,
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedService = value;
+                    });
+                  },
+                ),
+                SizedBox(height: 20),
+
+                // Register Button
                 ElevatedButton(
-                  onPressed: _loginServiceProvider,
-                  child: Text('Login'),
+                  onPressed: _registerServiceProvider,
+                  child: Text('Register'),
                   style: ElevatedButton.styleFrom(
                     minimumSize: Size(150, 50),
                   ),
@@ -119,9 +220,7 @@ class _ServiceProviderLoginPageState extends State<ServiceProviderLoginPage> {
                     style: TextStyle(
                         color: const Color.fromARGB(255, 254, 0, 0),
                         fontSize: 18,
-                        fontWeight: FontWeight
-                            .bold // Change the color to blue (or any color you prefer
-                        ),
+                        fontWeight: FontWeight.bold),
                   ),
                 ),
               ],

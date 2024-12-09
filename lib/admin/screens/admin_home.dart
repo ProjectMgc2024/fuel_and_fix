@@ -1,11 +1,10 @@
-
-
 import 'package:flutter/material.dart';
 
 import 'package:fuel_and_fix/admin/screens/feedback.dart';
-import 'package:fuel_and_fix/admin/screens/manage_fuel.dart';
-import 'package:fuel_and_fix/admin/screens/manage_mechanics.dart';
-import 'package:fuel_and_fix/admin/screens/manage_users.dart';
+import 'package:fuel_and_fix/admin/screens/fuel.dart';
+import 'package:fuel_and_fix/admin/screens/mechanics.dart';
+import 'package:fuel_and_fix/admin/screens/users.dart';
+import 'package:fuel_and_fix/admin/screens/tow.dart';
 import 'package:fuel_and_fix/admin/screens/reports.dart';
 import 'package:fuel_and_fix/admin/screens/transaction.dart';
 
@@ -24,25 +23,6 @@ class AdminPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Dashboard Overview
-              Text(
-                'Dashboard Overview',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _dashboardCard('Total Users', '250', Icons.people),
-                  _dashboardCard('Active Requests', '15', Icons.request_page),
-                  _dashboardCard('Revenue', '\$12,000', Icons.attach_money),
-                ],
-              ),
-              SizedBox(height: 20),
-
               // User Management
               _sectionHeader('User Management'),
               _adminOption('Manage Users', Icons.manage_accounts, () {
@@ -73,26 +53,16 @@ class AdminPage extends StatelessWidget {
               }),
               SizedBox(height: 10),
 
-              // Payment and Transactions
-              _sectionHeader('Payments and Transactions'),
-              _adminOption('View Transactions', Icons.payment, () {
+              // Fuel Station Management
+              _sectionHeader('Tow Management'),
+              _adminOption('Manage Tow services', Icons.build, () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                      builder: (context) => TransactionManagementPage()),
+                  MaterialPageRoute(builder: (context) => ManageTowStation()),
                 );
               }),
               SizedBox(height: 10),
 
-              // Reports and Analytics
-              _sectionHeader('Reports and Analytics'),
-              _adminOption('View Reports', Icons.analytics, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => ReportsAnalyticsPage()),
-                );
-              }),
               SizedBox(height: 10),
 
               // Feedback Management

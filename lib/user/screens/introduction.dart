@@ -65,7 +65,7 @@ class IntroductionPage extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => ServiceProviderLoginPage()),
+                        builder: (context) => ServiceProviderRegisterPage()),
                   );
                 },
                 child: const Text('Service Providers'),

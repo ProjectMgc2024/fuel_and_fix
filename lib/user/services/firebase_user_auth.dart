@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 class UserAuthServices {
   final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
-  final FirebaseDatabase = FirebaseFirestore.instance;
+  final FirebaseFirestore FirebaseDatabase = FirebaseFirestore.instance;
 
   Future<void> register({
     required BuildContext context,
@@ -15,7 +15,6 @@ class UserAuthServices {
   }) async {
     try {
       // Register the user
-
       final user = await firebaseAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
@@ -62,7 +61,8 @@ class UserAuthServices {
       );
 
       // Fetch user details from Firestore
-      final userDoc = await FirebaseDatabase.collection('user')
+      final userDoc = await FirebaseFirestore.instance
+          .collection('user') // Assuming you have a 'user' collection
           .doc(userCredential.user?.uid)
           .get();
 
@@ -78,13 +78,14 @@ class UserAuthServices {
         print('User Data: ${userData}');
         return true; // Login successful
       } else {
+        // If the user does not exist in Firestore, show an error
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('User not found in the database.'),
             backgroundColor: Colors.red,
           ),
         );
-        return false; // User not found
+        return false; // User not found in Firestore
       }
     } on FirebaseAuthException catch (e) {
       String errorMessage;
@@ -95,9 +96,18 @@ class UserAuthServices {
         case 'wrong-password':
           errorMessage = 'Incorrect password.';
           break;
+        case 'Login failed: The supplied auth credential is incorrect, malformed or has expired.':
+          errorMessage = 'user not found';
+          break;
         default:
-          errorMessage = 'Login failed: ${e.message}';
+          errorMessage =
+              'User not found in the database. Please register first.';
       }
+
+      // Print the error message
+      print("Error: $errorMessage");
+
+      // Show the error message in a SnackBar
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(errorMessage),
@@ -107,9 +117,13 @@ class UserAuthServices {
       return false; // Login failed
     } catch (e) {
       // Handle other errors
+      String errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      print("Error: $errorMessage"); // Print the error
+
+      // Show the error message in a SnackBar
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('An unexpected error occurred: ${e.toString()}'),
+          content: Text(errorMessage),
           backgroundColor: Colors.red,
         ),
       );
