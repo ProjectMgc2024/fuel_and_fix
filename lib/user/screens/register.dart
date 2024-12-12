@@ -171,133 +171,213 @@ class _RegisterState extends State<Register> {
                         // Username Field with fixed width
                         SizedBox(
                           width: 300, // Set the desired width here
-                          child: TextFormField(
-                            controller: usernameController,
-                            decoration: InputDecoration(
-                              labelText: 'Username',
-                              hintText: 'Enter username',
-                              prefixIcon: Icon(
-                                Icons.person,
-                                color: Colors.black.withOpacity(0.5),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Color.fromARGB(255, 244, 208, 147),
+                                  Color.fromARGB(255, 131, 153, 214),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
-                              enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(width: 1.0),
-                              ),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            validator: validateUsername,
+                            child: TextFormField(
+                              controller: usernameController,
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: Colors.transparent,
+                                labelText: 'Username',
+                                hintText: 'Enter username',
+                                prefixIcon: Icon(
+                                  Icons.person,
+                                  color: Colors.black.withOpacity(0.5),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(width: 1.0),
+                                ),
+                                border: OutlineInputBorder(),
+                              ),
+                              validator: validateUsername,
+                            ),
                           ),
                         ),
                         SizedBox(height: 20),
                         // Phone Number Field with fixed width
                         SizedBox(
                           width: 300,
-                          child: TextFormField(
-                            controller: phoneController,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            keyboardType: TextInputType.phone,
-                            decoration: InputDecoration(
-                              labelText: 'Phone Number',
-                              hintText: 'Enter phone number',
-                              enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(width: 1.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Color.fromARGB(255, 244, 208, 147),
+                                  Color.fromARGB(255, 131, 153, 214),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
-                              prefixIcon: Icon(
-                                Icons.phone,
-                                color: Colors.black.withOpacity(0.5),
-                              ),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            validator: validatePhoneNumber,
+                            child: TextFormField(
+                              controller: phoneController,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              keyboardType: TextInputType.phone,
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: Colors.transparent,
+                                labelText: 'Phone Number',
+                                hintText: 'Enter phone number',
+                                prefixIcon: Icon(
+                                  Icons.phone,
+                                  color: Colors.black.withOpacity(0.5),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(width: 1.0),
+                                ),
+                                border: OutlineInputBorder(),
+                              ),
+                              validator: validatePhoneNumber,
+                            ),
                           ),
                         ),
                         SizedBox(height: 20),
                         SizedBox(
                           width: 300, // Set the desired width here
-                          child: TextFormField(
-                            controller: emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            decoration: InputDecoration(
-                              labelText: 'Email',
-                              hintText: 'Enter email',
-                              prefixIcon: Icon(
-                                Icons.email,
-                                color: Colors.black.withOpacity(0.5),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Color.fromARGB(255, 244, 208, 147),
+                                  Color.fromARGB(255, 131, 153, 214),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
-                              enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(width: 1.0),
-                              ),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            validator:
-                                validateEmail, // Attach the email validator
+                            child: TextFormField(
+                              controller: emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: Colors.transparent,
+                                labelText: 'Email',
+                                hintText: 'Enter email',
+                                prefixIcon: Icon(
+                                  Icons.email,
+                                  color: Colors.black.withOpacity(0.5),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(width: 1.0),
+                                ),
+                                border: OutlineInputBorder(),
+                              ),
+                              validator:
+                                  validateEmail, // Attach the email validator
+                            ),
                           ),
                         ),
                         SizedBox(height: 20),
-
-                        // Password Field with fixed width
+// Password Field with gradient background
                         SizedBox(
                           width: 300,
-                          child: TextFormField(
-                            controller: passwordController,
-                            obscureText: showPassword,
-                            decoration: InputDecoration(
-                              labelText: 'Password',
-                              hintText: 'Enter password',
-                              enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(width: 1.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Color.fromARGB(255, 244, 208, 147),
+                                  Color.fromARGB(255, 129, 154, 223),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
-                              prefixIcon: Icon(
-                                Icons.lock,
-                                color: Colors.black.withOpacity(0.5),
-                              ),
-                              suffixIcon: IconButton(
-                                onPressed: () {
-                                  setState(() {
-                                    showPassword = !showPassword;
-                                  });
-                                },
-                                icon: Icon(
-                                  showPassword
-                                      ? Icons.visibility
-                                      : Icons.visibility_off,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: TextFormField(
+                              controller: passwordController,
+                              obscureText: showPassword,
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: Colors
+                                    .transparent, // Make sure the fill color is transparent
+                                labelText: 'Password',
+                                hintText: 'Enter password',
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(width: 1.0),
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.lock,
+                                  color: Colors.black.withOpacity(0.5),
+                                ),
+                                suffixIcon: IconButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      showPassword = !showPassword;
+                                    });
+                                  },
+                                  icon: Icon(
+                                    showPassword
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                  ),
                                 ),
                               ),
+                              validator: validatePassword,
                             ),
-                            validator: validatePassword,
                           ),
                         ),
+
                         SizedBox(height: 20),
                         // Confirm Password Field with fixed width
                         SizedBox(
                           width: 300,
-                          child: TextFormField(
-                            controller: confirmPasswordController,
-                            obscureText: showConfirmPassword,
-                            decoration: InputDecoration(
-                              labelText: 'Confirm Password',
-                              hintText: 'Re-enter password',
-                              enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(width: 1.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Color.fromARGB(255, 244, 208, 147),
+                                  Color.fromARGB(255, 131, 153, 214),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
-                              prefixIcon: Icon(
-                                Icons.lock_outline,
-                                color: Colors.black.withOpacity(0.5),
-                              ),
-                              suffixIcon: IconButton(
-                                onPressed: () {
-                                  setState(() {
-                                    showConfirmPassword = !showConfirmPassword;
-                                  });
-                                },
-                                icon: Icon(
-                                  showConfirmPassword
-                                      ? Icons.visibility
-                                      : Icons.visibility_off,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: TextFormField(
+                              controller: confirmPasswordController,
+                              obscureText: showConfirmPassword,
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: Colors.transparent,
+                                labelText: 'Confirm Password',
+                                hintText: 'Re-enter password',
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(width: 1.0),
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.lock_outline,
+                                  color: Colors.black.withOpacity(0.5),
+                                ),
+                                suffixIcon: IconButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      showConfirmPassword =
+                                          !showConfirmPassword;
+                                    });
+                                  },
+                                  icon: Icon(
+                                    showConfirmPassword
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                  ),
                                 ),
                               ),
+                              validator:
+                                  validateConfirmPassword, // Attach the confirm password validator
                             ),
-                            validator:
-                                validateConfirmPassword, // Attach the confirm password validator
                           ),
                         ),
                         SizedBox(height: 20),

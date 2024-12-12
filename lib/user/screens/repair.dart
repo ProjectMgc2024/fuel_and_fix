@@ -129,10 +129,17 @@ class _VehicleRepairCategoriesState extends State<VehicleRepairCategories> {
   }
 }
 
-class WorkshopListScreen extends StatelessWidget {
+class WorkshopListScreen extends StatefulWidget {
   final String location;
 
   WorkshopListScreen({required this.location});
+
+  @override
+  _WorkshopListScreenState createState() => _WorkshopListScreenState();
+}
+
+class _WorkshopListScreenState extends State<WorkshopListScreen> {
+  final Map<String, String> _workshopDescriptions = {};
 
   // Define workshops based on location
   List<Map<String, dynamic>> _getWorkshops(String location) {
@@ -194,11 +201,11 @@ class WorkshopListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final availableWorkshops = _getWorkshops(location);
+    final availableWorkshops = _getWorkshops(widget.location);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Workshops in $location'),
+        title: Text('Workshops in ${widget.location}'),
         centerTitle: true,
         backgroundColor: const Color.fromARGB(255, 232, 145, 47),
         elevation: 10,
@@ -209,6 +216,7 @@ class WorkshopListScreen extends StatelessWidget {
               itemCount: availableWorkshops.length,
               itemBuilder: (context, index) {
                 final workshop = availableWorkshops[index];
+                final workshopName = workshop['name'];
 
                 return Card(
                   margin: EdgeInsets.all(12),
@@ -270,6 +278,22 @@ class WorkshopListScreen extends StatelessWidget {
                           style: TextStyle(fontSize: 16),
                         ),
                         SizedBox(height: 15),
+                        // Description field for user to describe their situation
+                        TextField(
+                          onChanged: (text) {
+                            setState(() {
+                              _workshopDescriptions[workshopName] = text;
+                            });
+                          },
+                          decoration: InputDecoration(
+                            labelText: 'Describe your situation',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: Colors.blueAccent),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 15),
                         // Confirm and Payment button
                         ElevatedButton(
                           onPressed: () {
@@ -329,7 +353,7 @@ class WorkshopListScreen extends StatelessWidget {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Payment Confirmed'),
-          content: Text('You has been successfully processed!'),
+          content: Text('Your payment has been successfully processed!'),
           actions: [
             // Close button for the dialog
             TextButton(

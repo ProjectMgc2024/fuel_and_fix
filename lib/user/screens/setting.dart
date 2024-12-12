@@ -11,9 +11,8 @@ class Settings extends StatefulWidget {
 class _SettingsPageState extends State<Settings> {
   bool _isDarkMode = false; // Initially set to light mode
   double _fontSize = 16.0; // Default font size
-  final _passwordController = TextEditingController();
-  final _newPasswordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
+  bool _notificationsEnabled = true; // Default notifications state
+  bool _isAppUpdateAvailable = false; // Simulate app update availability
 
   // Method to toggle theme
   void _toggleTheme(bool value) {
@@ -29,6 +28,43 @@ class _SettingsPageState extends State<Settings> {
     });
   }
 
+  // Method to toggle notifications
+  void _toggleNotifications(bool value) {
+    setState(() {
+      _notificationsEnabled = value;
+    });
+  }
+
+  // Method to simulate checking for app updates
+  void _checkForAppUpdates() {
+    setState(() {
+      // Simulating the update check with a mock condition
+      _isAppUpdateAvailable = !_isAppUpdateAvailable;
+    });
+
+    if (_isAppUpdateAvailable) {
+      // Show a dialog if there's an update
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Update Available'),
+            content: const Text(
+                'A new version of the app is available. Please update to the latest version.'),
+            actions: [
+              TextButton(
+                child: const Text('OK'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
   // Method to show password change dialog
   void _showPasswordDialog() {
     showDialog(
@@ -38,67 +74,7 @@ class _SettingsPageState extends State<Settings> {
           title: const Text('Change Password'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration:
-                    const InputDecoration(labelText: 'Current Password'),
-              ),
-              TextField(
-                controller: _newPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'New Password'),
-              ),
-              TextField(
-                controller: _confirmPasswordController,
-                obscureText: true,
-                decoration:
-                    const InputDecoration(labelText: 'Confirm New Password'),
-              ),
-            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                // Implement password change logic here
-                Navigator.pop(context);
-              },
-              child: const Text('Change Password'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // Method to show service coverage areas
-  void _showServiceCoverage() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Service Coverage Areas'),
-          content: const Text('We currently serve the following areas:\n\n'
-              '1. New York\n'
-              '2. Los Angeles\n'
-              '3. Chicago\n'
-              '4. Miami\n'
-              '5. Houston\n'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('Close'),
-            ),
-          ],
         );
       },
     );
@@ -147,24 +123,31 @@ class _SettingsPageState extends State<Settings> {
           ),
           const Divider(),
 
-          // Password Change
+          // Notifications Toggle
           ListTile(
-            leading: const Icon(Icons.lock, color: Colors.black),
-            title: const Text('Change Password'),
-            onTap: _showPasswordDialog,
+            leading: const Icon(Icons.notifications, color: Colors.black),
+            title: const Text('Notifications'),
+            subtitle: Text(_notificationsEnabled
+                ? 'Notifications Enabled'
+                : 'Notifications Disabled'),
+            trailing: Switch(
+              value: _notificationsEnabled,
+              onChanged: _toggleNotifications,
+            ),
           ),
           const Divider(),
 
-          // Service Coverage
+          // App Updates
           ListTile(
-            leading: const Icon(Icons.location_on, color: Colors.black),
-            title: const Text('Service Coverage'),
-            subtitle: const Text('View available service areas'),
-            onTap: _showServiceCoverage,
+            leading: const Icon(Icons.system_update_alt, color: Colors.black),
+            title: const Text('Check for App Updates'),
+            subtitle:
+                Text(_isAppUpdateAvailable ? 'Update Available' : 'No Updates'),
+            onTap: _checkForAppUpdates,
           ),
           const Divider(),
 
-          //logout
+          // Logout
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.black),
             title: const Text('Logout'),

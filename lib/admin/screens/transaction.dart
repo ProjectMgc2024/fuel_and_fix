@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+/*import 'package:flutter/material.dart';
 
 class TransactionManagementPage extends StatefulWidget {
   @override
@@ -264,4 +264,4 @@ class _TransactionManagementPageState extends State<TransactionManagementPage> {
       transactions.removeAt(index);
     });
   }
-}
+}*/

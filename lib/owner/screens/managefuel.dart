@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/owner/screens/fuel_request.dart';
 import 'package:fuel_and_fix/owner/screens/f_payment.dart';
 import 'package:fuel_and_fix/owner/screens/owner_login.dart';
-import 'package:fuel_and_fix/owner/screens/provider_profile.dart';
+import 'package:fuel_and_fix/owner/screens/fuel_profile.dart';
 
 class FuelManagement extends StatelessWidget {
   @override
@@ -50,7 +50,7 @@ class FuelManagement extends StatelessWidget {
                   'Profile',
                   'Update your provider details',
                   Icons.person,
-                  ServiceProviderProfilePage()),
+                  FuelProfilePage()),
               _buildDashboardSection(
                   context,
                   'Fuel Requests',

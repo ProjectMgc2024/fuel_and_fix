@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/user/screens/home_screen.dart';
 import 'package:fuel_and_fix/user/screens/register.dart';
@@ -97,12 +96,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: emailController,
                         style: TextStyle(color: Colors.black),
                         decoration: InputDecoration(
-                          labelText: 'Username',
+                          filled: true,
+                          fillColor: const Color.fromARGB(255, 146, 161, 222),
+                          labelText: 'Email',
                           labelStyle: TextStyle(
                               fontWeight: FontWeight.bold, color: Colors.black),
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(
-                            Icons.person,
+                            Icons.email,
                             color: Colors.black,
                           ),
                           enabledBorder: OutlineInputBorder(
@@ -111,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter your username';
+                            return 'Please enter your email';
                           }
                           return null;
                         },
@@ -124,6 +125,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: passwordController,
                         obscureText: !isPasswordVisible, // Toggle visibility
                         decoration: InputDecoration(
+                          filled: true,
+                          fillColor: const Color.fromARGB(255, 146, 161, 222),
                           labelText: 'Password',
                           labelStyle: TextStyle(
                               fontWeight: FontWeight.bold, color: Colors.black),

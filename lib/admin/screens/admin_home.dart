@@ -5,8 +5,7 @@ import 'package:fuel_and_fix/admin/screens/fuel.dart';
 import 'package:fuel_and_fix/admin/screens/mechanics.dart';
 import 'package:fuel_and_fix/admin/screens/users.dart';
 import 'package:fuel_and_fix/admin/screens/tow.dart';
-import 'package:fuel_and_fix/admin/screens/reports.dart';
-import 'package:fuel_and_fix/admin/screens/transaction.dart';
+
 
 class AdminPage extends StatelessWidget {
   @override

@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class ManageFeedbackPage extends StatefulWidget {
   @override
@@ -66,6 +65,7 @@ class _ManageFeedbackPageState extends State<ManageFeedbackPage> {
                   margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                   child: ListTile(
                     title: Text('Vehicle: ${feedback['vehicleRegNo']}'),
+                    subtitle: Text('Rating: ${feedback['rating']}'),
                     trailing: IconButton(
                       icon: Icon(Icons.delete),
                       onPressed: () => deleteFeedback(feedback['id']),
@@ -145,6 +145,9 @@ class FeedbackDetailPage extends StatelessWidget {
                   'Vehicle Registration No: ${feedback['vehicleRegNo']}',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
+                SizedBox(height: 10),
+                Text('Rating:${feedback['rating']}',
+                    style: TextStyle(fontSize: 16)),
                 SizedBox(height: 10),
                 Text('Date: ${feedback['date']}',
                     style: TextStyle(fontSize: 16)),
