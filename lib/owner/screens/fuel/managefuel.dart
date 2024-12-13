@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:fuel_and_fix/owner/screens/fuel_request.dart';
-import 'package:fuel_and_fix/owner/screens/f_payment.dart';
-import 'package:fuel_and_fix/owner/screens/owner_login.dart';
-import 'package:fuel_and_fix/owner/screens/fuel_profile.dart';
+import 'package:fuel_and_fix/owner/screens/fuel/fuel_request.dart';
+import 'package:fuel_and_fix/owner/screens/fuel/f_payment.dart';
+import 'package:fuel_and_fix/owner/screens/owner.dart';
+import 'package:fuel_and_fix/owner/screens/fuel/fuel_profile.dart';
 
 class FuelManagement extends StatelessWidget {
   @override
@@ -23,8 +23,7 @@ class FuelManagement extends StatelessWidget {
               );
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(
-                    builder: (context) => ServiceProviderRegisterPage()),
+                MaterialPageRoute(builder: (context) => OwnerIntro()),
               );
             },
           ),
@@ -63,12 +62,6 @@ class FuelManagement extends StatelessWidget {
                   'Track your fuel service payments',
                   Icons.account_balance_wallet,
                   PaymentsAndEarningsPage()),
-              _buildDashboardSection(
-                  context,
-                  'Pending Tasks',
-                  'View and manage your pending fuel requests',
-                  Icons.hourglass_empty,
-                  PendingFuelTasksPage()), // New section for pending tasks
             ],
           ),
         ),
@@ -142,25 +135,6 @@ class FuelManagement extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// New page for Pending Fuel Tasks
-class PendingFuelTasksPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Pending Fuel Requests'),
-        backgroundColor: Color.fromARGB(255, 160, 128, 39),
-      ),
-      body: Center(
-        child: Text(
-          'This page will list all pending fuel service tasks.',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
     );

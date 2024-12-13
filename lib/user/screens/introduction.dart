@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:fuel_and_fix/owner/screens/owner_login.dart';
+import 'package:fuel_and_fix/owner/screens/owner.dart';
 import 'package:fuel_and_fix/user/screens/login_screen.dart';
 
 // Home Page
@@ -65,7 +65,7 @@ class IntroductionPage extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => ServiceProviderRegisterPage()),
+                        builder: (context) => OwnerIntro()),
                   );
                 },
                 child: const Text('Service Providers'),

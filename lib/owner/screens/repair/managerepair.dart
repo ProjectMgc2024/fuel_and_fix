@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:fuel_and_fix/owner/screens/t_payment.dart';
-import 'package:fuel_and_fix/owner/screens/tow_profile.dart';
+import 'package:fuel_and_fix/owner/screens/repair/r_payment.dart';
+import 'package:fuel_and_fix/owner/screens/repair/repair_profile.dart';
+import 'package:fuel_and_fix/owner/screens/repair/repair_request.dart'; // Import the repair request page
 import 'package:fuel_and_fix/user/screens/introduction.dart'; // Import the introduction page
 
-class TowManagementPage extends StatelessWidget {
+class RepairManagementPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Tow Management',
+          'Repair Management',
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Color.fromARGB(255, 160, 128, 39),
@@ -48,25 +49,25 @@ class TowManagementPage extends StatelessWidget {
                   'Profile',
                   'Update your provider details',
                   Icons.person,
-                  TowProfilePage()),
+                  RepairProfilePage()),
               _buildVerticalCard(
                   context,
-                  'Towing Requests',
-                  'Manage incoming towing service requests',
-                  Icons.directions_car,
-                  TowingRequestPage()),
+                  'Repair Requests',
+                  'Manage incoming repair service requests',
+                  Icons.build,
+                  EmergencyRepairRequest()),
               _buildVerticalCard(
                   context,
                   'Payments & Earnings',
-                  'Track your towing service payments',
+                  'Track your repair service payments',
                   Icons.account_balance_wallet,
-                  TPaymentsAndEarningsPage()),
+                  RPaymentsAndEarningsPage()),
               _buildVerticalCard(
                   context,
-                  'Pending Tows',
-                  'View and manage your pending towing requests',
+                  'Pending Tasks',
+                  'View and manage your pending repair requests',
                   Icons.hourglass_empty,
-                  PendingTowRequestsPage()),
+                  PendingRepairTasksPage()),
             ],
           ),
         ),
@@ -130,33 +131,17 @@ class TowManagementPage extends StatelessWidget {
   }
 }
 
-// New page for Pending Tow Requests
-class PendingTowRequestsPage extends StatelessWidget {
+// New page for Pending Repair Tasks
+class PendingRepairTasksPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Pending Tow Requests'),
+        title: Text('Pending Repair Requests'),
         backgroundColor: Color.fromARGB(255, 160, 128, 39),
       ),
       body: Center(
-        child: Text('This page will list all pending towing requests.'),
-      ),
-    );
-  }
-}
-
-// New page for Towing Requests
-class TowingRequestPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Towing Requests'),
-        backgroundColor: Color.fromARGB(255, 160, 128, 39),
-      ),
-      body: Center(
-        child: Text('This page will list all towing service requests.'),
+        child: Text('This page will list all pending repair service tasks.'),
       ),
     );
   }
