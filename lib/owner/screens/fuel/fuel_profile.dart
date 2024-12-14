@@ -30,7 +30,7 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
   late DocumentReference _managerDoc;
   late CollectionReference _employeeCollection;
 
-  late Map<String, dynamic> managerData; // Fix for managerData
+  late Map<String, dynamic> managerData;
   List<Employee> employees = [];
 
   final TextEditingController _nameController = TextEditingController();
@@ -39,7 +39,8 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
   final TextEditingController _roleController = TextEditingController();
   final TextEditingController _experienceController = TextEditingController();
   final TextEditingController _shiftController = TextEditingController();
-  final TextEditingController _stationNameController = TextEditingController();
+  final TextEditingController _companyNameController = TextEditingController();
+  final TextEditingController _cLicenseController = TextEditingController();
 
   dynamic _editingPerson;
   bool _isManager = false;
@@ -61,8 +62,7 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
       final managerSnapshot = await _managerDoc.get();
       if (managerSnapshot.exists) {
         setState(() {
-          managerData = managerSnapshot.data()
-              as Map<String, dynamic>; // Cast to Map<String, dynamic>
+          managerData = managerSnapshot.data() as Map<String, dynamic>;
         });
       }
 
@@ -70,8 +70,7 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
       final employeeSnapshot = await _employeeCollection.get();
       setState(() {
         employees = employeeSnapshot.docs.map((doc) {
-          final data =
-              doc.data() as Map<String, dynamic>; // Safely cast employee data
+          final data = doc.data() as Map<String, dynamic>;
           return Employee(
             name: data['name'] ?? '',
             email: data['email'] ?? '',
@@ -123,7 +122,8 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
     _roleController.clear();
     _experienceController.clear();
     _shiftController.clear();
-    _stationNameController.clear();
+    _companyNameController.clear();
+    _cLicenseController.clear();
   }
 
   // Populate the controllers with data from either manager or employee
@@ -132,7 +132,8 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
       _nameController.text = managerData['owner'] ?? '';
       _emailController.text = managerData['email'] ?? '';
       _phoneController.text = managerData['phoneNo'] ?? '';
-      _stationNameController.text = managerData['companyName'] ?? '';
+      _companyNameController.text = managerData['companyName'] ?? '';
+      _cLicenseController.text = managerData['clicense'] ?? '';
     } else {
       _nameController.text = _editingPerson.name;
       _emailController.text = _editingPerson.email;
@@ -159,7 +160,8 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
           ],
           if (isManager) ...[
             // Manager specific fields
-            _buildTextField(_stationNameController, 'Station Name'),
+            _buildTextField(_companyNameController, 'Company Name'),
+            _buildTextField(_cLicenseController, 'license Number')
           ]
         ],
       ),
@@ -193,8 +195,10 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
             if (_isManager) {
               managerData['owner'] = _nameController.text;
               managerData['email'] = _emailController.text;
-              managerData['phone'] = _phoneController.text;
-              managerData['stationName'] = _stationNameController.text;
+              managerData['phoneNo'] = _phoneController.text;
+              managerData['companyName'] = _companyNameController.text;
+              managerData['clicense'] = _cLicenseController.text;
+
               _managerDoc.update(managerData);
             } else {
               _editingPerson.name = _nameController.text;
@@ -295,7 +299,7 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
               fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal),
         ),
         subtitle: Text(
-          'Name: ${managerData['owner']}\nEmail: ${managerData['email']}\nPhone: ${managerData['phoneNo']}\nFuel Station: ${managerData['companyName']}',
+          'Name: ${managerData['owner']}\nEmail: ${managerData['email']}\nPhone: ${managerData['phoneNo']}\nCompany name: ${managerData['companyName']}\nLicence Number: ${managerData['clicense']}',
           style: TextStyle(fontSize: 16),
         ),
         trailing: IconButton(

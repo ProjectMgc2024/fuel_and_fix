@@ -13,14 +13,12 @@ class _FuelRegisterState extends State<FuelRegister> {
 
   // TextEditingController for each input field
   final TextEditingController _companyNameController = TextEditingController();
-  final TextEditingController _companyLicenseController =
-      TextEditingController();
+  final TextEditingController _companyLicenseController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _ownerNameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmpasswordController =
-      TextEditingController();
+  final TextEditingController _confirmpasswordController =TextEditingController();
 
   Future<void> registerHandling() async {
     try {

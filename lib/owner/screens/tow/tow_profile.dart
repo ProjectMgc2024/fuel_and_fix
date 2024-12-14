@@ -259,7 +259,7 @@ class _TowProfilePageState extends State<TowProfilePage> {
                     style:
                         TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 subtitle: Text(
-                  'Company Name: ${companyData['companyName']}\nEmail: ${companyData['email']}\nPhone: ${companyData['phoneNo']}\nLicense: ${companyData['clicense']}',
+                  'Name: ${companyData['owner']}\nCompany Name: ${companyData['companyName']}\nEmail: ${companyData['email']}\nPhone: ${companyData['phoneNo']}\nLicense: ${companyData['clicense']}',
                   style: TextStyle(fontSize: 16),
                 ),
                 trailing: IconButton(

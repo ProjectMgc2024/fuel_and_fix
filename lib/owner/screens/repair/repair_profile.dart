@@ -43,6 +43,7 @@ class _RepairProfilePageState extends State<RepairProfilePage> {
   final TextEditingController _shiftController = TextEditingController();
   final TextEditingController _skillsController = TextEditingController();
   final TextEditingController _workshopNameController = TextEditingController();
+  final TextEditingController _clicenseController = TextEditingController();
 
   dynamic _editingPerson;
   bool _isManager = false;
@@ -126,6 +127,7 @@ class _RepairProfilePageState extends State<RepairProfilePage> {
     _shiftController.clear();
     _skillsController.clear();
     _workshopNameController.clear();
+    _clicenseController.clear();
   }
 
   // Populate the controllers with data from either manager or employee
@@ -135,6 +137,7 @@ class _RepairProfilePageState extends State<RepairProfilePage> {
       _emailController.text = managerData['email'] ?? '';
       _phoneController.text = managerData['phoneNo'] ?? '';
       _workshopNameController.text = managerData['companyName'] ?? '';
+      _clicenseController.text = managerData['clicense'] ?? '';
     } else {
       _nameController.text = _editingPerson.name;
       _emailController.text = _editingPerson.email;
@@ -164,6 +167,7 @@ class _RepairProfilePageState extends State<RepairProfilePage> {
           if (isManager) ...[
             // Manager specific fields
             _buildTextField(_workshopNameController, 'Workshop Name'),
+            _buildTextField(_clicenseController, 'Licence Number'),
           ]
         ],
       ),
@@ -195,30 +199,77 @@ class _RepairProfilePageState extends State<RepairProfilePage> {
         onPressed: () async {
           if (_isManager) {
             if (_validateManagerForm()) {
-              managerData['owner'] = _nameController.text;
-              managerData['email'] = _emailController.text;
-              managerData['phoneNo'] = _phoneController.text;
-              managerData['companyName'] = _workshopNameController.text;
-              await _repairProfileDoc.update(managerData);
+              try {
+                // Save changes to Firestore
+                await _repairProfileDoc.update({
+                  'owner': _nameController.text,
+                  'email': _emailController.text,
+                  'phoneNo': _phoneController.text,
+                  'companyName': _workshopNameController.text,
+                  'clicense': _clicenseController.text,
+                });
+
+                // Directly update local state (managerData)
+                setState(() {
+                  managerData['owner'] = _nameController.text;
+                  managerData['email'] = _emailController.text;
+                  managerData['phoneNo'] = _phoneController.text;
+                  managerData['companyName'] = _workshopNameController.text;
+                  managerData['clicense'] = _clicenseController.text;
+                });
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content: Text('Manager profile updated successfully')),
+                );
+              } catch (e) {
+                print("Error saving manager data: $e");
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to save manager data')),
+                );
+              }
             }
           } else {
             if (_validateEmployeeForm()) {
-              _editingPerson.name = _nameController.text;
-              _editingPerson.email = _emailController.text;
-              _editingPerson.phone = _phoneController.text;
-              _editingPerson.role = _roleController.text;
-              _editingPerson.shiftTime = _shiftController.text;
-              _editingPerson.skills = _skillsController.text.split(', ');
-              _editingPerson.experience = _experienceController.text;
-              await _employeeCollection.doc(_editingPerson.email).update({
-                'name': _editingPerson.name,
-                'email': _editingPerson.email,
-                'phone': _editingPerson.phone,
-                'role': _editingPerson.role,
-                'shiftTime': _editingPerson.shiftTime,
-                'skills': _editingPerson.skills,
-                'experience': _editingPerson.experience,
-              });
+              try {
+                // Save changes to Firestore
+                await _employeeCollection.doc(_editingPerson.email).update({
+                  'name': _nameController.text,
+                  'email': _emailController.text,
+                  'phone': _phoneController.text,
+                  'role': _roleController.text,
+                  'shiftTime': _shiftController.text,
+                  'skills': _skillsController.text.split(', '),
+                  'experience': _experienceController.text,
+                });
+
+                // Update the local employee list directly
+                setState(() {
+                  final index = employees
+                      .indexWhere((e) => e.email == _editingPerson.email);
+                  if (index != -1) {
+                    employees[index] = Employee(
+                      name: _nameController.text,
+                      email: _emailController.text,
+                      phone: _phoneController.text,
+                      role: _roleController.text,
+                      experience: _experienceController.text,
+                      shiftTime: _shiftController.text,
+                      skills: _skillsController.text.split(', '),
+                    );
+                  }
+                });
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content: Text('Employee profile updated successfully')),
+                );
+              } catch (e) {
+                print("Error saving employee data: $e");
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to save employee data')),
+                );
+              }
             }
           }
           Navigator.pop(context);
@@ -331,7 +382,7 @@ class _RepairProfilePageState extends State<RepairProfilePage> {
               fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal),
         ),
         subtitle: Text(
-          'Name: ${managerData['owner']}\nEmail: ${managerData['email']}\nPhone: ${managerData['phoneNo']}\nWorkshop: ${managerData['companyName']}',
+          'Name: ${managerData['owner']}\nEmail: ${managerData['email']}\nPhone: ${managerData['phoneNo']}\nWorkshop: ${managerData['companyName']} \nlicense: ${managerData['clicense']}',
           style: TextStyle(fontSize: 16),
         ),
         trailing: IconButton(
