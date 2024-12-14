@@ -191,7 +191,7 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
         onPressed: () async {
           setState(() {
             if (_isManager) {
-              managerData['name'] = _nameController.text;
+              managerData['owner'] = _nameController.text;
               managerData['email'] = _emailController.text;
               managerData['phone'] = _phoneController.text;
               managerData['stationName'] = _stationNameController.text;

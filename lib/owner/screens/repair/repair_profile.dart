@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class Employee {
@@ -7,7 +9,7 @@ class Employee {
   String role;
   String experience;
   String shiftTime;
-  List<String> skills; // Skills related to repair tasks
+  List<String> skills;
 
   Employee({
     required this.name,
@@ -26,188 +28,264 @@ class RepairProfilePage extends StatefulWidget {
 }
 
 class _RepairProfilePageState extends State<RepairProfilePage> {
-  // Manager Information (editable)
-  final Map<String, String> manager = {
-    'name': 'John Doe',
-    'email': 'john.doe@example.com',
-    'phone': '123-456-7890',
-    'workshopName': 'Super Repair Workshop',
-  };
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  late DocumentReference _repairProfileDoc;
+  late CollectionReference _employeeCollection;
 
-  // List of Employees working under the repair workshop
-  List<Employee> employees = [
-    Employee(
-      name: 'Mechanic 1',
-      email: 'mechanic1@example.com',
-      phone: '987-654-3210',
-      role: 'Senior Mechanic',
-      experience: '5 years in engine repair',
-      shiftTime: '8:00 AM - 4:00 PM',
-      skills: ['Engine Repair', 'Brake System', 'Electrical Systems'],
-    ),
-    Employee(
-      name: 'Mechanic 2',
-      email: 'mechanic2@example.com',
-      phone: '555-123-4567',
-      role: 'Junior Mechanic',
-      experience: '2 years in bodywork',
-      shiftTime: '10:00 AM - 6:00 PM',
-      skills: ['Bodywork', 'Paint Job', 'Dent Removal'],
-    ),
-  ];
+  late Map<String, dynamic> managerData;
+  List<Employee> employees = [];
 
-  // Modal controllers for Edit Employee and Manager
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _roleController = TextEditingController();
   final TextEditingController _experienceController = TextEditingController();
   final TextEditingController _shiftController = TextEditingController();
-  final TextEditingController _workshopNameController = TextEditingController();
   final TextEditingController _skillsController = TextEditingController();
+  final TextEditingController _workshopNameController = TextEditingController();
 
-  // Track the employee or manager being edited
   dynamic _editingPerson;
   bool _isManager = false;
 
-  // Open Edit Profile Modal (Manager's Profile)
+  @override
+  void initState() {
+    super.initState();
+    _repairProfileDoc = _firestore
+        .collection('repair')
+        .doc(FirebaseAuth.instance.currentUser?.uid);
+    _employeeCollection = _repairProfileDoc.collection('employees');
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      // Load Manager Data
+      final managerSnapshot = await _repairProfileDoc.get();
+      if (managerSnapshot.exists) {
+        setState(() {
+          managerData = managerSnapshot.data() as Map<String, dynamic>;
+        });
+      }
+
+      // Load Employee Data
+      final employeeSnapshot = await _employeeCollection.get();
+      setState(() {
+        employees = employeeSnapshot.docs.map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          return Employee(
+            name: data['name'] ?? '',
+            email: data['email'] ?? '',
+            phone: data['phone'] ?? '',
+            role: data['role'] ?? '',
+            experience: data['experience'] ?? '',
+            shiftTime: data['shiftTime'] ?? '',
+            skills: List<String>.from(data['skills'] ?? []),
+          );
+        }).toList();
+      });
+    } catch (e) {
+      print("Error loading profile: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load profile data: $e')),
+      );
+    }
+  }
+
+  // Edit profile (manager or employee)
   void _editProfile(dynamic person, {bool isManager = false}) {
     _editingPerson = person;
     _isManager = isManager;
 
-    // Clear controllers before populating
+    _clearControllers();
+    _populateControllers(isManager);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          title: Text(
+            isManager ? 'Edit Manager Profile' : 'Edit Employee Profile',
+            style: TextStyle(color: Colors.teal, fontWeight: FontWeight.bold),
+          ),
+          content: _buildDialogContent(isManager),
+          actions: _buildDialogActions(),
+        );
+      },
+    );
+  }
+
+  // Clear the controllers
+  void _clearControllers() {
     _nameController.clear();
     _emailController.clear();
     _phoneController.clear();
     _roleController.clear();
     _experienceController.clear();
     _shiftController.clear();
-    _workshopNameController.clear();
     _skillsController.clear();
+    _workshopNameController.clear();
+  }
 
-    // Populate text controllers with current data
+  // Populate the controllers with data from either manager or employee
+  void _populateControllers(bool isManager) {
     if (isManager) {
-      _nameController.text = person['name'];
-      _emailController.text = person['email'];
-      _phoneController.text = person['phone'];
-      _workshopNameController.text = person['workshopName'];
+      _nameController.text = managerData['owner'] ?? '';
+      _emailController.text = managerData['email'] ?? '';
+      _phoneController.text = managerData['phoneNo'] ?? '';
+      _workshopNameController.text = managerData['companyName'] ?? '';
     } else {
-      _nameController.text = person.name;
-      _emailController.text = person.email;
-      _phoneController.text = person.phone;
-      _roleController.text = person.role;
-      _experienceController.text = person.experience;
-      _shiftController.text = person.shiftTime;
-      _skillsController.text = person.skills.join(', ');
+      _nameController.text = _editingPerson.name;
+      _emailController.text = _editingPerson.email;
+      _phoneController.text = _editingPerson.phone;
+      _roleController.text = _editingPerson.role;
+      _experienceController.text = _editingPerson.experience;
+      _shiftController.text = _editingPerson.shiftTime;
+      _skillsController.text = _editingPerson.skills.join(', ');
     }
+  }
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          title: Text(
-            isManager ? 'Edit Manager Profile' : 'Edit Employee Profile',
-            style: TextStyle(color: Colors.blueAccent),
-          ),
-          content: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _nameController,
-                decoration: InputDecoration(labelText: 'Name'),
-              ),
-              TextField(
-                controller: _emailController,
-                decoration: InputDecoration(labelText: 'Email'),
-              ),
-              TextField(
-                controller: _phoneController,
-                decoration: InputDecoration(labelText: 'Phone Number'),
-              ),
-              if (!isManager)
-                TextField(
-                  controller: _roleController,
-                  decoration: InputDecoration(labelText: 'Role'),
-                ),
-              if (!isManager)
-                TextField(
-                  controller: _shiftController,
-                  decoration: InputDecoration(labelText: 'Shift Time'),
-                ),
-              if (!isManager)
-                TextField(
-                  controller: _skillsController,
-                  decoration: InputDecoration(labelText: 'Skills'),
-                ),
-              if (isManager)
-                TextField(
-                  controller: _workshopNameController,
-                  decoration: InputDecoration(labelText: 'Workshop Name'),
-                ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Cancel editing
-              },
-              child: Text('Cancel', style: TextStyle(color: Colors.blue)),
-            ),
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  // Update manager data
-                  if (isManager) {
-                    manager['name'] = _nameController.text;
-                    manager['email'] = _emailController.text;
-                    manager['phone'] = _phoneController.text;
-                    manager['workshopName'] = _workshopNameController.text;
-                  } else {
-                    // Update employee data
-                    _editingPerson.name = _nameController.text;
-                    _editingPerson.email = _emailController.text;
-                    _editingPerson.phone = _phoneController.text;
-                    _editingPerson.role = _roleController.text;
-                    _editingPerson.shiftTime = _shiftController.text;
-                    _editingPerson.skills = _skillsController.text.split(', ');
-                    _editingPerson.experience = _experienceController.text;
-                  }
-                });
-                Navigator.pop(context); // Save changes
-              },
-              child: Text('Save', style: TextStyle(color: Colors.blue)),
-            ),
+  // Build dialog content for editing
+  Widget _buildDialogContent(bool isManager) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildTextField(_nameController, 'Name'),
+          _buildTextField(_emailController, 'Email'),
+          _buildTextField(_phoneController, 'Phone Number'),
+          if (!isManager) ...[
+            // Employee specific fields
+            _buildTextField(_roleController, 'Role'),
+            _buildTextField(_shiftController, 'Shift Time'),
+            _buildTextField(_skillsController, 'Skills (comma separated)'),
           ],
-        );
-      },
+          if (isManager) ...[
+            // Manager specific fields
+            _buildTextField(_workshopNameController, 'Workshop Name'),
+          ]
+        ],
+      ),
     );
   }
 
-  // Delete Employee
+  // Build a text field
+  Widget _buildTextField(TextEditingController controller, String label) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(),
+        ),
+      ),
+    );
+  }
+
+  // Build actions for saving or canceling the edit
+  List<Widget> _buildDialogActions() {
+    return [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: Text('Cancel', style: TextStyle(color: Colors.blue)),
+      ),
+      TextButton(
+        onPressed: () async {
+          if (_isManager) {
+            if (_validateManagerForm()) {
+              managerData['owner'] = _nameController.text;
+              managerData['email'] = _emailController.text;
+              managerData['phoneNo'] = _phoneController.text;
+              managerData['companyName'] = _workshopNameController.text;
+              await _repairProfileDoc.update(managerData);
+            }
+          } else {
+            if (_validateEmployeeForm()) {
+              _editingPerson.name = _nameController.text;
+              _editingPerson.email = _emailController.text;
+              _editingPerson.phone = _phoneController.text;
+              _editingPerson.role = _roleController.text;
+              _editingPerson.shiftTime = _shiftController.text;
+              _editingPerson.skills = _skillsController.text.split(', ');
+              _editingPerson.experience = _experienceController.text;
+              await _employeeCollection.doc(_editingPerson.email).update({
+                'name': _editingPerson.name,
+                'email': _editingPerson.email,
+                'phone': _editingPerson.phone,
+                'role': _editingPerson.role,
+                'shiftTime': _editingPerson.shiftTime,
+                'skills': _editingPerson.skills,
+                'experience': _editingPerson.experience,
+              });
+            }
+          }
+          Navigator.pop(context);
+        },
+        child: Text('Save', style: TextStyle(color: Colors.teal)),
+      ),
+    ];
+  }
+
+  // Form validation for manager
+  bool _validateManagerForm() {
+    if (_nameController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _phoneController.text.isEmpty ||
+        _workshopNameController.text.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('All fields must be filled')));
+      return false;
+    }
+    return true;
+  }
+
+  // Form validation for employee
+  bool _validateEmployeeForm() {
+    if (_nameController.text.isEmpty ||
+        _emailController.text.isEmpty ||
+        _phoneController.text.isEmpty ||
+        _roleController.text.isEmpty ||
+        _shiftController.text.isEmpty ||
+        _skillsController.text.isEmpty ||
+        _experienceController.text.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('All fields must be filled')));
+      return false;
+    }
+    return true;
+  }
+
+  // Delete employee
   void _deleteEmployee(int index) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           title: Text('Delete Employee', style: TextStyle(color: Colors.red)),
           content: Text('Are you sure you want to delete this employee?'),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
+              onPressed: () => Navigator.pop(context),
               child: Text('Cancel', style: TextStyle(color: Colors.blue)),
             ),
             TextButton(
-              onPressed: () {
-                setState(() {
-                  employees.removeAt(index);
-                });
+              onPressed: () async {
+                try {
+                  await _employeeCollection
+                      .doc(employees[index].email)
+                      .delete();
+                  setState(() {
+                    employees.removeAt(index);
+                  });
+                } catch (e) {
+                  print('Error deleting employee: $e');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to delete employee: $e')));
+                }
                 Navigator.pop(context);
               },
               child: Text('Delete', style: TextStyle(color: Colors.red)),
@@ -225,77 +303,86 @@ class _RepairProfilePageState extends State<RepairProfilePage> {
         title: Text('Repair Workshop Profile'),
         backgroundColor: Colors.teal,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () {
-            Navigator.pop(context); // Go back to the previous screen
-          },
+          icon: Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            // Manager Profile Section
-            Card(
-              margin: EdgeInsets.symmetric(vertical: 10),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-              elevation: 5,
-              child: ListTile(
-                title: Text('Manager Profile',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                subtitle: Text(
-                  'Name: ${manager['name']}\nEmail: ${manager['email']}\nPhone: ${manager['phone']}\nWorkshop: ${manager['workshopName']}',
-                  style: TextStyle(fontSize: 16),
-                ),
-                trailing: IconButton(
-                  icon: Icon(Icons.edit,
-                      color: const Color.fromARGB(255, 5, 28, 68)),
-                  onPressed: () => _editProfile(manager, isManager: true),
-                ),
-              ),
-            ),
+            _buildManagerProfileCard(),
+            SizedBox(height: 20),
+            _buildEmployeeSection(),
+          ],
+        ),
+      ),
+    );
+  }
 
-            // Employees Section
-            Text(
-              'Employees',
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: const Color.fromARGB(255, 4, 86, 119)),
+  Widget _buildManagerProfileCard() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      elevation: 5,
+      child: ListTile(
+        title: Text(
+          'Manager Profile',
+          style: TextStyle(
+              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal),
+        ),
+        subtitle: Text(
+          'Name: ${managerData['owner']}\nEmail: ${managerData['email']}\nPhone: ${managerData['phoneNo']}\nWorkshop: ${managerData['companyName']}',
+          style: TextStyle(fontSize: 16),
+        ),
+        trailing: IconButton(
+          icon: Icon(Icons.edit, color: Colors.teal),
+          onPressed: () => _editProfile(managerData, isManager: true),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmployeeSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Employees',
+          style: TextStyle(
+              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal),
+        ),
+        SizedBox(height: 10),
+        for (int i = 0; i < employees.length; i++) ...[
+          // Loop through employees
+          _buildEmployeeCard(employees[i], i),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildEmployeeCard(Employee employee, int index) {
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      elevation: 5,
+      child: ListTile(
+        title: Text(employee.name,
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        subtitle: Text(
+          'Role: ${employee.role}\nExperience: ${employee.experience}\nShift: ${employee.shiftTime}\nSkills: ${employee.skills.join(', ')}',
+          style: TextStyle(fontSize: 16),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Icon(Icons.edit, color: Colors.teal),
+              onPressed: () => _editProfile(employee),
             ),
-            for (int i = 0; i < employees.length; i++) ...[
-              Card(
-                margin: EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-                elevation: 5,
-                child: ListTile(
-                  title: Text(employees[i].name,
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  subtitle: Text(
-                    'Name: ${employees[i].name}\nEmail: ${employees[i].email}\nPhone: ${employees[i].phone}\nRole: ${employees[i].role}\nSkills: ${employees[i].skills.join(', ')}\nShift: ${employees[i].shiftTime}\nExperience: ${employees[i].experience}',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.edit,
-                            color: const Color.fromARGB(255, 4, 45, 79)),
-                        onPressed: () => _editProfile(employees[i]),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _deleteEmployee(i),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+            IconButton(
+              icon: Icon(Icons.delete, color: Colors.red),
+              onPressed: () => _deleteEmployee(index),
+            ),
           ],
         ),
       ),

@@ -224,7 +224,6 @@ class OwnerAuthServices {
     }
   }
 
-
   // Tow Login method
   Future<bool> towLogin({
     required BuildContext context,
@@ -294,4 +293,3 @@ class OwnerAuthServices {
     }
   }
 }
-

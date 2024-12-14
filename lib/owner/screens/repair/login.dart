@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/owner/SERVICES/firebase_provider_auth.dart';
 import 'package:fuel_and_fix/owner/screens/repair/managerepair.dart';
-import 'package:fuel_and_fix/owner/screens/repair/repair_request.dart';
+import 'package:fuel_and_fix/owner/screens/repair/repair_register.dart';
 
 // Add your screen here
 
@@ -180,7 +180,7 @@ class _RepairLoginScreenState extends State<RepairLoginScreen> {
                                 context,
                                 MaterialPageRoute(
                                     builder: (context) =>
-                                        EmergencyRepairRequest())); // Updated navigation to repair register screen
+                                        RepairRegister())); // Updated navigation to repair register screen
                           },
                           child: Text(
                             'Create an account',

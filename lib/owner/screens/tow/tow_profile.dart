@@ -1,6 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-// Tow Service Person class to represent each person's details
 class TowServicePerson {
   String name;
   String email;
@@ -25,85 +26,71 @@ class TowProfilePage extends StatefulWidget {
 }
 
 class _TowProfilePageState extends State<TowProfilePage> {
-  // Sample Manager information
-  final Map<String, String> manager = {
-    'name': 'Jane Doe',
-    'email': 'jane.doe@example.com',
-    'phone': '321-654-9870',
-    'companyName': 'Reliable Tow Services',
-  };
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  late DocumentReference _towDoc;
+  late CollectionReference _employeesCollection;
 
-  // List of Tow Service People (drivers, dispatchers, etc.)
-  List<TowServicePerson> people = [
-    TowServicePerson(
-      name: 'Tow Driver 1',
-      email: 'driver1@example.com',
-      phone: '555-555-1111',
-      role: 'Senior Tow Driver',
-      experience: '7 years in towing',
-      shiftTime: '7:00 AM - 3:00 PM',
-    ),
-    TowServicePerson(
-      name: 'Dispatcher 1',
-      email: 'dispatcher1@example.com',
-      phone: '555-555-3333',
-      role: 'Lead Dispatcher',
-      experience: '5 years in dispatching',
-      shiftTime: '9:00 AM - 5:00 PM',
-    ),
-    TowServicePerson(
-      name: 'Tow Driver 2',
-      email: 'driver2@example.com',
-      phone: '555-555-2222',
-      role: 'Junior Tow Driver',
-      experience: '3 years in towing',
-      shiftTime: '9:00 AM - 5:00 PM',
-    ),
-  ];
+  late Map<String, dynamic> companyData;
+  List<TowServicePerson> employees = [];
 
-  // Controllers for the profile edit modal
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _roleController = TextEditingController();
-  final TextEditingController _experienceController = TextEditingController();
-  final TextEditingController _shiftController = TextEditingController();
   final TextEditingController _companyNameController = TextEditingController();
+  final TextEditingController _cLicenseController = TextEditingController();
 
-  // Track the person being edited
-  dynamic _editingPerson;
+  dynamic _editingEmployee;
   bool _isManager = false;
 
-  // Open the edit modal for a manager or tow service person
+  @override
+  void initState() {
+    super.initState();
+    _towDoc = _firestore.collection('tow').doc(FirebaseAuth
+        .instance.currentUser?.uid); // Document for specific Tow service
+    _employeesCollection =
+        _towDoc.collection('employees'); // Collection for employees
+    _loadProfile();
+  }
+
+  // Load Tow service company and employees from Firestore
+  Future<void> _loadProfile() async {
+    try {
+      final towSnapshot = await _towDoc.get();
+      if (towSnapshot.exists) {
+        setState(() {
+          companyData = towSnapshot.data() as Map<String, dynamic>;
+        });
+      }
+
+      final employeesSnapshot = await _employeesCollection.get();
+      setState(() {
+        employees = employeesSnapshot.docs.map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          return TowServicePerson(
+            name: data['name'] ?? '',
+            email: data['email'] ?? '',
+            phone: data['phone'] ?? '',
+            role: data['role'] ?? '',
+            experience: data['experience'] ?? '',
+            shiftTime: data['shiftTime'] ?? '',
+          );
+        }).toList();
+      });
+    } catch (e) {
+      print("Error loading profile: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load profile data: $e')),
+      );
+    }
+  }
+
   void _editProfile(dynamic person, {bool isManager = false}) {
-    _editingPerson = person;
+    _editingEmployee = person;
     _isManager = isManager;
 
-    // Clear text controllers before populating them with the current data
-    _nameController.clear();
-    _emailController.clear();
-    _phoneController.clear();
-    _roleController.clear();
-    _experienceController.clear();
-    _shiftController.clear();
-    _companyNameController.clear();
+    _clearControllers();
+    _populateControllers(isManager);
 
-    // Populate the text controllers with current values
-    if (isManager) {
-      _nameController.text = person['name'];
-      _emailController.text = person['email'];
-      _phoneController.text = person['phone'];
-      _companyNameController.text = person['companyName'];
-    } else {
-      _nameController.text = person.name;
-      _emailController.text = person.email;
-      _phoneController.text = person.phone;
-      _roleController.text = person.role;
-      _experienceController.text = person.experience;
-      _shiftController.text = person.shiftTime;
-    }
-
-    // Show the edit dialog
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -111,105 +98,132 @@ class _TowProfilePageState extends State<TowProfilePage> {
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           title: Text(
-            isManager ? 'Edit Manager Profile' : 'Edit Tow Service Profile',
+            isManager ? 'Edit Tow Service Profile' : 'Edit Employee Profile',
             style: TextStyle(color: Colors.blueAccent),
           ),
-          content: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _nameController,
-                decoration: InputDecoration(labelText: 'Name'),
-              ),
-              TextField(
-                controller: _emailController,
-                decoration: InputDecoration(labelText: 'Email'),
-              ),
-              TextField(
-                controller: _phoneController,
-                decoration: InputDecoration(labelText: 'Phone Number'),
-              ),
-              if (!isManager)
-                TextField(
-                  controller: _roleController,
-                  decoration: InputDecoration(labelText: 'Role'),
-                ),
-              if (!isManager)
-                TextField(
-                  controller: _experienceController,
-                  decoration: InputDecoration(labelText: 'Experience'),
-                ),
-              if (!isManager)
-                TextField(
-                  controller: _shiftController,
-                  decoration: InputDecoration(labelText: 'Shift Time'),
-                ),
-              if (isManager)
-                TextField(
-                  controller: _companyNameController,
-                  decoration: InputDecoration(labelText: 'Company Name'),
-                ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Cancel editing
-              },
-              child: Text('Cancel', style: TextStyle(color: Colors.blue)),
-            ),
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  // Save the updated information
-                  if (isManager) {
-                    manager['name'] = _nameController.text;
-                    manager['email'] = _emailController.text;
-                    manager['phone'] = _phoneController.text;
-                    manager['companyName'] = _companyNameController.text;
-                  } else {
-                    _editingPerson.name = _nameController.text;
-                    _editingPerson.email = _emailController.text;
-                    _editingPerson.phone = _phoneController.text;
-                    _editingPerson.role = _roleController.text;
-                    _editingPerson.experience = _experienceController.text;
-                    _editingPerson.shiftTime = _shiftController.text;
-                  }
-                });
-                Navigator.pop(context); // Close the dialog
-              },
-              child: Text('Save', style: TextStyle(color: Colors.blue)),
-            ),
-          ],
+          content: _buildDialogContent(isManager),
+          actions: _buildDialogActions(),
         );
       },
     );
   }
 
-  // Delete a Tow Service Person
-  void _deletePerson(int index) {
+  void _clearControllers() {
+    _nameController.clear();
+    _emailController.clear();
+    _phoneController.clear();
+    _companyNameController.clear();
+    _cLicenseController.clear();
+  }
+
+  void _populateControllers(bool isManager) {
+    if (isManager) {
+      _nameController.text = companyData['owner'] ?? '';
+      _emailController.text = companyData['email'] ?? '';
+      _phoneController.text = companyData['phoneNo'] ?? '';
+      _companyNameController.text = companyData['companyName'] ?? '';
+      _cLicenseController.text = companyData['clicense'] ?? '';
+    } else {
+      _nameController.text = _editingEmployee.name;
+      _emailController.text = _editingEmployee.email;
+      _phoneController.text = _editingEmployee.phone;
+    }
+  }
+
+  Widget _buildDialogContent(bool isManager) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildTextField(_nameController, 'Name'),
+          _buildTextField(_emailController, 'Email'),
+          _buildTextField(_phoneController, 'Phone Number'),
+          if (isManager) ...[
+            _buildTextField(_companyNameController, 'Company Name'),
+            _buildTextField(_cLicenseController, 'Company License'),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildDialogActions() {
+    return [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: Text('Cancel', style: TextStyle(color: Colors.blue)),
+      ),
+      TextButton(
+        onPressed: () async {
+          setState(() {
+            if (_isManager) {
+              companyData['companyName'] = _companyNameController.text;
+              companyData['email'] = _emailController.text;
+              companyData['phoneNo'] = _phoneController.text;
+              companyData['clicense'] = _cLicenseController.text;
+              companyData['owner'] = _nameController.text;
+              _towDoc.update(companyData);
+            } else {
+              _editingEmployee.name = _nameController.text;
+              _editingEmployee.email = _emailController.text;
+              _editingEmployee.phone = _phoneController.text;
+              _employeesCollection.doc(_editingEmployee.email).update({
+                'name': _editingEmployee.name,
+                'email': _editingEmployee.email,
+                'phone': _editingEmployee.phone,
+              });
+            }
+          });
+          Navigator.pop(context);
+        },
+        child: Text('Save', style: TextStyle(color: Colors.blue)),
+      ),
+    ];
+  }
+
+  void _deleteEmployee(int index) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          title: Text('Delete Person', style: TextStyle(color: Colors.red)),
-          content: Text('Are you sure you want to delete this person?'),
+          title: Text('Delete Employee', style: TextStyle(color: Colors.red)),
+          content: Text('Are you sure you want to delete this employee?'),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Cancel deletion
-              },
+              onPressed: () => Navigator.pop(context),
               child: Text('Cancel', style: TextStyle(color: Colors.blue)),
             ),
             TextButton(
-              onPressed: () {
-                setState(() {
-                  people.removeAt(index); // Remove the person
-                });
-                Navigator.pop(context); // Close the dialog
+              onPressed: () async {
+                try {
+                  await _employeesCollection
+                      .doc(employees[index].email)
+                      .delete();
+                  setState(() {
+                    employees.removeAt(index);
+                  });
+                } catch (e) {
+                  print('Error deleting employee: $e');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to delete employee: $e')),
+                  );
+                }
+                Navigator.pop(context);
               },
               child: Text('Delete', style: TextStyle(color: Colors.red)),
             ),
@@ -223,60 +237,58 @@ class _TowProfilePageState extends State<TowProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Tow Service Profiles'),
+        title: Text('Tow Service Profile'),
         backgroundColor: Colors.teal,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () {
-            Navigator.pop(context); // Go back to the previous screen
-          },
+          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            // Manager Profile Section
+            // Company Profile Section
             Card(
               margin: EdgeInsets.symmetric(vertical: 10),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
               elevation: 5,
               child: ListTile(
-                title: Text('Manager Profile',
+                title: Text('Company Profile',
                     style:
                         TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 subtitle: Text(
-                  'Name: ${manager['name']}\nEmail: ${manager['email']}\nPhone: ${manager['phone']}\nCompany: ${manager['companyName']}',
+                  'Company Name: ${companyData['companyName']}\nEmail: ${companyData['email']}\nPhone: ${companyData['phoneNo']}\nLicense: ${companyData['clicense']}',
                   style: TextStyle(fontSize: 16),
                 ),
                 trailing: IconButton(
                   icon: Icon(Icons.edit, color: Colors.blue),
-                  onPressed: () => _editProfile(manager, isManager: true),
+                  onPressed: () => _editProfile(companyData, isManager: true),
                 ),
               ),
             ),
 
-            // Tow Service People Section
+            // Employee Section
             Text(
-              'Tow Service People',
+              'Employees',
               style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: const Color.fromARGB(255, 2, 52, 73)),
             ),
-            for (int i = 0; i < people.length; i++) ...[
+            for (int i = 0; i < employees.length; i++) ...[
               Card(
                 margin: EdgeInsets.symmetric(vertical: 10),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
                 elevation: 5,
                 child: ListTile(
-                  title: Text(people[i].name,
+                  title: Text(employees[i].name,
                       style:
                           TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   subtitle: Text(
-                    'Role: ${people[i].role}\nEmail: ${people[i].email}\nPhone: ${people[i].phone}\nExperience: ${people[i].experience}\nShift: ${people[i].shiftTime}',
+                    'Role: ${employees[i].role}\nEmail: ${employees[i].email}\nPhone: ${employees[i].phone}\nExperience: ${employees[i].experience}\nShift: ${employees[i].shiftTime}',
                     style: TextStyle(fontSize: 16),
                   ),
                   trailing: Row(
@@ -284,11 +296,11 @@ class _TowProfilePageState extends State<TowProfilePage> {
                     children: [
                       IconButton(
                         icon: Icon(Icons.edit, color: Colors.blue),
-                        onPressed: () => _editProfile(people[i]),
+                        onPressed: () => _editProfile(employees[i]),
                       ),
                       IconButton(
                         icon: Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _deletePerson(i),
+                        onPressed: () => _deleteEmployee(i),
                       ),
                     ],
                   ),
