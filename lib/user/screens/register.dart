@@ -240,6 +240,7 @@ class _RegisterState extends State<Register> {
                                 border: OutlineInputBorder(),
                               ),
                               validator: validatePhoneNumber,
+                              maxLength: 10,
                             ),
                           ),
                         ),

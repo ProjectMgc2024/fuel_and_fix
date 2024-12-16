@@ -86,7 +86,8 @@ class OwnerAuthServices {
             userDoc.data() as Map<String, dynamic>; // Type casting to Map
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Login Successful! Welcome, ${userData['owner']}'),
+            content:
+                Text('Login Successful! Welcome, ${userData['ownerName']}'),
             backgroundColor: Colors.green,
           ),
         );
@@ -176,7 +177,8 @@ class OwnerAuthServices {
         final userData = userDoc.data() as Map<String, dynamic>;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Login Successful! Welcome, ${userData['owner']}'),
+            content:
+                Text('Login Successful! Welcome, ${userData['ownerName']}'),
             backgroundColor: Colors.green,
           ),
         );
@@ -246,7 +248,8 @@ class OwnerAuthServices {
         final userData = userDoc.data() as Map<String, dynamic>;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Login Successful! Welcome, ${userData['owner']}'),
+            content:
+                Text('Login Successful! Welcome, ${userData['ownerName']}'),
             backgroundColor: Colors.green,
           ),
         );

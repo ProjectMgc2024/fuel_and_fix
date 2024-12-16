@@ -387,6 +387,11 @@ class RepairProfilePageState extends State<RepairProfilePage> {
                   mainAxisAlignment: MainAxisAlignment
                       .spaceBetween, // Adjust alignment as needed
                   children: [
+                    Text(
+                      "Employees",
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
                     ElevatedButton(
                       onPressed: _showAddEmployeeDialog,
                       style: ElevatedButton.styleFrom(
@@ -420,11 +425,6 @@ class RepairProfilePageState extends State<RepairProfilePage> {
                         ],
                       ),
                     ),
-                    Text(
-                      "Employees",
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
                   ],
                 ),
                 ListView.builder(
@@ -455,6 +455,7 @@ class RepairProfilePageState extends State<RepairProfilePage> {
                             ),
                             IconButton(
                               icon: Icon(Icons.delete),
+                              color: const Color.fromARGB(255, 198, 30, 18),
                               onPressed: () {
                                 showDialog(
                                   context: context,

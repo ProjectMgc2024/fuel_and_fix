@@ -1,90 +1,215 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:io';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../../../service/cloudinary.dart';
 
 class FuelProfilePage extends StatefulWidget {
+  const FuelProfilePage({super.key});
+
   @override
-  _FuelProfilePageState createState() => _FuelProfilePageState();
+  FuelProfilePageState createState() => FuelProfilePageState();
 }
 
-class _FuelProfilePageState extends State<FuelProfilePage> {
+class FuelProfilePageState extends State<FuelProfilePage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  List<Map<String, dynamic>> _employees = [];
+  final String documentId = FirebaseAuth.instance.currentUser!.uid;
 
-  // Fetch user and employee details
-  Future<void> _fetchEmployeeDetails() async {
-    User? user = _auth.currentUser;
-    if (user != null) {
-      DocumentSnapshot userDoc =
-          await _firestore.collection('fuel').doc(user.uid).get();
-      var userData = userDoc.data() as Map<String, dynamic>;
-      setState(() {
-        _employees =
-            List<Map<String, dynamic>>.from(userData['employees'] ?? []);
-      });
-    }
+  late TextEditingController ownerNameController;
+  late TextEditingController emailController;
+  late TextEditingController phoneNoController;
+  late TextEditingController companyNameController;
+  late TextEditingController companyLicenseController;
+
+  @override
+  void initState() {
+    super.initState();
+    ownerNameController = TextEditingController();
+    emailController = TextEditingController();
+    phoneNoController = TextEditingController();
+    companyNameController = TextEditingController(); // Initialize
+    companyLicenseController = TextEditingController(); // Initialize
   }
 
-  // Show edit dialog for employee details
-  void _showEditDialog(
-      BuildContext context, int index, Map<String, dynamic> employeeDetails) {
-    final _nameController =
-        TextEditingController(text: employeeDetails['name']);
-    final _phoneController =
-        TextEditingController(text: employeeDetails['phoneNo']);
+  @override
+  void dispose() {
+    ownerNameController.dispose();
+    emailController.dispose();
+    phoneNoController.dispose();
+    companyNameController.dispose(); // Dispose
+    companyLicenseController.dispose(); // Dispose
+    super.dispose();
+  }
+
+  void _showEditManagerDialog(Map<String, dynamic> managerData) async {
+    File? newLogoFile;
+    ownerNameController.text = managerData['ownerName'];
+    companyNameController.text = managerData['companyName'];
+    companyLicenseController.text = managerData['CompanyLicense'] ?? '';
+    phoneNoController.text = managerData['phoneNo'];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text("Edit Manager Details"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (managerData['companyLogo'] != null && newLogoFile == null)
+                    Image.network(
+                      managerData['companyLogo'],
+                      height: 100,
+                      width: 100,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          Icon(Icons.error),
+                    ),
+                  if (newLogoFile != null)
+                    Image.file(
+                      newLogoFile!,
+                      height: 100,
+                      width: 100,
+                      fit: BoxFit.cover,
+                    ),
+                  TextButton(
+                    onPressed: () async {
+                      final pickedImage = await _pickImage();
+                      if (pickedImage != null) {
+                        setState(() {
+                          newLogoFile = pickedImage;
+                        });
+                      }
+                    },
+                    child: Text(
+                        newLogoFile == null ? "Change Logo" : "Replace Logo"),
+                  ),
+                  TextField(
+                    controller: ownerNameController,
+                    decoration: InputDecoration(labelText: 'Owner Name'),
+                  ),
+                  TextField(
+                    controller: companyNameController,
+                    decoration: InputDecoration(labelText: 'Company Name'),
+                  ),
+                  TextField(
+                    controller: companyLicenseController,
+                    decoration: InputDecoration(labelText: 'Company ID'),
+                  ),
+                  TextField(
+                    controller: phoneNoController,
+                    decoration: InputDecoration(labelText: 'Phone Number'),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text("Cancel"),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    String? newLogoUrl;
+                    if (newLogoFile != null) {
+                      newLogoUrl = await _uploadLogoToCloudinary(newLogoFile!);
+                    }
+                    _updateManagerDetails(newLogoUrl: newLogoUrl);
+                    Navigator.pop(context);
+                  },
+                  child: Text("Save"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<File?> _pickImage() async {
+    final pickedFile =
+        await ImagePicker().pickImage(source: ImageSource.gallery);
+    return pickedFile != null ? File(pickedFile.path) : null;
+  }
+
+  Future<String?> _uploadLogoToCloudinary(File image) async {
+    final cloudinaryService = CloudinaryService(uploadPreset: 'fuelservice');
+    return await cloudinaryService.uploadImage(selectedImage: image);
+  }
+
+  void _updateManagerDetails({String? newLogoUrl}) async {
+    final updateData = {
+      'ownerName': ownerNameController.text,
+      'phoneNo': phoneNoController.text,
+      'companyName': companyNameController.text,
+      'CompanyLicense': companyLicenseController.text,
+    };
+
+    if (newLogoUrl != null) {
+      updateData['companyLogo'] = newLogoUrl;
+    }
+
+    await _firestore.collection('fuel').doc(documentId).update(updateData);
+    setState(() {});
+  }
+
+  void _showAddEmployeeDialog() {
+    final TextEditingController employeeNameController =
+        TextEditingController();
+    final TextEditingController employeeEmailController =
+        TextEditingController();
+    final TextEditingController employeePhoneNoController =
+        TextEditingController();
+    final TextEditingController employeeRoleController =
+        TextEditingController();
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Edit Employee Details'),
+          title: Text("Add Employee"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                  controller: _nameController,
-                  decoration: InputDecoration(labelText: 'Employee Name')),
+                controller: employeeNameController,
+                decoration: InputDecoration(labelText: 'Employee Name'),
+              ),
               TextField(
-                  controller: _phoneController,
-                  decoration:
-                      InputDecoration(labelText: 'Employee Phone Number'),
-                  keyboardType: TextInputType.phone),
+                controller: employeeEmailController,
+                decoration: InputDecoration(labelText: 'Employee Email'),
+              ),
+              TextField(
+                controller: employeePhoneNoController,
+                decoration: InputDecoration(labelText: 'Employee Phone No'),
+              ),
+              TextField(
+                controller: employeeRoleController,
+                decoration: InputDecoration(labelText: 'Employee Role'),
+              ),
             ],
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context), child: Text('Cancel')),
-            ElevatedButton(
-              onPressed: () async {
-                String name = _nameController.text.trim();
-                String phoneNo = _phoneController.text.trim();
-                if (name.isNotEmpty && phoneNo.isNotEmpty) {
-                  try {
-                    String userId = _auth.currentUser!.uid;
-                    List<Map<String, dynamic>> updatedEmployees =
-                        List.from(_employees);
-                    updatedEmployees[index] = {
-                      'name': name,
-                      'phoneNo': phoneNo
-                    };
-
-                    await _firestore.collection('fuel').doc(userId).update({
-                      'employees': updatedEmployees,
-                    });
-                    setState(() {
-                      _employees[index] = {'name': name, 'phoneNo': phoneNo};
-                    });
-                    ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Employee details updated")));
-                    Navigator.pop(context);
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Error updating employee: $e")));
-                  }
-                }
+              onPressed: () => Navigator.pop(context),
+              child: Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                _addEmployee(
+                  employeeNameController.text,
+                  employeeEmailController.text,
+                  employeePhoneNoController.text,
+                  employeeRoleController.text,
+                );
+                Navigator.pop(context);
               },
-              child: Text('Save Changes'),
+              child: Text("Add"),
             ),
           ],
         );
@@ -92,228 +217,284 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
     );
   }
 
-  // Delete employee
-  void _deleteEmployee(int index) async {
-    try {
-      String userId = _auth.currentUser!.uid;
-      List<Map<String, dynamic>> updatedEmployees = List.from(_employees);
-      updatedEmployees.removeAt(index);
+  void _addEmployee(
+      String name, String email, String phoneNo, String role) async {
+    final documentSnapshot =
+        await _firestore.collection('fuel').doc(documentId).get();
+    List employees = documentSnapshot.data()?['employees'] ?? [];
+    employees.add({
+      'employeeName': name,
+      'employeeEmail': email,
+      'employeePhoneNo': phoneNo,
+      'employeeRole': role,
+    });
 
-      await _firestore.collection('fuel').doc(userId).update({
-        'employees': updatedEmployees,
-      });
-
-      setState(() {
-        _employees.removeAt(index);
-      });
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Employee deleted")));
-    } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Error deleting employee: $e")));
-    }
+    await _firestore.collection('fuel').doc(documentId).update({
+      'employees': employees,
+    });
+    setState(() {});
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchEmployeeDetails();
+  void _showEditEmployeeDialog(int index, Map<String, dynamic> employeeData) {
+    final TextEditingController employeeNameController =
+        TextEditingController(text: employeeData['employeeName']);
+    final TextEditingController employeeEmailController =
+        TextEditingController(text: employeeData['employeeEmail']);
+    final TextEditingController employeePhoneNoController =
+        TextEditingController(text: employeeData['employeePhoneNo']);
+    final TextEditingController employeeRoleController =
+        TextEditingController(text: employeeData['employeeRole']);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Edit Employee"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: employeeNameController,
+                decoration: InputDecoration(labelText: 'Employee Name'),
+              ),
+              TextField(
+                controller: employeeEmailController,
+                decoration: InputDecoration(labelText: 'Employee Email'),
+              ),
+              TextField(
+                controller: employeePhoneNoController,
+                decoration: InputDecoration(labelText: 'Employee Phone No'),
+              ),
+              TextField(
+                controller: employeeRoleController,
+                decoration: InputDecoration(labelText: 'Employee Role'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                _updateEmployee(index, {
+                  'employeeName': employeeNameController.text,
+                  'employeeEmail': employeeEmailController.text,
+                  'employeePhoneNo': employeePhoneNoController.text,
+                  'employeeRole': employeeRoleController.text,
+                });
+                Navigator.pop(context);
+              },
+              child: Text("Save"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _updateEmployee(int index, Map<String, dynamic> updatedEmployee) async {
+    final documentSnapshot =
+        await _firestore.collection('fuel').doc(documentId).get();
+    List employees = documentSnapshot.data()?['employees'] ?? [];
+    employees[index] = updatedEmployee;
+
+    await _firestore.collection('fuel').doc(documentId).update({
+      'employees': employees,
+    });
+    setState(() {});
+  }
+
+  void _deleteEmployee(int index) async {
+    final documentSnapshot =
+        await _firestore.collection('fuel').doc(documentId).get();
+    List employees = documentSnapshot.data()?['employees'] ?? [];
+    employees.removeAt(index);
+
+    await _firestore.collection('fuel').doc(documentId).update({
+      'employees': employees,
+    });
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Fuel Service Profile"),
-        backgroundColor: Colors.deepOrangeAccent,
+        title: Text("Fuel Profile"),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: FutureBuilder<DocumentSnapshot>(
-          future:
-              _firestore.collection('fuel').doc(_auth.currentUser!.uid).get(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
-            } else if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
-            } else if (!snapshot.hasData || !snapshot.data!.exists) {
-              return Center(child: Text('No user data found.'));
-            }
+      body: FutureBuilder<DocumentSnapshot>(
+        future: _firestore.collection('fuel').doc(documentId).get(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
 
-            var userData = snapshot.data!.data() as Map<String, dynamic>;
+          if (!snapshot.hasData || snapshot.data == null) {
+            return Center(child: Text("No data available"));
+          }
 
-            return Column(
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+          final managerDetails = {
+            'ownerName': data['ownerName'],
+            'email': data['email'],
+            'phoneNo': data['phoneNo'],
+            'companyName': data['companyName'],
+            'CompanyLicense': data['CompanyLicense'],
+            'companyLogo': data['companyLogo']
+          };
+          final employees =
+              List<Map<String, dynamic>>.from(data['employees'] ?? []);
+
+          return SingleChildScrollView(
+            padding: EdgeInsets.all(16.0),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Card(
-                  elevation: 4,
-                  color: Colors.blue[50],
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
+                  margin: EdgeInsets.only(bottom: 16.0),
+                  child: ListTile(
+                    leading: managerDetails['companyLogo'] != null
+                        ? Image.network(
+                            managerDetails['companyLogo'],
+                            width: 50, // Adjust width as needed
+                            height: 50, // Adjust height as needed
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Icon(Icons.error),
+                          )
+                        : Icon(Icons.business,
+                            size: 50), // Placeholder if no logo is available
+                    title:
+                        Text('Company Name ${managerDetails['companyName']}'),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildProfileRow("Owner", userData['owner'] ?? "N/A"),
-                        _buildProfileRow("Phone", userData['phoneNo'] ?? "N/A"),
-                        _buildProfileRow(
-                            "License", userData['clicense'] ?? "N/A"),
-                        _buildProfileRow(
-                            "Company", userData['companyName'] ?? "N/A"),
-                        _buildProfileRow("Email", userData['email'] ?? "N/A"),
+                        Text('Owner: ${managerDetails['ownerName']}'),
+                        Text('License: ${managerDetails['CompanyLicense']}'),
+                        Text('Email: ${managerDetails['email']}'),
+                        Text('Phone: ${managerDetails['phoneNo']}'),
                       ],
+                    ),
+                    trailing: IconButton(
+                      icon: Icon(Icons.edit),
+                      onPressed: () => _showEditManagerDialog(managerDetails),
                     ),
                   ),
                 ),
-                SizedBox(height: 20),
-                Text("Employees:",
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                        color: Colors.deepOrangeAccent)),
-                SizedBox(height: 10),
-                _employees.isEmpty
-                    ? Center(child: Text('No employees found.'))
-                    : Column(
-                        children: List.generate(_employees.length, (index) {
-                          var employee = _employees[index];
-                          return Card(
-                            elevation: 4,
-                            margin: EdgeInsets.symmetric(vertical: 8.0),
-                            color: Colors.teal[50],
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Row(
-                                children: [
-                                  Text("${employee['name']}: ",
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16)),
-                                  Expanded(
-                                      child: Text(
-                                          "Phone: ${employee['phoneNo']}",
-                                          style: TextStyle(fontSize: 16))),
-                                  IconButton(
-                                      icon: Icon(Icons.edit,
-                                          color: Colors.orange),
-                                      onPressed: () => _showEditDialog(
-                                          context, index, employee)),
-                                  IconButton(
-                                      icon:
-                                          Icon(Icons.delete, color: Colors.red),
-                                      onPressed: () => _deleteEmployee(index)),
-                                ],
-                              ),
-                            ),
-                          );
-                        }),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment
+                      .spaceBetween, // Adjust alignment as needed
+                  children: [
+                    Text(
+                      "Employees",
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    ElevatedButton(
+                      onPressed: _showAddEmployeeDialog,
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: const Color.fromARGB(194, 105, 47, 47),
+                        backgroundColor: Colors.blue, // Text color
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12), // Padding
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(8), // Rounded corners
+                        ),
+                        elevation: 4, // Shadow effect
                       ),
-                SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => AddEmployeePage(
-                                userId: _auth.currentUser!.uid)));
+                      child: Row(
+                        mainAxisSize: MainAxisSize
+                            .min, // Ensures button size fits its content
+                        children: [
+                          Icon(
+                            Icons.person_add, // Icon to display
+                            size: 18, // Icon size
+                            color: Colors.white, // Icon color
+                          ),
+                          SizedBox(width: 8), // Space between icon and text
+                          Text(
+                            "Add Employee",
+                            style: TextStyle(
+                              fontSize: 16, // Font size
+                              fontWeight: FontWeight.bold, // Font weight
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  itemCount: employees.length,
+                  itemBuilder: (context, index) {
+                    final employee = employees[index];
+                    return Card(
+                      margin: EdgeInsets.only(top: 8.0),
+                      child: ListTile(
+                        title: Text('Name : ${employee['employeeName']}'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Email : ${employee['employeeEmail']}'),
+                            Text('Role: ${employee['employeeRole']}'),
+                            Text('Phone: ${employee['employeePhoneNo']}'),
+                          ],
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.edit),
+                              onPressed: () =>
+                                  _showEditEmployeeDialog(index, employee),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                Icons.delete,
+                                color: const Color.fromARGB(255, 198, 30, 18),
+                              ),
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) {
+                                    return AlertDialog(
+                                      title: Text("Delete Employee"),
+                                      content: Text(
+                                          "Are you sure you want to delete this employee?"),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          child: Text("Cancel"),
+                                        ),
+                                        TextButton(
+                                          onPressed: () {
+                                            _deleteEmployee(index);
+                                            Navigator.pop(context);
+                                          },
+                                          child: Text("Delete"),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
                   },
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepOrangeAccent),
-                  child: Text("Add Employee", style: TextStyle(fontSize: 18)),
                 ),
               ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  // Profile row widget
-  Widget _buildProfileRow(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          Text("$title: ",
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Colors.deepOrangeAccent)),
-          Expanded(child: Text(value, style: TextStyle(fontSize: 16))),
-        ],
-      ),
-    );
-  }
-}
-
-// Add Employee Page
-class AddEmployeePage extends StatefulWidget {
-  final String userId;
-
-  AddEmployeePage({required this.userId});
-
-  @override
-  _AddEmployeePageState createState() => _AddEmployeePageState();
-}
-
-class _AddEmployeePageState extends State<AddEmployeePage> {
-  final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
-
-  Future<void> _addEmployee() async {
-    String name = _nameController.text.trim();
-    String phoneNo = _phoneController.text.trim();
-
-    if (name.isNotEmpty && phoneNo.isNotEmpty) {
-      try {
-        DocumentReference userDocRef =
-            FirebaseFirestore.instance.collection('fuel').doc(widget.userId);
-        List<Map<String, dynamic>> updatedEmployees = List.from([]);
-
-        updatedEmployees.add({'name': name, 'phoneNo': phoneNo});
-
-        await userDocRef.update({
-          'employees': updatedEmployees,
-        });
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Employee added")));
-        Navigator.pop(context);
-      } catch (e) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Error adding employee: $e")));
-      }
-    } else {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Please fill out all fields")));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-          title: Text("Add Employee"),
-          backgroundColor: Colors.deepOrangeAccent),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-                controller: _nameController,
-                decoration: InputDecoration(labelText: 'Employee Name')),
-            TextField(
-                controller: _phoneController,
-                decoration: InputDecoration(labelText: 'Employee Phone Number'),
-                keyboardType: TextInputType.phone),
-            SizedBox(height: 20),
-            ElevatedButton(
-                onPressed: _addEmployee,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                child: Text("Add Employee")),
-          ],
-        ),
+            ),
+          );
+        },
       ),
     );
   }

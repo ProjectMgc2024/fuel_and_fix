@@ -191,6 +191,7 @@ class _ProfileScreenState extends State<EditProfile> {
                   // Phone Number Field (Editable with validation)
                   child: TextFormField(
                     controller: phoneNumberController,
+                    maxLength: 10,
                     decoration: InputDecoration(
                       labelText: 'Phone Number',
                       border: OutlineInputBorder(),

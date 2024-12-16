@@ -1,46 +1,40 @@
 import 'dart:io';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
-
 import '../../../service/cloudinary.dart';
 
 class TowProfilePage extends StatefulWidget {
   const TowProfilePage({super.key});
 
   @override
-  TowProfilePageState createState() => TowProfilePageState();
+  _TowProfilePageState createState() => _TowProfilePageState();
 }
 
-class TowProfilePageState extends State<TowProfilePage> {
+class _TowProfilePageState extends State<TowProfilePage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String documentId = FirebaseAuth.instance.currentUser!.uid;
-
-  late TextEditingController ownerNameController;
-  late TextEditingController emailController;
-  late TextEditingController phoneNoController;
-  late TextEditingController companyNameController;
-  late TextEditingController companyLicenseController;
+  late TextEditingController ownerNameController,
+      companyNameController,
+      companyLicenseController,
+      phoneNoController;
 
   @override
   void initState() {
     super.initState();
     ownerNameController = TextEditingController();
-    emailController = TextEditingController();
+    companyNameController = TextEditingController();
+    companyLicenseController = TextEditingController();
     phoneNoController = TextEditingController();
-    companyNameController = TextEditingController(); // Initialize
-    companyLicenseController = TextEditingController(); // Initialize
   }
 
   @override
   void dispose() {
     ownerNameController.dispose();
-    emailController.dispose();
+    companyNameController.dispose();
+    companyLicenseController.dispose();
     phoneNoController.dispose();
-    companyNameController.dispose(); // Dispose
-    companyLicenseController.dispose(); // Dispose
     super.dispose();
   }
 
@@ -62,56 +56,28 @@ class TowProfilePageState extends State<TowProfilePage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (managerData['companyLogo'] != null && newLogoFile == null)
-                    Image.network(
-                      managerData['companyLogo'],
-                      height: 100,
-                      width: 100,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          Icon(Icons.error),
-                    ),
+                    Image.network(managerData['companyLogo'],
+                        height: 100, width: 100, fit: BoxFit.cover),
                   if (newLogoFile != null)
-                    Image.file(
-                      newLogoFile!,
-                      height: 100,
-                      width: 100,
-                      fit: BoxFit.cover,
-                    ),
+                    Image.file(newLogoFile!,
+                        height: 100, width: 100, fit: BoxFit.cover),
                   TextButton(
                     onPressed: () async {
                       final pickedImage = await _pickImage();
                       if (pickedImage != null) {
-                        setState(() {
-                          newLogoFile = pickedImage;
-                        });
+                        setState(() => newLogoFile = pickedImage);
                       }
                     },
                     child: Text(
                         newLogoFile == null ? "Change Logo" : "Replace Logo"),
                   ),
-                  TextField(
-                    controller: ownerNameController,
-                    decoration: InputDecoration(labelText: 'Owner Name'),
-                  ),
-                  TextField(
-                    controller: companyNameController,
-                    decoration: InputDecoration(labelText: 'Company Name'),
-                  ),
-                  TextField(
-                    controller: companyLicenseController,
-                    decoration: InputDecoration(labelText: 'Company ID'),
-                  ),
-                  TextField(
-                    controller: phoneNoController,
-                    decoration: InputDecoration(labelText: 'Phone Number'),
-                  ),
+                  ..._buildTextFields(),
                 ],
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text("Cancel"),
-                ),
+                    onPressed: () => Navigator.pop(context),
+                    child: Text("Cancel")),
                 TextButton(
                   onPressed: () async {
                     String? newLogoUrl;
@@ -129,6 +95,20 @@ class TowProfilePageState extends State<TowProfilePage> {
         );
       },
     );
+  }
+
+  List<Widget> _buildTextFields() {
+    return [
+      _buildTextField(ownerNameController, 'Owner Name'),
+      _buildTextField(companyNameController, 'Company Name'),
+      _buildTextField(companyLicenseController, 'Company ID'),
+      _buildTextField(phoneNoController, 'Phone Number'),
+    ];
+  }
+
+  TextField _buildTextField(TextEditingController controller, String label) {
+    return TextField(
+        controller: controller, decoration: InputDecoration(labelText: label));
   }
 
   Future<File?> _pickImage() async {
@@ -149,11 +129,7 @@ class TowProfilePageState extends State<TowProfilePage> {
       'companyName': companyNameController.text,
       'CompanyLicense': companyLicenseController.text,
     };
-
-    if (newLogoUrl != null) {
-      updateData['companyLogo'] = newLogoUrl;
-    }
-
+    if (newLogoUrl != null) updateData['companyLogo'] = newLogoUrl;
     await _firestore.collection('tow').doc(documentId).update(updateData);
     setState(() {});
   }
@@ -176,37 +152,22 @@ class TowProfilePageState extends State<TowProfilePage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: employeeNameController,
-                decoration: InputDecoration(labelText: 'Employee Name'),
-              ),
-              TextField(
-                controller: employeeEmailController,
-                decoration: InputDecoration(labelText: 'Employee Email'),
-              ),
-              TextField(
-                controller: employeePhoneNoController,
-                decoration: InputDecoration(labelText: 'Employee Phone No'),
-              ),
-              TextField(
-                controller: employeeRoleController,
-                decoration: InputDecoration(labelText: 'Employee Role'),
-              ),
+              _buildTextField(employeeNameController, 'Employee Name'),
+              _buildTextField(employeeEmailController, 'Employee Email'),
+              _buildTextField(employeePhoneNoController, 'Employee Phone No'),
+              _buildTextField(employeeRoleController, 'Employee Role'),
             ],
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("Cancel"),
-            ),
+                onPressed: () => Navigator.pop(context), child: Text("Cancel")),
             TextButton(
               onPressed: () {
                 _addEmployee(
-                  employeeNameController.text,
-                  employeeEmailController.text,
-                  employeePhoneNoController.text,
-                  employeeRoleController.text,
-                );
+                    employeeNameController.text,
+                    employeeEmailController.text,
+                    employeePhoneNoController.text,
+                    employeeRoleController.text);
                 Navigator.pop(context);
               },
               child: Text("Add"),
@@ -226,12 +187,12 @@ class TowProfilePageState extends State<TowProfilePage> {
       'employeeName': name,
       'employeeEmail': email,
       'employeePhoneNo': phoneNo,
-      'employeeRole': role,
+      'employeeRole': role
     });
-
-    await _firestore.collection('tow').doc(documentId).update({
-      'employees': employees,
-    });
+    await _firestore
+        .collection('tow')
+        .doc(documentId)
+        .update({'employees': employees});
     setState(() {});
   }
 
@@ -253,29 +214,15 @@ class TowProfilePageState extends State<TowProfilePage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: employeeNameController,
-                decoration: InputDecoration(labelText: 'Employee Name'),
-              ),
-              TextField(
-                controller: employeeEmailController,
-                decoration: InputDecoration(labelText: 'Employee Email'),
-              ),
-              TextField(
-                controller: employeePhoneNoController,
-                decoration: InputDecoration(labelText: 'Employee Phone No'),
-              ),
-              TextField(
-                controller: employeeRoleController,
-                decoration: InputDecoration(labelText: 'Employee Role'),
-              ),
+              _buildTextField(employeeNameController, 'Employee Name'),
+              _buildTextField(employeeEmailController, 'Employee Email'),
+              _buildTextField(employeePhoneNoController, 'Employee Phone No'),
+              _buildTextField(employeeRoleController, 'Employee Role'),
             ],
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("Cancel"),
-            ),
+                onPressed: () => Navigator.pop(context), child: Text("Cancel")),
             TextButton(
               onPressed: () {
                 _updateEmployee(index, {
@@ -299,41 +246,59 @@ class TowProfilePageState extends State<TowProfilePage> {
         await _firestore.collection('tow').doc(documentId).get();
     List employees = documentSnapshot.data()?['employees'] ?? [];
     employees[index] = updatedEmployee;
-
-    await _firestore.collection('tow').doc(documentId).update({
-      'employees': employees,
-    });
+    await _firestore
+        .collection('tow')
+        .doc(documentId)
+        .update({'employees': employees});
     setState(() {});
   }
 
   void _deleteEmployee(int index) async {
-    final documentSnapshot =
-        await _firestore.collection('tow').doc(documentId).get();
-    List employees = documentSnapshot.data()?['employees'] ?? [];
-    employees.removeAt(index);
-
-    await _firestore.collection('tow').doc(documentId).update({
-      'employees': employees,
-    });
-    setState(() {});
+    // Show a confirmation dialog before deleting the employee
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Delete Employee"),
+          content: Text("Are you sure you want to delete this employee?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context), // Close the dialog
+              child: Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () async {
+                // Proceed with deleting the employee
+                final documentSnapshot =
+                    await _firestore.collection('tow').doc(documentId).get();
+                List employees = documentSnapshot.data()?['employees'] ?? [];
+                employees.removeAt(index);
+                await _firestore
+                    .collection('tow')
+                    .doc(documentId)
+                    .update({'employees': employees});
+                setState(() {}); // Refresh the UI
+                Navigator.pop(context); // Close the dialog
+              },
+              child: Text("Delete"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Tow Profile"),
-      ),
+      appBar: AppBar(title: Text("Tow Profile")),
       body: FutureBuilder<DocumentSnapshot>(
         future: _firestore.collection('tow').doc(documentId).get(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting)
             return Center(child: CircularProgressIndicator());
-          }
-
-          if (!snapshot.hasData || snapshot.data == null) {
+          if (!snapshot.hasData || snapshot.data == null)
             return Center(child: Text("No data available"));
-          }
 
           final data = snapshot.data!.data() as Map<String, dynamic>;
           final managerDetails = {
@@ -356,18 +321,10 @@ class TowProfilePageState extends State<TowProfilePage> {
                   margin: EdgeInsets.only(bottom: 16.0),
                   child: ListTile(
                     leading: managerDetails['companyLogo'] != null
-                        ? Image.network(
-                            managerDetails['companyLogo'],
-                            width: 50, // Adjust width as needed
-                            height: 50, // Adjust height as needed
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Icon(Icons.error),
-                          )
-                        : Icon(Icons.business,
-                            size: 50), // Placeholder if no logo is available
-                    title:
-                        Text('Company Name ${managerDetails['companyName']}'),
+                        ? Image.network(managerDetails['companyLogo'],
+                            width: 50, height: 50, fit: BoxFit.cover)
+                        : Icon(Icons.business, size: 50),
+                    title: Text('Company: ${managerDetails['companyName']}'),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -378,52 +335,26 @@ class TowProfilePageState extends State<TowProfilePage> {
                       ],
                     ),
                     trailing: IconButton(
-                      icon: Icon(Icons.edit),
-                      onPressed: () => _showEditManagerDialog(managerDetails),
-                    ),
+                        icon: Icon(Icons.edit),
+                        onPressed: () =>
+                            _showEditManagerDialog(managerDetails)),
                   ),
                 ),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment
-                      .spaceBetween, // Adjust alignment as needed
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    Text("Employees",
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
                     ElevatedButton(
                       onPressed: _showAddEmployeeDialog,
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: Colors.blue, // Text color
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 12), // Padding
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(8), // Rounded corners
-                        ),
-                        elevation: 4, // Shadow effect
-                      ),
                       child: Row(
-                        mainAxisSize: MainAxisSize
-                            .min, // Ensures button size fits its content
                         children: [
-                          Icon(
-                            Icons.person_add, // Icon to display
-                            size: 18, // Icon size
-                            color: Colors.white, // Icon color
-                          ),
-                          SizedBox(width: 8), // Space between icon and text
-                          Text(
-                            "Add Employee",
-                            style: TextStyle(
-                              fontSize: 16, // Font size
-                              fontWeight: FontWeight.bold, // Font weight
-                            ),
-                          ),
+                          Icon(Icons.person_add),
+                          SizedBox(width: 8),
+                          Text("Add Employee")
                         ],
                       ),
-                    ),
-                    Text(
-                      "Employees",
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -436,11 +367,11 @@ class TowProfilePageState extends State<TowProfilePage> {
                     return Card(
                       margin: EdgeInsets.only(top: 8.0),
                       child: ListTile(
-                        title: Text('Name : ${employee['employeeName']}'),
+                        title: Text('Name: ${employee['employeeName']}'),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Email : ${employee['employeeEmail']}'),
+                            Text('Email: ${employee['employeeEmail']}'),
                             Text('Role: ${employee['employeeRole']}'),
                             Text('Phone: ${employee['employeePhoneNo']}'),
                           ],
@@ -449,38 +380,13 @@ class TowProfilePageState extends State<TowProfilePage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              icon: Icon(Icons.edit),
-                              onPressed: () =>
-                                  _showEditEmployeeDialog(index, employee),
-                            ),
+                                icon: Icon(Icons.edit),
+                                onPressed: () =>
+                                    _showEditEmployeeDialog(index, employee)),
                             IconButton(
                               icon: Icon(Icons.delete),
-                              onPressed: () {
-                                showDialog(
-                                  context: context,
-                                  builder: (context) {
-                                    return AlertDialog(
-                                      title: Text("Delete Employee"),
-                                      content: Text(
-                                          "Are you sure you want to delete this employee?"),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context),
-                                          child: Text("Cancel"),
-                                        ),
-                                        TextButton(
-                                          onPressed: () {
-                                            _deleteEmployee(index);
-                                            Navigator.pop(context);
-                                          },
-                                          child: Text("Delete"),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
+                              color: const Color.fromARGB(255, 198, 30, 18),
+                              onPressed: () => _deleteEmployee(index),
                             ),
                           ],
                         ),
