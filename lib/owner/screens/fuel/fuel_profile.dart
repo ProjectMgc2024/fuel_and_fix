@@ -2,24 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class Employee {
-  String name;
-  String email;
-  String phone;
-  String role;
-  String experience;
-  String shiftTime;
-
-  Employee({
-    required this.name,
-    required this.email,
-    required this.phone,
-    required this.role,
-    required this.experience,
-    required this.shiftTime,
-  });
-}
-
 class FuelProfilePage extends StatefulWidget {
   @override
   _FuelProfilePageState createState() => _FuelProfilePageState();
@@ -27,269 +9,82 @@ class FuelProfilePage extends StatefulWidget {
 
 class _FuelProfilePageState extends State<FuelProfilePage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  late DocumentReference _managerDoc;
-  late CollectionReference _employeeCollection;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  List<Map<String, dynamic>> _employees = [];
 
-  late Map<String, dynamic> managerData;
-  List<Employee> employees = [];
-
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _roleController = TextEditingController();
-  final TextEditingController _experienceController = TextEditingController();
-  final TextEditingController _shiftController = TextEditingController();
-  final TextEditingController _companyNameController = TextEditingController();
-  final TextEditingController _cLicenseController = TextEditingController();
-
-  dynamic _editingPerson;
-  bool _isManager = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _managerDoc = _firestore
-        .collection('fuel')
-        .doc(FirebaseAuth.instance.currentUser?.uid);
-    _employeeCollection = _managerDoc.collection('employees');
-    _loadProfile();
-  }
-
-  // Load manager and employees from Firestore
-  Future<void> _loadProfile() async {
-    try {
-      // Load Manager Data
-      final managerSnapshot = await _managerDoc.get();
-      if (managerSnapshot.exists) {
-        setState(() {
-          managerData = managerSnapshot.data() as Map<String, dynamic>;
-        });
-      }
-
-      // Load Employee Data (from the 'employees' array field in the 'fuel' document)
-      final fuelSnapshot = await _managerDoc.get(); // Fetch the 'fuel' document
-      if (fuelSnapshot.exists) {
-        final fuelData = fuelSnapshot.data() as Map<String, dynamic>;
-        final employeeList = fuelData['employees'] ?? [];
-
-        setState(() {
-          // Map the list of employee data to Employee objects
-          employees = employeeList.map((employee) {
-            return Employee(
-              name: employee['name'] ?? '',
-              email: employee['email'] ?? '',
-              phone: employee['phone'] ?? '',
-              role: employee['role'] ?? '',
-              experience: employee['experience'] ?? '',
-              shiftTime: employee['shiftTime'] ?? '',
-            );
-          }).toList();
-        });
-        
-      }
-    } catch (e) {
-      print("Error loading profile: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load profile data: $e')),
-      );
+  // Fetch user and employee details
+  Future<void> _fetchEmployeeDetails() async {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      DocumentSnapshot userDoc =
+          await _firestore.collection('fuel').doc(user.uid).get();
+      var userData = userDoc.data() as Map<String, dynamic>;
+      setState(() {
+        _employees =
+            List<Map<String, dynamic>>.from(userData['employees'] ?? []);
+      });
     }
   }
 
-  // Edit profile (manager or employee)
-  void _editProfile(dynamic person, {bool isManager = false}) {
-    _editingPerson = person;
-    _isManager = isManager;
-
-    _clearControllers();
-    _populateControllers(isManager);
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          title: Text(
-            isManager ? 'Edit Manager Profile' : 'Edit Employee Profile',
-            style: TextStyle(color: Colors.teal, fontWeight: FontWeight.bold),
-          ),
-          content: _buildDialogContent(isManager),
-          actions: _buildDialogActions(),
-        );
-      },
-    );
-  }
-
-  // Clear the controllers
-  void _clearControllers() {
-    _nameController.clear();
-    _emailController.clear();
-    _phoneController.clear();
-    _roleController.clear();
-    _experienceController.clear();
-    _shiftController.clear();
-    _companyNameController.clear();
-    _cLicenseController.clear();
-  }
-
-  // Populate the controllers with data from either manager or employee
-  void _populateControllers(bool isManager) {
-    if (isManager) {
-      _nameController.text = managerData['owner'] ?? '';
-      _emailController.text = managerData['email'] ?? '';
-      _phoneController.text = managerData['phoneNo'] ?? '';
-      _companyNameController.text = managerData['companyName'] ?? '';
-      _cLicenseController.text = managerData['clicense'] ?? '';
-    } else {
-      _nameController.text = _editingPerson.name;
-      _emailController.text = _editingPerson.email;
-      _phoneController.text = _editingPerson.phone;
-      _roleController.text = _editingPerson.role;
-      _experienceController.text = _editingPerson.experience;
-      _shiftController.text = _editingPerson.shiftTime;
-    }
-  }
-
-  // Build dialog content for editing
-  Widget _buildDialogContent(bool isManager) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildTextField(_nameController, 'Name'),
-          _buildTextField(_emailController, 'Email'),
-          _buildTextField(_phoneController, 'Phone Number'),
-          if (!isManager) ...[
-            // Employee specific fields
-            _buildTextField(_roleController, 'Role'),
-            _buildTextField(_shiftController, 'Shift Time'),
-          ],
-          if (isManager) ...[
-            // Manager specific fields
-            _buildTextField(_companyNameController, 'Company Name'),
-            _buildTextField(_cLicenseController, 'License Number')
-          ]
-        ],
-      ),
-    );
-  }
-
-  // Build a text field
-  Widget _buildTextField(TextEditingController controller, String label) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: TextField(
-        controller: controller,
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(),
-        ),
-      ),
-    );
-  }
-
-  // Build actions for saving or canceling the edit
-  List<Widget> _buildDialogActions() {
-    return [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: Text('Cancel', style: TextStyle(color: Colors.blue)),
-      ),
-      TextButton(
-        onPressed: () async {
-          setState(() {
-            if (_isManager) {
-              managerData['owner'] = _nameController.text;
-              managerData['email'] = _emailController.text;
-              managerData['phoneNo'] = _phoneController.text;
-              managerData['companyName'] = _companyNameController.text;
-              managerData['clicense'] = _cLicenseController.text;
-
-              _managerDoc.update(managerData);
-            } else {
-              _editingPerson.name = _nameController.text;
-              _editingPerson.email = _emailController.text;
-              _editingPerson.phone = _phoneController.text;
-              _editingPerson.role = _roleController.text;
-              _editingPerson.shiftTime = _shiftController.text;
-              _editingPerson.experience = _experienceController.text;
-              _employeeCollection.doc(_editingPerson.email).update({
-                'name': _editingPerson.name,
-                'email': _editingPerson.email,
-                'phone': _editingPerson.phone,
-                'role': _editingPerson.role,
-                'shiftTime': _editingPerson.shiftTime,
-                'experience': _editingPerson.experience,
-              });
-            }
-          });
-          Navigator.pop(context);
-        },
-        child: Text('Save', style: TextStyle(color: Colors.teal)),
-      ),
-    ];
-  }
-
-  // Add new employee
-  void _addEmployee() {
-    _clearControllers();
-    _isManager = false;
+  // Show edit dialog for employee details
+  void _showEditDialog(
+      BuildContext context, int index, Map<String, dynamic> employeeDetails) {
+    final _nameController =
+        TextEditingController(text: employeeDetails['name']);
+    final _phoneController =
+        TextEditingController(text: employeeDetails['phoneNo']);
 
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (context) {
         return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          title: Text(
-            'Add New Employee',
-            style: TextStyle(color: Colors.teal, fontWeight: FontWeight.bold),
+          title: Text('Edit Employee Details'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                  controller: _nameController,
+                  decoration: InputDecoration(labelText: 'Employee Name')),
+              TextField(
+                  controller: _phoneController,
+                  decoration:
+                      InputDecoration(labelText: 'Employee Phone Number'),
+                  keyboardType: TextInputType.phone),
+            ],
           ),
-          content: _buildDialogContent(false),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel', style: TextStyle(color: Colors.blue)),
-            ),
-            TextButton(
+                onPressed: () => Navigator.pop(context), child: Text('Cancel')),
+            ElevatedButton(
               onPressed: () async {
-                try {
-                  // Prepare the employee data as a Map
-                  Map<String, dynamic> employeeData = {
-                    'name': _nameController.text,
-                    'email': _emailController.text,
-                    'phone': _phoneController.text,
-                    'role': _roleController.text,
-                    'experience': _experienceController.text,
-                    'shiftTime': _shiftController.text,
-                  };
+                String name = _nameController.text.trim();
+                String phoneNo = _phoneController.text.trim();
+                if (name.isNotEmpty && phoneNo.isNotEmpty) {
+                  try {
+                    String userId = _auth.currentUser!.uid;
+                    List<Map<String, dynamic>> updatedEmployees =
+                        List.from(_employees);
+                    updatedEmployees[index] = {
+                      'name': name,
+                      'phoneNo': phoneNo
+                    };
 
-                  // Add the new employee as a map to the 'employees' field in the 'fuel' document
-                  await _managerDoc.update({
-                    'employees': FieldValue.arrayUnion([employeeData]),
-                  });
-
-                  // Optionally, update the local employee list (if you're displaying it)
-                  setState(() {
-                    employees.add(Employee(
-                      name: _nameController.text,
-                      email: _emailController.text,
-                      phone: _phoneController.text,
-                      role: _roleController.text,
-                      experience: _experienceController.text,
-                      shiftTime: _shiftController.text,
-                    ));
-                  });
-
-                  Navigator.pop(context); // Close the dialog
-                } catch (e) {
-                  print("Error adding employee: $e");
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to add employee: $e')),
-                  );
+                    await _firestore.collection('fuel').doc(userId).update({
+                      'employees': updatedEmployees,
+                    });
+                    setState(() {
+                      _employees[index] = {'name': name, 'phoneNo': phoneNo};
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Employee details updated")));
+                    Navigator.pop(context);
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Error updating employee: $e")));
+                  }
                 }
               },
-              child: Text('Add Employee', style: TextStyle(color: Colors.teal)),
+              child: Text('Save Changes'),
             ),
           ],
         );
@@ -298,137 +93,225 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
   }
 
   // Delete employee
-  void _deleteEmployee(int index) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          title: Text('Delete Employee', style: TextStyle(color: Colors.red)),
-          content: Text('Are you sure you want to delete this employee?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel', style: TextStyle(color: Colors.blue)),
-            ),
-            TextButton(
-              onPressed: () async {
-                try {
-                  await _employeeCollection
-                      .doc(employees[index].email)
-                      .delete();
-                  setState(() {
-                    employees.removeAt(index);
-                  });
-                } catch (e) {
-                  print('Error deleting employee: $e');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to delete employee: $e')),
-                  );
-                }
-                Navigator.pop(context);
-              },
-              child: Text('Delete', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        );
-      },
-    );
+  void _deleteEmployee(int index) async {
+    try {
+      String userId = _auth.currentUser!.uid;
+      List<Map<String, dynamic>> updatedEmployees = List.from(_employees);
+      updatedEmployees.removeAt(index);
+
+      await _firestore.collection('fuel').doc(userId).update({
+        'employees': updatedEmployees,
+      });
+
+      setState(() {
+        _employees.removeAt(index);
+      });
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Employee deleted")));
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Error deleting employee: $e")));
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchEmployeeDetails();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Fuel Station Profile'),
-        backgroundColor: Colors.teal,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
+        title: Text("Fuel Service Profile"),
+        backgroundColor: Colors.deepOrangeAccent,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            _buildManagerProfileCard(),
-            SizedBox(height: 20),
-            _buildEmployeeSection(),
-          ],
+        child: FutureBuilder<DocumentSnapshot>(
+          future:
+              _firestore.collection('fuel').doc(_auth.currentUser!.uid).get(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator());
+            } else if (snapshot.hasError) {
+              return Center(child: Text('Error: ${snapshot.error}'));
+            } else if (!snapshot.hasData || !snapshot.data!.exists) {
+              return Center(child: Text('No user data found.'));
+            }
+
+            var userData = snapshot.data!.data() as Map<String, dynamic>;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Card(
+                  elevation: 4,
+                  color: Colors.blue[50],
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        _buildProfileRow("Owner", userData['owner'] ?? "N/A"),
+                        _buildProfileRow("Phone", userData['phoneNo'] ?? "N/A"),
+                        _buildProfileRow(
+                            "License", userData['clicense'] ?? "N/A"),
+                        _buildProfileRow(
+                            "Company", userData['companyName'] ?? "N/A"),
+                        _buildProfileRow("Email", userData['email'] ?? "N/A"),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
+                Text("Employees:",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                        color: Colors.deepOrangeAccent)),
+                SizedBox(height: 10),
+                _employees.isEmpty
+                    ? Center(child: Text('No employees found.'))
+                    : Column(
+                        children: List.generate(_employees.length, (index) {
+                          var employee = _employees[index];
+                          return Card(
+                            elevation: 4,
+                            margin: EdgeInsets.symmetric(vertical: 8.0),
+                            color: Colors.teal[50],
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Row(
+                                children: [
+                                  Text("${employee['name']}: ",
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16)),
+                                  Expanded(
+                                      child: Text(
+                                          "Phone: ${employee['phoneNo']}",
+                                          style: TextStyle(fontSize: 16))),
+                                  IconButton(
+                                      icon: Icon(Icons.edit,
+                                          color: Colors.orange),
+                                      onPressed: () => _showEditDialog(
+                                          context, index, employee)),
+                                  IconButton(
+                                      icon:
+                                          Icon(Icons.delete, color: Colors.red),
+                                      onPressed: () => _deleteEmployee(index)),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => AddEmployeePage(
+                                userId: _auth.currentUser!.uid)));
+                  },
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepOrangeAccent),
+                  child: Text("Add Employee", style: TextStyle(fontSize: 18)),
+                ),
+              ],
+            );
+          },
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addEmployee,
-        backgroundColor: Colors.teal,
-        child: Icon(Icons.add),
       ),
     );
   }
 
-  Widget _buildManagerProfileCard() {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      elevation: 5,
-      child: ListTile(
-        title: Text(
-          'Manager Profile',
-          style: TextStyle(
-              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal),
-        ),
-        subtitle: Text(
-          'Name: ${managerData['owner']}\nEmail: ${managerData['email']}\nPhone: ${managerData['phoneNo']}\nCompany name: ${managerData['companyName']}\nLicence Number: ${managerData['clicense']}',
-          style: TextStyle(fontSize: 16),
-        ),
-        trailing: IconButton(
-          icon: Icon(Icons.edit, color: Colors.teal),
-          onPressed: () => _editProfile(managerData, isManager: true),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmployeeSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Employees',
-          style: TextStyle(
-              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal),
-        ),
-        SizedBox(height: 10),
-        for (int i = 0; i < employees.length; i++) ...[
-          // Loop through employees
-          _buildEmployeeCard(employees[i], i),
+  // Profile row widget
+  Widget _buildProfileRow(String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Text("$title: ",
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.deepOrangeAccent)),
+          Expanded(child: Text(value, style: TextStyle(fontSize: 16))),
         ],
-      ],
+      ),
     );
   }
+}
 
-  Widget _buildEmployeeCard(Employee employee, int index) {
-    return Card(
-      margin: EdgeInsets.symmetric(vertical: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      elevation: 5,
-      child: ListTile(
-        title: Text(employee.name,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        subtitle: Text(
-          'Role: ${employee.role}\nExperience: ${employee.experience}\nShift: ${employee.shiftTime}',
-          style: TextStyle(fontSize: 16),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+// Add Employee Page
+class AddEmployeePage extends StatefulWidget {
+  final String userId;
+
+  AddEmployeePage({required this.userId});
+
+  @override
+  _AddEmployeePageState createState() => _AddEmployeePageState();
+}
+
+class _AddEmployeePageState extends State<AddEmployeePage> {
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+
+  Future<void> _addEmployee() async {
+    String name = _nameController.text.trim();
+    String phoneNo = _phoneController.text.trim();
+
+    if (name.isNotEmpty && phoneNo.isNotEmpty) {
+      try {
+        DocumentReference userDocRef =
+            FirebaseFirestore.instance.collection('fuel').doc(widget.userId);
+        List<Map<String, dynamic>> updatedEmployees = List.from([]);
+
+        updatedEmployees.add({'name': name, 'phoneNo': phoneNo});
+
+        await userDocRef.update({
+          'employees': updatedEmployees,
+        });
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Employee added")));
+        Navigator.pop(context);
+      } catch (e) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("Error adding employee: $e")));
+      }
+    } else {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Please fill out all fields")));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+          title: Text("Add Employee"),
+          backgroundColor: Colors.deepOrangeAccent),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            IconButton(
-              icon: Icon(Icons.edit, color: Colors.teal),
-              onPressed: () => _editProfile(employee),
-            ),
-            IconButton(
-              icon: Icon(Icons.delete, color: Colors.red),
-              onPressed: () => _deleteEmployee(index),
-            ),
+            TextField(
+                controller: _nameController,
+                decoration: InputDecoration(labelText: 'Employee Name')),
+            TextField(
+                controller: _phoneController,
+                decoration: InputDecoration(labelText: 'Employee Phone Number'),
+                keyboardType: TextInputType.phone),
+            SizedBox(height: 20),
+            ElevatedButton(
+                onPressed: _addEmployee,
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                child: Text("Add Employee")),
           ],
         ),
       ),
