@@ -66,21 +66,27 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
         });
       }
 
-      // Load Employee Data
-      final employeeSnapshot = await _employeeCollection.get();
-      setState(() {
-        employees = employeeSnapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          return Employee(
-            name: data['name'] ?? '',
-            email: data['email'] ?? '',
-            phone: data['phone'] ?? '',
-            role: data['role'] ?? '',
-            experience: data['experience'] ?? '',
-            shiftTime: data['shiftTime'] ?? '',
-          );
-        }).toList();
-      });
+      // Load Employee Data (from the 'employees' array field in the 'fuel' document)
+      final fuelSnapshot = await _managerDoc.get(); // Fetch the 'fuel' document
+      if (fuelSnapshot.exists) {
+        final fuelData = fuelSnapshot.data() as Map<String, dynamic>;
+        final employeeList = fuelData['employees'] ?? [];
+
+        setState(() {
+          // Map the list of employee data to Employee objects
+          employees = employeeList.map((employee) {
+            return Employee(
+              name: employee['name'] ?? '',
+              email: employee['email'] ?? '',
+              phone: employee['phone'] ?? '',
+              role: employee['role'] ?? '',
+              experience: employee['experience'] ?? '',
+              shiftTime: employee['shiftTime'] ?? '',
+            );
+          }).toList();
+        });
+        
+      }
     } catch (e) {
       print("Error loading profile: $e");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -125,8 +131,6 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
     _companyNameController.clear();
     _cLicenseController.clear();
   }
-
-
 
   // Populate the controllers with data from either manager or employee
   void _populateControllers(bool isManager) {
@@ -249,17 +253,23 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
             ),
             TextButton(
               onPressed: () async {
-                // Add the new employee to Firestore
                 try {
-                  await _employeeCollection.doc(_emailController.text).set({
+                  // Prepare the employee data as a Map
+                  Map<String, dynamic> employeeData = {
                     'name': _nameController.text,
                     'email': _emailController.text,
                     'phone': _phoneController.text,
                     'role': _roleController.text,
                     'experience': _experienceController.text,
                     'shiftTime': _shiftController.text,
+                  };
+
+                  // Add the new employee as a map to the 'employees' field in the 'fuel' document
+                  await _managerDoc.update({
+                    'employees': FieldValue.arrayUnion([employeeData]),
                   });
 
+                  // Optionally, update the local employee list (if you're displaying it)
                   setState(() {
                     employees.add(Employee(
                       name: _nameController.text,
@@ -271,7 +281,7 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
                     ));
                   });
 
-                  Navigator.pop(context);
+                  Navigator.pop(context); // Close the dialog
                 } catch (e) {
                   print("Error adding employee: $e");
                   ScaffoldMessenger.of(context).showSnackBar(
