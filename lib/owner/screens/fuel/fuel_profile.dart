@@ -126,6 +126,8 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
     _cLicenseController.clear();
   }
 
+
+
   // Populate the controllers with data from either manager or employee
   void _populateControllers(bool isManager) {
     if (isManager) {
@@ -161,7 +163,7 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
           if (isManager) ...[
             // Manager specific fields
             _buildTextField(_companyNameController, 'Company Name'),
-            _buildTextField(_cLicenseController, 'license Number')
+            _buildTextField(_cLicenseController, 'License Number')
           ]
         ],
       ),
@@ -224,6 +226,67 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
     ];
   }
 
+  // Add new employee
+  void _addEmployee() {
+    _clearControllers();
+    _isManager = false;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          title: Text(
+            'Add New Employee',
+            style: TextStyle(color: Colors.teal, fontWeight: FontWeight.bold),
+          ),
+          content: _buildDialogContent(false),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: TextStyle(color: Colors.blue)),
+            ),
+            TextButton(
+              onPressed: () async {
+                // Add the new employee to Firestore
+                try {
+                  await _employeeCollection.doc(_emailController.text).set({
+                    'name': _nameController.text,
+                    'email': _emailController.text,
+                    'phone': _phoneController.text,
+                    'role': _roleController.text,
+                    'experience': _experienceController.text,
+                    'shiftTime': _shiftController.text,
+                  });
+
+                  setState(() {
+                    employees.add(Employee(
+                      name: _nameController.text,
+                      email: _emailController.text,
+                      phone: _phoneController.text,
+                      role: _roleController.text,
+                      experience: _experienceController.text,
+                      shiftTime: _shiftController.text,
+                    ));
+                  });
+
+                  Navigator.pop(context);
+                } catch (e) {
+                  print("Error adding employee: $e");
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to add employee: $e')),
+                  );
+                }
+              },
+              child: Text('Add Employee', style: TextStyle(color: Colors.teal)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // Delete employee
   void _deleteEmployee(int index) {
     showDialog(
@@ -284,6 +347,11 @@ class _FuelProfilePageState extends State<FuelProfilePage> {
             _buildEmployeeSection(),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addEmployee,
+        backgroundColor: Colors.teal,
+        child: Icon(Icons.add),
       ),
     );
   }

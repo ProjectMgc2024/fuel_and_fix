@@ -62,12 +62,6 @@ class TowManagementPage extends StatelessWidget {
                   'Track your towing service payments',
                   Icons.account_balance_wallet,
                   TPaymentsAndEarningsPage()),
-              _buildVerticalCard(
-                  context,
-                  'Pending Tows',
-                  'View and manage your pending towing requests',
-                  Icons.hourglass_empty,
-                  PendingTowRequestsPage()),
             ],
           ),
         ),
@@ -126,22 +120,6 @@ class TowManagementPage extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-// New page for Pending Tow Requests
-class PendingTowRequestsPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Pending Tow Requests'),
-        backgroundColor: Color.fromARGB(255, 160, 128, 39),
-      ),
-      body: Center(
-        child: Text('This page will list all pending towing requests.'),
       ),
     );
   }

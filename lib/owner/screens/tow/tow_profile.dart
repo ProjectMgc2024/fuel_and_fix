@@ -38,6 +38,9 @@ class _TowProfilePageState extends State<TowProfilePage> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _companyNameController = TextEditingController();
   final TextEditingController _cLicenseController = TextEditingController();
+  final TextEditingController _roleController = TextEditingController();
+  final TextEditingController _experienceController = TextEditingController();
+  final TextEditingController _shiftTimeController = TextEditingController();
 
   dynamic _editingEmployee;
   bool _isManager = false;
@@ -114,6 +117,9 @@ class _TowProfilePageState extends State<TowProfilePage> {
     _phoneController.clear();
     _companyNameController.clear();
     _cLicenseController.clear();
+    _roleController.clear();
+    _experienceController.clear();
+    _shiftTimeController.clear();
   }
 
   void _populateControllers(bool isManager) {
@@ -141,6 +147,11 @@ class _TowProfilePageState extends State<TowProfilePage> {
           if (isManager) ...[
             _buildTextField(_companyNameController, 'Company Name'),
             _buildTextField(_cLicenseController, 'Company License'),
+          ],
+          if (!isManager) ...[
+            _buildTextField(_roleController, 'Role'),
+            _buildTextField(_experienceController, 'Experience'),
+            _buildTextField(_shiftTimeController, 'Shift Time'),
           ],
         ],
       ),
@@ -233,6 +244,59 @@ class _TowProfilePageState extends State<TowProfilePage> {
     );
   }
 
+  void _addEmployee() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          title: Text('Add New Employee',
+              style: TextStyle(color: Colors.blueAccent)),
+          content: _buildDialogContent(false),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: TextStyle(color: Colors.blue)),
+            ),
+            TextButton(
+              onPressed: () async {
+                try {
+                  final newEmployee = TowServicePerson(
+                    name: _nameController.text,
+                    email: _emailController.text,
+                    phone: _phoneController.text,
+                    role: _roleController.text,
+                    experience: _experienceController.text,
+                    shiftTime: _shiftTimeController.text,
+                  );
+                  await _employeesCollection.doc(newEmployee.email).set({
+                    'name': newEmployee.name,
+                    'email': newEmployee.email,
+                    'phone': newEmployee.phone,
+                    'role': newEmployee.role,
+                    'experience': newEmployee.experience,
+                    'shiftTime': newEmployee.shiftTime,
+                  });
+                  setState(() {
+                    employees.add(newEmployee);
+                  });
+                  Navigator.pop(context);
+                } catch (e) {
+                  print('Error adding employee: $e');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to add employee: $e')),
+                  );
+                }
+              },
+              child: Text('Save', style: TextStyle(color: Colors.blue)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -309,6 +373,11 @@ class _TowProfilePageState extends State<TowProfilePage> {
             ],
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addEmployee,
+        backgroundColor: Colors.blue,
+        child: Icon(Icons.add),
       ),
     );
   }

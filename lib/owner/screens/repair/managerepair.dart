@@ -62,12 +62,6 @@ class RepairManagementPage extends StatelessWidget {
                   'Track your repair service payments',
                   Icons.account_balance_wallet,
                   RPaymentsAndEarningsPage()),
-              _buildVerticalCard(
-                  context,
-                  'Pending Tasks',
-                  'View and manage your pending repair requests',
-                  Icons.hourglass_empty,
-                  PendingRepairTasksPage()),
             ],
           ),
         ),
@@ -126,22 +120,6 @@ class RepairManagementPage extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-// New page for Pending Repair Tasks
-class PendingRepairTasksPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Pending Repair Requests'),
-        backgroundColor: Color.fromARGB(255, 160, 128, 39),
-      ),
-      body: Center(
-        child: Text('This page will list all pending repair service tasks.'),
       ),
     );
   }

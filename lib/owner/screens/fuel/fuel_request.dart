@@ -70,13 +70,15 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
     );
   }
 
-  Future<void> _launchPhoneDialer(String phoneNumber) async {
-    final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
-    if (await canLaunch(phoneUri.toString())) {
-      await launch(phoneUri.toString());
+  // Launch Google Maps with the breakdown location
+  Future<void> _launchMaps(String location) async {
+    final Uri googleMapUri =
+        Uri.parse('https://www.google.com/maps/search/?q=$location');
+    if (await canLaunch(googleMapUri.toString())) {
+      await launch(googleMapUri.toString());
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to make the call')),
+        SnackBar(content: Text('Unable to open Google Maps')),
       );
     }
   }
@@ -227,14 +229,13 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
                                         : 1.0,
                             backgroundColor: Colors.grey[300],
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              request['status'] == 'Pending'
-                                  ? Colors.orange
-                                  : request['status'] == 'Approved'
-                                      ? Colors.green
-                                      : request['status'] == 'In Progress'
-                                          ? Colors.blue
-                                          : Colors.grey,
-                            ),
+                                request['status'] == 'Pending'
+                                    ? Colors.orange
+                                    : request['status'] == 'Approved'
+                                        ? Colors.green
+                                        : request['status'] == 'In Progress'
+                                            ? Colors.blue
+                                            : Colors.grey),
                           ),
                           SizedBox(height: 12),
                           Row(
@@ -291,9 +292,9 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
                             children: [
                               ElevatedButton(
                                 onPressed: () {
-                                  _launchPhoneDialer(request['contact']!);
+                                  _launchMaps(request['location']!);
                                 },
-                                child: Text('Call Customer'),
+                                child: Text('Open in Google Maps'),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.blue,
                                 ),
