@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Import this package for FilteringTextInputFormatter
-import 'package:fuel_and_fix/user/screens/otp.dart';
+import 'package:fuel_and_fix/user/screens/register_2.dart';
+
+import 'login_screen.dart';
 
 class VehicleRegistrationPage extends StatefulWidget {
   const VehicleRegistrationPage({Key? key}) : super(key: key);
@@ -171,18 +173,42 @@ class _VehicleRegistrationPageState extends State<VehicleRegistrationPage> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (context) =>
-                                    OTPPage()), // Replace `NextScreen` with the name of your next screen widget
+                                builder: (context) => Register(
+                                      location: _locationController.text,
+                                      license: _licenceNumberController.text,
+                                      registration:
+                                          _registrationController.text,
+                                      vehicleType: _vehicleTypeController.text,
+                                    )), // Replace `NextScreen` with the name of your next screen widget
                           );
                         }
                       },
-                      child: const Text('Register'),
+                      child: const Text('Next'),
                       style: ElevatedButton.styleFrom(
                         elevation: 10, // Shadow depth
                         shadowColor: const Color.fromARGB(255, 0, 0, 0)
                             .withOpacity(0.9), // Shadow color and opacity
                         textStyle: const TextStyle(
                           fontSize: 18,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    // Add a TextButton to navigate to the login screen
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => LoginScreen()),
+                        );
+                      },
+                      child: Text(
+                        'Already have an account? Log in',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontSize: 16,
+                          decoration: TextDecoration.underline,
                         ),
                       ),
                     ),

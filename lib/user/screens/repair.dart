@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:fuel_and_fix/user/screens/home_screen.dart';
-
-void main() {
-  runApp(VehicleRepairApp());
-}
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class VehicleRepairApp extends StatelessWidget {
   @override
@@ -35,22 +31,7 @@ class _VehicleRepairCategoriesState extends State<VehicleRepairCategories> {
         centerTitle: true,
         elevation: 10,
         backgroundColor: const Color.fromARGB(255, 232, 145, 47),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () {
-            // Navigate to home screen and remove all previous screens from the stack
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(
-                  builder: (context) =>
-                      HomeScreen()), // Navigate to the home screen
-              (route) =>
-                  false, // This ensures that the previous routes are cleared
-            );
-          },
-        ),
         actions: [
-          // Show All button with text and arrow icon
           TextButton.icon(
             icon: Icon(Icons.expand_more, color: Colors.white),
             label: Text('Show All', style: TextStyle(color: Colors.white)),
@@ -70,7 +51,6 @@ class _VehicleRepairCategoriesState extends State<VehicleRepairCategories> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Input field for user to enter their location
             TextField(
               onChanged: (text) {
                 setState(() {
@@ -82,21 +62,14 @@ class _VehicleRepairCategoriesState extends State<VehicleRepairCategories> {
                 labelText: 'Enter Location (e.g. Location A)',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15.0),
-                  borderSide: BorderSide(color: Colors.blueAccent),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15.0),
-                  borderSide: BorderSide(color: Colors.blueAccent, width: 2),
                 ),
               ),
             ),
             SizedBox(height: 20),
-            // Button to proceed after entering the location
             Center(
               child: ElevatedButton.icon(
                 onPressed: () {
                   if (_enteredLocation.isEmpty) {
-                    // Show a warning if the location is empty
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Please enter a valid location.')),
                     );
@@ -121,7 +94,6 @@ class _VehicleRepairCategoriesState extends State<VehicleRepairCategories> {
                 ),
               ),
             ),
-            SizedBox(height: 20),
           ],
         ),
       ),
@@ -129,294 +101,85 @@ class _VehicleRepairCategoriesState extends State<VehicleRepairCategories> {
   }
 }
 
-class WorkshopListScreen extends StatefulWidget {
+class WorkshopListScreen extends StatelessWidget {
   final String location;
 
   WorkshopListScreen({required this.location});
 
   @override
-  _WorkshopListScreenState createState() => _WorkshopListScreenState();
-}
-
-class _WorkshopListScreenState extends State<WorkshopListScreen> {
-  final Map<String, String> _workshopDescriptions = {};
-
-  // Define workshops based on location
-  List<Map<String, dynamic>> _getWorkshops(String location) {
-    var workshops = {
-      'location a': [
-        {
-          'name': 'AutoCare Service Center',
-          'address': '123 Main St, Location A',
-          'contact': '+1 800-123-4567',
-          'description': 'A full-service auto repair center.',
-          'working_hours': 'Mon-Sat: 9 AM - 7 PM',
-          'rating': 4.5,
-          'vehicle_types': ['Cars', 'Motorcycles'],
-          'promotions': '10% off on first visit!',
-          'services': ['Battery Replacement', 'Tyre Repair', 'Engine Checkup'],
-        },
-        {
-          'name': 'FastFix Workshop',
-          'address': '456 Elm St, Location A',
-          'contact': '+1 800-789-1234',
-          'description': 'Fast and reliable repair services.',
-          'working_hours': 'Mon-Fri: 9 AM - 6 PM',
-          'rating': 4.0,
-          'vehicle_types': ['Cars'],
-          'promotions': 'Free battery checkup with any service!',
-          'services': ['Brake Repair', 'AC Checkup', 'Oil Change'],
-        },
-      ],
-      'location b': [
-        {
-          'name': 'QuickFix Car Services',
-          'address': '789 Oak St, Location B',
-          'contact': '+1 800-111-2222',
-          'description': 'Quick and reliable car services.',
-          'working_hours': 'Mon-Sun: 8 AM - 8 PM',
-          'rating': 4.7,
-          'vehicle_types': ['Cars'],
-          'promotions': '15% off on air conditioning repair!',
-          'services': ['Tyre Alignment', 'AC Gas Refill', 'Battery Check'],
-        },
-      ],
-      'location c': [
-        {
-          'name': 'WheelMasters',
-          'address': '321 Pine St, Location C',
-          'contact': '+1 800-333-4444',
-          'description': 'Expert wheel and brake services.',
-          'working_hours': 'Mon-Sat: 10 AM - 6 PM',
-          'rating': 4.8,
-          'vehicle_types': ['Cars', 'Motorcycles'],
-          'promotions': '20% off on brake services!',
-          'services': ['Brake Pad Replacement', 'Engine Diagnostics'],
-        },
-      ],
-    };
-
-    return workshops[location] ?? [];
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final availableWorkshops = _getWorkshops(widget.location);
-
     return Scaffold(
       appBar: AppBar(
-        title: Text('Workshops in ${widget.location}'),
+        title: Text('Workshops in $location'),
         centerTitle: true,
         backgroundColor: const Color.fromARGB(255, 232, 145, 47),
-        elevation: 10,
       ),
-      body: availableWorkshops.isEmpty
-          ? Center(child: Text('No workshops found for this location.'))
-          : ListView.builder(
-              itemCount: availableWorkshops.length,
-              itemBuilder: (context, index) {
-                final workshop = availableWorkshops[index];
-                final workshopName = workshop['name'];
+      body: StreamBuilder(
+        // Fetch workshops filtered by location
+        stream: FirebaseFirestore.instance
+            .collection('repair')
+            .where('location', isEqualTo: location)
+            .snapshots(),
+        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
 
-                return Card(
-                  margin: EdgeInsets.all(12),
-                  elevation: 8,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(15.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Workshop Name
-                        Text(
-                          workshop['name'],
-                          style: TextStyle(
-                              fontSize: 22, fontWeight: FontWeight.bold),
-                        ),
-                        SizedBox(height: 8),
-                        // Address
-                        Text(
-                          'Address: ${workshop['address']}',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                        SizedBox(height: 8),
-                        // Contact
-                        Text(
-                          'Contact: ${workshop['contact']}',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                        SizedBox(height: 8),
-                        // Description
-                        Text(
-                          'Description: ${workshop['description']}',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                        SizedBox(height: 8),
-                        // Working Hours
-                        Text(
-                          'Working Hours: ${workshop['working_hours']}',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                        SizedBox(height: 8),
-                        // Rating
-                        Text(
-                          'Rating: ${workshop['rating']} ★',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                        SizedBox(height: 8),
-                        // Vehicle Types
-                        Text(
-                          'Vehicle Types Serviced: ${workshop['vehicle_types'].join(', ')}',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                        SizedBox(height: 8),
-                        // Promotions
-                        Text(
-                          'Promotions: ${workshop['promotions']}',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                        SizedBox(height: 15),
-                        // Description field for user to describe their situation
-                        TextField(
-                          onChanged: (text) {
-                            setState(() {
-                              _workshopDescriptions[workshopName] = text;
-                            });
-                          },
-                          decoration: InputDecoration(
-                            labelText: 'Describe your situation',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(color: Colors.blueAccent),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 15),
-                        // Confirm and Payment button
-                        ElevatedButton(
-                          onPressed: () {
-                            // Show payment options dialog
-                            showDialog(
-                              context: context,
-                              builder: (BuildContext context) {
-                                return AlertDialog(
-                                  title: Text('Select Payment Method'),
-                                  content: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      ListTile(
-                                        title: Text('Credit/Debit Card'),
-                                        onTap: () {
-                                          Navigator.of(context).pop();
-                                          _showConfirmation(context);
-                                        },
-                                      ),
-                                      ListTile(
-                                        title: Text('Cash'),
-                                        onTap: () {
-                                          Navigator.of(context).pop();
-                                          _showConfirmation(context);
-                                        },
-                                      ),
-                                      ListTile(
-                                        title: Text('PayPal'),
-                                        onTap: () {
-                                          Navigator.of(context).pop();
-                                          _showConfirmation(context);
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                          child: Text("Confirm & Pay"),
-                          style: ElevatedButton.styleFrom(),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-    );
-  }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
 
-  // Show a confirmation message when payment is selected
-  void _showConfirmation(BuildContext context) {
-    // Show a confirmation dialog
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Payment Confirmed'),
-          content: Text('Your payment has been successfully processed!'),
-          actions: [
-            // Close button for the dialog
-            TextButton(
-              child: Text('OK'),
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
-            ),
-          ],
-        );
-      },
+          final workshops = snapshot.data?.docs ?? [];
+
+          if (workshops.isEmpty) {
+            return Center(child: Text('No workshops found for this location.'));
+          }
+
+          return ListView.builder(
+            itemCount: workshops.length,
+            itemBuilder: (context, index) {
+              final workshop = workshops[index];
+
+              return Card(
+                margin: EdgeInsets.all(12),
+                elevation: 8,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(15.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        workshop['companyName'] ?? 'No Name',
+                        style: TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 8),
+                      Text('Owner: ${workshop['ownerName'] ?? 'N/A'}'),
+                      SizedBox(height: 8),
+                      Text('Contact: ${workshop['phoneNo'] ?? 'N/A'}'),
+                      SizedBox(height: 8),
+                      Text(
+                        'Vehicle Types: ${workshop['vehicleTypes']?.join(', ') ?? 'N/A'}',
+                      ),
+                      SizedBox(height: 8),
+                      Text('Location: ${workshop['location'] ?? 'N/A'}'),
+                      SizedBox(height: 8),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
 
 class ShowAllWorkshopsScreen extends StatelessWidget {
-  final List<Map<String, dynamic>> allWorkshops = [
-    {
-      'name': 'AutoCare Service Center',
-      'address': '123 Main St, Location A',
-      'contact': '+1 800-123-4567',
-      'description': 'A full-service auto repair center.',
-      'working_hours': 'Mon-Sat: 9 AM - 7 PM',
-      'rating': 4.5,
-      'vehicle_types': ['Cars', 'Motorcycles'],
-      'promotions': '10% off on first visit!',
-      'services': ['Battery Replacement', 'Tyre Repair', 'Engine Checkup'],
-    },
-    {
-      'name': 'FastFix Workshop',
-      'address': '456 Elm St, Location A',
-      'contact': '+1 800-789-1234',
-      'description': 'Fast and reliable repair services.',
-      'working_hours': 'Mon-Fri: 9 AM - 6 PM',
-      'rating': 4.0,
-      'vehicle_types': ['Cars'],
-      'promotions': 'Free battery checkup with any service!',
-      'services': ['Brake Repair', 'AC Checkup', 'Oil Change'],
-    },
-    {
-      'name': 'QuickFix Car Services',
-      'address': '789 Oak St, Location B',
-      'contact': '+1 800-111-2222',
-      'description': 'Quick and reliable car services.',
-      'working_hours': 'Mon-Sun: 8 AM - 8 PM',
-      'rating': 4.7,
-      'vehicle_types': ['Cars'],
-      'promotions': '15% off on air conditioning repair!',
-      'services': ['Tyre Alignment', 'AC Gas Refill', 'Battery Check'],
-    },
-    {
-      'name': 'WheelMasters',
-      'address': '321 Pine St, Location C',
-      'contact': '+1 800-333-4444',
-      'description': 'Expert wheel and brake services.',
-      'working_hours': 'Mon-Sat: 10 AM - 6 PM',
-      'rating': 4.8,
-      'vehicle_types': ['Cars', 'Motorcycles'],
-      'promotions': '20% off on brake services!',
-      'services': ['Brake Pad Replacement', 'Engine Diagnostics'],
-    },
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -425,65 +188,56 @@ class ShowAllWorkshopsScreen extends StatelessWidget {
         centerTitle: true,
         backgroundColor: const Color.fromARGB(255, 232, 145, 47),
       ),
-      body: ListView.builder(
-        itemCount: allWorkshops.length,
-        itemBuilder: (context, index) {
-          final workshop = allWorkshops[index];
+      body: StreamBuilder(
+        // Fetch all workshops
+        stream: FirebaseFirestore.instance.collection('repair').snapshots(),
+        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
 
-          return Card(
-            margin: EdgeInsets.all(12),
-            elevation: 8,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(15.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    workshop['name'],
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          final workshops = snapshot.data?.docs ?? [];
+
+          return ListView.builder(
+            itemCount: workshops.length,
+            itemBuilder: (context, index) {
+              final workshop = workshops[index];
+
+              return Card(
+                margin: EdgeInsets.all(12),
+                elevation: 8,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(15.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        workshop['companyName'] ?? 'No Name',
+                        style: TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 8),
+                      Text('Owner: ${workshop['ownerName'] ?? 'N/A'}'),
+                      SizedBox(height: 8),
+                      Text('Contact: ${workshop['phoneNo'] ?? 'N/A'}'),
+                      SizedBox(height: 8),
+                      Text(
+                          'Vehicle Types: ${workshop['vehicleTypes'] ?? 'N/A'}'),
+                      SizedBox(height: 8),
+                      Text('Location: ${workshop['location'] ?? 'N/A'}'),
+                      SizedBox(height: 8),
+                    ],
                   ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Address: ${workshop['address']}',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Contact: ${workshop['contact']}',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Description: ${workshop['description']}',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Working Hours: ${workshop['working_hours']}',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Rating: ${workshop['rating']} ★',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Vehicle Types: ${workshop['vehicle_types'].join(', ')}',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Promotions: ${workshop['promotions']}',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  SizedBox(height: 15),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           );
         },
       ),

@@ -36,11 +36,13 @@ class OwnerAuthServices {
       await firebaseFirestore.collection(collection).doc(userId).set({
         'email': email,
         'companyName': cname,
-        'owner': ownerName,
+        'ownerName': ownerName,
         'employees': null, // Can be updated later
         'phoneNo': phNo,
-        'clicense': clicense,
+        'CompanyLicense': clicense,
         'fuels': null, // Can be updated later
+        'companyLogo':
+            'https://res.cloudinary.com/dnywnuawz/image/upload/v1734347001/public/fuel/hhalljykskzcxxhxomhi.png'
       });
 
       ScaffoldMessenger.of(context).showSnackBar(

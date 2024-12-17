@@ -44,6 +44,129 @@ class FuelProfilePageState extends State<FuelProfilePage> {
     super.dispose();
   }
 
+  void _showAddFuelDialog() {
+    final TextEditingController fuelTypeController = TextEditingController();
+    final TextEditingController fuelPriceController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Add Fuel"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: fuelTypeController,
+                decoration: InputDecoration(labelText: 'Fuel Type'),
+              ),
+              TextField(
+                controller: fuelPriceController,
+                decoration: InputDecoration(labelText: 'Price'),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                _addFuel(fuelTypeController.text, fuelPriceController.text);
+                Navigator.pop(context);
+              },
+              child: Text("Add"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _addFuel(String type, String price) async {
+    final documentSnapshot =
+        await _firestore.collection('fuel').doc(documentId).get();
+    List fuels = documentSnapshot.data()?['fuels'] ?? [];
+    fuels.add({'type': type, 'price': double.parse(price)});
+
+    await _firestore.collection('fuel').doc(documentId).update({
+      'fuels': fuels,
+    });
+    setState(() {});
+  }
+
+  void _showEditFuelDialog(int index, Map<String, dynamic> fuelData) {
+    final TextEditingController fuelTypeController =
+        TextEditingController(text: fuelData['type']);
+    final TextEditingController fuelPriceController =
+        TextEditingController(text: fuelData['price'].toString());
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Edit Fuel"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: fuelTypeController,
+                decoration: InputDecoration(labelText: 'Fuel Type'),
+              ),
+              TextField(
+                controller: fuelPriceController,
+                decoration: InputDecoration(labelText: 'Price'),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                _updateFuel(index, {
+                  'type': fuelTypeController.text,
+                  'price': double.parse(fuelPriceController.text),
+                });
+                Navigator.pop(context);
+              },
+              child: Text("Save"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _updateFuel(int index, Map<String, dynamic> updatedFuel) async {
+    final documentSnapshot =
+        await _firestore.collection('fuel').doc(documentId).get();
+    List fuels = documentSnapshot.data()?['fuels'] ?? [];
+    fuels[index] = updatedFuel;
+
+    await _firestore.collection('fuel').doc(documentId).update({
+      'fuels': fuels,
+    });
+    setState(() {});
+  }
+
+  void _deleteFuel(int index) async {
+    final documentSnapshot =
+        await _firestore.collection('fuel').doc(documentId).get();
+    List fuels = documentSnapshot.data()?['fuels'] ?? [];
+    fuels.removeAt(index);
+
+    await _firestore.collection('fuel').doc(documentId).update({
+      'fuels': fuels,
+    });
+    setState(() {});
+  }
+
   void _showEditManagerDialog(Map<String, dynamic> managerData) async {
     File? newLogoFile;
     ownerNameController.text = managerData['ownerName'];
@@ -383,6 +506,89 @@ class FuelProfilePageState extends State<FuelProfilePage> {
                     ),
                   ),
                 ),
+                // Fuel Section
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Fuels",
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: _showAddFuelDialog,
+                            icon: Icon(Icons.local_gas_station),
+                            label: Text("Add Fuel"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: NeverScrollableScrollPhysics(),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          childAspectRatio: 2.5,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                        ),
+                        itemCount: data['fuels']?.length ?? 0,
+                        itemBuilder: (context, index) {
+                          final fuel = data['fuels'][index];
+                          return Card(
+                            elevation: 2,
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        fuel['type'],
+                                        style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                      Text("Price: ${fuel['price']}"),
+                                    ],
+                                  ),
+                                  Row(
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(Icons.edit,
+                                            color: Colors.blue),
+                                        onPressed: () =>
+                                            _showEditFuelDialog(index, fuel),
+                                      ),
+                                      IconButton(
+                                        icon: Icon(Icons.delete,
+                                            color: Colors.red),
+                                        onPressed: () => _deleteFuel(index),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment
                       .spaceBetween, // Adjust alignment as needed

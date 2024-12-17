@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/user/screens/home_screen.dart';
-import 'package:fuel_and_fix/user/screens/register.dart';
+import 'package:fuel_and_fix/user/screens/register_1.dart';
 
 import 'package:fuel_and_fix/user/services/firebase_user_auth.dart';
 // Add your screen here
@@ -176,7 +176,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) => const Register()));
+                                    builder: (context) =>
+                                        const VehicleRegistrationPage()));
                           },
                           child: Text(
                             'Create an account',

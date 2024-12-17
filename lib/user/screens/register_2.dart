@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:fuel_and_fix/user/screens/home_screen.dart';
-import 'package:fuel_and_fix/user/screens/second.dart';
+import 'package:fuel_and_fix/user/screens/login_screen.dart';
 
 import '../services/firebase_user_auth.dart';
 
 class Register extends StatefulWidget {
-  const Register({super.key});
+  final String license;
+  final String vehicleType;
+  final String registration;
+  final String location;
+  const Register(
+      {super.key,
+      required this.license,
+      required this.vehicleType,
+      required this.registration,
+      required this.location});
 
   @override
   State<Register> createState() => _RegisterState();
@@ -94,7 +102,11 @@ class _RegisterState extends State<Register> {
           username: usernameController.text,
           phoneno: passwordController.text,
           email: emailController.text,
-          password: passwordController.text);
+          password: passwordController.text,
+          location: widget.location,
+          license: widget.license,
+          registrationNo: widget.registration,
+          vehicleType: widget.vehicleType);
 
       setState(() {
         loading = false;
@@ -102,7 +114,7 @@ class _RegisterState extends State<Register> {
 
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => VehicleRegistrationPage()),
+        MaterialPageRoute(builder: (context) => LoginScreen()),
       );
     } else {
       print('Form is not valid');
@@ -394,26 +406,6 @@ class _RegisterState extends State<Register> {
                                 ),
                                 child: Text('Register'),
                               ),
-
-                        SizedBox(height: 20),
-                        // Add a TextButton to navigate to the login screen
-                        TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => HomeScreen()),
-                            );
-                          },
-                          child: Text(
-                            'Already have an account? Log in',
-                            style: TextStyle(
-                              color: Colors.blue,
-                              fontSize: 16,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),

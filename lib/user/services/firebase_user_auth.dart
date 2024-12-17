@@ -12,6 +12,10 @@ class UserAuthServices {
     required String phoneno,
     required String email,
     required String password,
+    required String location,
+    required String license,
+    required String registrationNo,
+    required String vehicleType,
   }) async {
     try {
       // Register the user
@@ -24,7 +28,10 @@ class UserAuthServices {
         'username': username,
         'phoneno': phoneno,
         'email': email,
-        'password': password
+        'location': location,
+        'license': license,
+        'registrationNo': registrationNo,
+        'vehicleType': vehicleType
       });
       print(user.user?.uid);
 
