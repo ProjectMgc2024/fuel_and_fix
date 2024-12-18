@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:http/http.dart' as http;
+
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class EmergencyRepairRequest extends StatefulWidget {
   @override
@@ -10,129 +11,91 @@ class EmergencyRepairRequest extends StatefulWidget {
 }
 
 class _EmergencyRepairRequestsPageState extends State<EmergencyRepairRequest> {
-  final List<Map<String, dynamic>> requests = [
-    {
-      'customer': 'John Doe',
-      'vehicle': 'Car - Toyota Corolla',
-      'issue': 'Flat tire and engine issue',
-      'location': 'Near Sree Padmanabhaswamy Temple, Thiruvananthapuram',
-      'status': 'Pending',
-      'time': '12:45 PM',
-      'latitude': 8.5241, // Latitude for Thiruvananthapuram, Kerala
-      'longitude': 76.9366, // Longitude for Thiruvananthapuram, Kerala
-    },
-    {
-      'customer': 'Sarah Connor',
-      'vehicle': 'Bike - Honda CBR',
-      'issue': 'Brake failure',
-      'location': 'Kochi, Kerala',
-      'status': 'In Progress',
-      'time': '1:30 PM',
-      'latitude': 9.9312, // Latitude for Kochi, Kerala
-      'longitude': 76.2673, // Longitude for Kochi, Kerala
-    },
-    {
-      'customer': 'Amit Sharma',
-      'vehicle': 'Truck - Tata 407',
-      'issue': 'Engine overheating',
-      'location': 'Munnar, Kerala',
-      'status': 'Pending',
-      'time': '2:00 PM',
-      'latitude': 10.0881, // Latitude for Munnar, Kerala
-      'longitude': 77.0590, // Longitude for Munnar, Kerala
-    },
-    // Add more requests as needed
-  ];
+  List<Map<String, dynamic>> requests = [];
 
-  // Fetch the address from coordinates using reverse geocoding
-  Future<String> getAddressFromCoordinates(
-      double latitude, double longitude) async {
-    final apiKey =
-        'YOUR_GOOGLE_API_KEY'; // Replace with your Google Maps API Key
-    final url =
-        'https://maps.googleapis.com/maps/api/geocode/json?latlng=$latitude,$longitude&key=$apiKey';
-
-    final response = await http.get(Uri.parse(url));
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-
-      if (data['results'].isNotEmpty) {
-        return data['results'][0]['formatted_address'];
-      } else {
-        return 'No address found';
-      }
-    } else {
-      throw Exception('Failed to fetch address');
+  // Fetch requests from Firestore and user details
+  Future<void> fetchRequests() async {
+    final userUid = FirebaseAuth.instance.currentUser?.uid;
+    if (userUid == null) {
+      return;
     }
-  }
 
-  void _updateStatus(int index, String newStatus) {
-    setState(() {
-      requests[index]['status'] = newStatus;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Request marked as $newStatus'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
+    try {
+      // Fetch requests where workshopId matches the current user's UID
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('request')
+          .where('workshopId', isEqualTo: userUid)
+          .get();
 
-  void _launchMapsUrl(double latitude, double longitude) async {
-    final String googleUrl =
-        'https://www.google.com/maps?q=$latitude,$longitude';
-    if (await canLaunch(googleUrl)) {
-      await launch(googleUrl);
-    } else {
+      List<Map<String, dynamic>> tempRequests = [];
+
+      for (var doc in querySnapshot.docs) {
+        final request = {
+          'companyName': doc['companyName'] ?? 'Unknown',
+          'description': doc['description'] ?? 'N/A',
+          'timestamp': doc['timestamp']?.toDate().toString() ?? 'N/A',
+          'userId': doc['userId'] ?? 'Unknown',
+          'workshopId': doc['workshopId'] ?? 'Unknown',
+          'docId': doc.id, // Document ID for updating status
+        };
+
+        // Fetch user details from the user collection
+        final userSnapshot = await FirebaseFirestore.instance
+            .collection('user')
+            .doc(request['userId'])
+            .get();
+
+        if (userSnapshot.exists) {
+          request.addAll({
+            'email': userSnapshot['email'] ?? 'N/A',
+            'license': userSnapshot['license'] ?? 'N/A',
+            'phoneno': userSnapshot['phoneno'] ?? 'N/A',
+            'registrationNo': userSnapshot['registrationNo'] ?? 'N/A',
+            'userImage': userSnapshot['userImage'] ??
+                'https://via.placeholder.com/150', // Default image
+            'username': userSnapshot['username'] ?? 'N/A',
+            'vehicleType': userSnapshot['vehicleType'] ?? 'N/A',
+          });
+        }
+
+        tempRequests.add(request);
+      }
+
+      setState(() {
+        requests = tempRequests;
+      });
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Could not open the map.")),
+        SnackBar(content: Text('Failed to load requests: $e')),
       );
     }
   }
 
-  void _viewDetails(int index) async {
-    final request = requests[index];
-    final address = await getAddressFromCoordinates(
-        request['latitude'], request['longitude']);
+  // Update the request's status in Firestore
+  Future<void> updateRequestStatus(String docId, bool status) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('request')
+          .doc(docId)
+          .update({'status': status});
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Request Details'),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Customer: ${request['customer']}'),
-                Text('Vehicle: ${request['vehicle']}'),
-                Text('Issue: ${request['issue']}'),
-                Text('Location: $address'), // Show the formatted address here
-                Text('Requested At: ${request['time']}'),
-                SizedBox(height: 10),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    _launchMapsUrl(request['latitude'], request['longitude']);
-                  },
-                  icon: Icon(Icons.map),
-                  label: Text('View Location on Map'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Request ${status ? 'accepted' : 'rejected'}')),
+      );
+
+      // Refresh the list
+      fetchRequests();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update request: $e')),
+      );
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchRequests(); // Fetch the requests when the widget is initialized
   }
 
   @override
@@ -147,139 +110,101 @@ class _EmergencyRepairRequestsPageState extends State<EmergencyRepairRequest> {
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: SingleChildScrollView(
-            // Wrap the whole body in a SingleChildScrollView
             child: Column(
               children: [
-                for (int index = 0; index < requests.length; index++)
-                  Card(
-                    elevation: 6,
-                    margin: EdgeInsets.symmetric(vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Customer and status row
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  requests[index]['customer'],
-                                  style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      overflow: TextOverflow.ellipsis),
+                if (requests.isEmpty)
+                  Center(child: Text('No requests found for this workshop.'))
+                else
+                  for (int index = 0; index < requests.length; index++)
+                    Card(
+                      elevation: 6,
+                      margin: EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Company name
+                            Text(
+                              'Company: ${requests[index]['companyName']}',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Description: ${requests[index]['description']}',
+                              style: TextStyle(
+                                  fontSize: 14, color: Colors.grey[600]),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Requested At: ${requests[index]['timestamp']}',
+                              style: TextStyle(
+                                  fontSize: 12, color: Colors.grey[600]),
+                            ),
+                            SizedBox(height: 10),
+
+                            // User details
+                            Text(
+                              'User Details:',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(height: 8),
+                            Text('Username: ${requests[index]['username']}'),
+                            Text('Email: ${requests[index]['email']}'),
+                            Text('Phone: ${requests[index]['phoneno']}'),
+                            Text('Location: ${requests[index]['location']}'),
+                            Text(
+                                'Vehicle Type: ${requests[index]['vehicleType']}'),
+                            Text(
+                                'Registration No: ${requests[index]['registrationNo']}'),
+                            SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                requests[index]['userImage'],
+                                height: 100,
+                                width: 100,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            SizedBox(height: 10),
+
+                            // Action buttons
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                ElevatedButton(
+                                  onPressed: () => updateRequestStatus(
+                                      requests[index]['docId'], true),
+                                  child: Text('Accept'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                  ),
                                 ),
-                              ),
-                              _statusChip(requests[index]['status']),
-                            ],
-                          ),
-                          SizedBox(height: 8),
-                          // Vehicle and issue information
-                          Text(
-                            'Vehicle: ${requests[index]['vehicle']}',
-                            style: TextStyle(
-                                fontSize: 16, color: Colors.grey[700]),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Issue: ${requests[index]['issue']}',
-                            style: TextStyle(
-                                fontSize: 14, color: Colors.grey[600]),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: 8),
-                          // Location and time row
-                          Row(
-                            children: [
-                              Icon(Icons.location_on,
-                                  color: Colors.blueGrey, size: 18),
-                              SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  requests[index]['location'],
-                                  style: TextStyle(
-                                      fontSize: 14, color: Colors.grey[700]),
-                                  overflow: TextOverflow.ellipsis,
+                                ElevatedButton(
+                                  onPressed: () => updateRequestStatus(
+                                      requests[index]['docId'], false),
+                                  child: Text('Reject'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Requested At: ${requests[index]['time']}',
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey[600]),
-                          ),
-                          SizedBox(height: 10),
-                          // Action buttons for Accept, Reject, and Details
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              ElevatedButton(
-                                onPressed: () =>
-                                    _updateStatus(index, 'In Progress'),
-                                style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green),
-                                child: Text('Accept'),
-                              ),
-                              ElevatedButton(
-                                onPressed: () =>
-                                    _updateStatus(index, 'Rejected'),
-                                style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red),
-                                child: Text('Reject'),
-                              ),
-                              TextButton(
-                                onPressed: () => _viewDetails(index),
-                                child: Text('Details',
-                                    style: TextStyle(color: Colors.blueGrey)),
-                              ),
-                            ],
-                          ),
-                        ],
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
               ],
             ),
           ),
         ),
       ),
-    );
-  }
-
-  // Status Chip Widget
-  Widget _statusChip(String status) {
-    Color chipColor;
-    switch (status) {
-      case 'Pending':
-        chipColor = Colors.orange;
-        break;
-      case 'In Progress':
-        chipColor = Colors.blue;
-        break;
-      case 'Rejected':
-        chipColor = Colors.red;
-        break;
-      case 'Completed':
-        chipColor = Colors.green;
-        break;
-      default:
-        chipColor = Colors.grey;
-    }
-
-    return Chip(
-      label: Text(
-        status,
-        style: TextStyle(color: Colors.white),
-      ),
-      backgroundColor: chipColor,
     );
   }
 }

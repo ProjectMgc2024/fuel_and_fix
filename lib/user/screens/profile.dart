@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
 import 'package:fuel_and_fix/user/screens/edit_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -9,101 +8,132 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.blueGrey,
+        backgroundColor: const Color.fromARGB(208, 131, 128, 154),
+        elevation: 0,
         title: Text(
           "Profile",
-          style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w600,
+            color: const Color.fromARGB(255, 0, 0, 0),
+            fontFamily: 'Roboto', // Use custom font
+          ),
         ),
-
-        centerTitle: true, // Center the AppBar title
+        centerTitle: true,
       ),
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('user')
-            .doc(FirebaseAuth.instance.currentUser?.uid)
-            .snapshots(),
-        builder: (context, snapshot) {
-          // Show loading spinner while waiting for data
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              const Color.fromARGB(255, 233, 220, 200),
+              const Color.fromARGB(234, 2, 189, 235)
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: StreamBuilder<DocumentSnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('user')
+              .doc(FirebaseAuth.instance.currentUser?.uid)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator());
+            } else if (snapshot.hasError) {
+              return Center(
+                  child: Text("An error occurred: ${snapshot.error}"));
+            } else if (!snapshot.hasData || snapshot.data?.data() == null) {
+              return Center(child: Text("No user data available"));
+            } else {
+              final profileData = snapshot.data!.data() as Map<String, dynamic>;
+              final userEmail = profileData['email'] ?? 'noemail@gmail.com';
+              final userPhoneno = profileData['phoneno'] ?? '999999999';
+              final userName = profileData['username'] ?? 'Unknown';
+              final location = profileData['location'] ?? 'unknown';
+              final licenseNo = profileData['license'] ?? 'KL000000';
+              final registrationNo =
+                  profileData['registrationNo'] ?? 'KL1399999';
+              final vehicleType = profileData['vehicleType'];
 
-          // Handle any errors in fetching the data
-          else if (snapshot.hasError) {
-            return Center(child: Text("An error occurred: ${snapshot.error}"));
-          }
+              final userImage = profileData['userImage'] ??
+                  'https://res.cloudinary.com/dnywnuawz/image/upload/v1734431780/public/fuel/imgcnbbfrovh3qjuqc7w.jpg';
 
-          // Handle case when there's no data or the data is null
-          else if (!snapshot.hasData || snapshot.data?.data() == null) {
-            return Center(child: Text("No user data available"));
-          }
-
-          // If data exists, display the profile information
-          else {
-            final profileData = snapshot.data!.data() as Map<String, dynamic>;
-            final userEmail = profileData['email'] ?? 'No email provided';
-            final userPhoneno =
-                profileData['phoneno'] ?? 'No phone number provided';
-            final userName = profileData['username'] ?? 'No username provided';
-
-            // Center the profile info on the screen
-            return Center(
-              child: SingleChildScrollView(
+              return SingleChildScrollView(
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(20.0),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      CircleAvatar(
-                        radius: 50, // Size of the circle avatar
-                        backgroundColor:
-                            Colors.grey, // Background color of the circle
-                        child: Icon(
-                          Icons.person, // The profile icon
-                          size: 60, // Size of the icon
-                          color: Colors.black, // Icon color
+                      // Profile Image
+                      Center(
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => EditProfile(),
+                              ),
+                            );
+                          },
+                          child: Hero(
+                            tag: 'profileImage',
+                            child: ClipOval(
+                              child: Container(
+                                padding: EdgeInsets.all(5),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: const Color.fromARGB(255, 0, 5, 10),
+                                  border: Border.all(
+                                    color:
+                                        const Color.fromARGB(255, 47, 237, 4),
+                                    width: 3,
+                                  ),
+                                ),
+                                child: ColorFiltered(
+                                  colorFilter: ColorFilter.mode(
+                                    const Color.fromARGB(255, 84, 56, 56)
+                                        .withOpacity(0.5),
+                                    BlendMode.darken,
+                                  ),
+                                  child: ClipOval(
+                                    child: Image.network(
+                                      userImage,
+                                      width: 160,
+                                      height: 160,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                      SizedBox(
-                          height: 40), // Space between icon and form fields
+                      SizedBox(height: 30),
 
-                      // Display username
-                      Text(
-                        'Username: $userName',
-                        style: TextStyle(
-                          fontSize: 20,
-                          color: Colors.black,
-                        ),
+                      // User Information Cards inside a Column for vertical alignment
+                      Column(
+                        children: [
+                          _buildInfoCard(Icons.person, 'Username', userName),
+                          _buildInfoCard(Icons.email, 'Email', userEmail),
+                          _buildInfoCard(
+                              Icons.phone, 'Phone Number', userPhoneno),
+                          _buildInfoCard(
+                              Icons.location_on, 'Location', location),
+                          _buildInfoCard(
+                              Icons.numbers, 'Registration No', registrationNo),
+                          _buildInfoCard(
+                              Icons.credit_card, 'License No', licenseNo),
+                          _buildInfoCard(Icons.directions_car, 'Vehicle Type',
+                              vehicleType),
+                        ],
                       ),
-                      SizedBox(height: 20), // Space between username and email
 
-                      // Display email
-                      Text(
-                        'Email: $userEmail',
-                        style: TextStyle(
-                          fontSize: 20,
-                          color: Colors.black,
-                        ),
-                      ),
-                      SizedBox(
-                          height: 20), // Space between email and phone number
-
-                      // Display phone number
-                      Text(
-                        'Phone Number: $userPhoneno',
-                        style: TextStyle(
-                          fontSize: 20,
-                          // Similar weight to email
-
-                          color: Colors.black,
-                        ),
-                      ),
-                      SizedBox(height: 20), // Space before log out button
-                      // Edit Profile button
+                      // Edit Profile Button at the Bottom
+                      SizedBox(height: 40),
                       ElevatedButton(
                         onPressed: () {
-                          // Navigate to the EditProfileScreen
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -111,15 +141,67 @@ class ProfileScreen extends StatelessWidget {
                             ),
                           );
                         },
-                        child: Text('Edit Profile'),
-                      )
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          padding: EdgeInsets.symmetric(
+                              vertical: 15, horizontal: 50),
+                          shadowColor: const Color.fromARGB(255, 84, 119, 176),
+                          elevation: 8,
+                          textStyle: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.w600),
+                        ),
+                        child: Text(
+                          'Edit Profile',
+                          style: TextStyle(
+                            fontSize: 25,
+                            color: const Color.fromARGB(255, 239, 3, 3),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 20),
                     ],
                   ),
                 ),
-              ),
-            );
-          }
-        },
+              );
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  // Helper method to build profile info cards
+  Widget _buildInfoCard(IconData icon, String title, String value) {
+    return Container(
+      width: 500, // Adjust the width to fit the design
+      margin: EdgeInsets.symmetric(vertical: 10),
+      child: Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        elevation: 6,
+        color: const Color.fromARGB(255, 67, 119, 152),
+        child: ListTile(
+          leading: Icon(
+            icon,
+            color: const Color.fromARGB(255, 2, 9, 22),
+            size: 30,
+          ),
+          title: Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: const Color.fromARGB(255, 179, 184, 193),
+            ),
+          ),
+          subtitle: Text(
+            value,
+            style: TextStyle(fontSize: 16, color: Colors.black54),
+          ),
+        ),
       ),
     );
   }

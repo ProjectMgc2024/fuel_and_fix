@@ -24,14 +24,17 @@ class RepairProfilePageState extends State<RepairProfilePage> {
   late TextEditingController companyNameController;
   late TextEditingController companyLicenseController;
 
+  bool isActive = true; // To track the active status
+
   @override
   void initState() {
     super.initState();
     ownerNameController = TextEditingController();
     emailController = TextEditingController();
     phoneNoController = TextEditingController();
-    companyNameController = TextEditingController(); // Initialize
-    companyLicenseController = TextEditingController(); // Initialize
+    companyNameController = TextEditingController();
+    companyLicenseController = TextEditingController();
+    _fetchCurrentStatus(); // Fetch current status on load
   }
 
   @override
@@ -39,16 +42,38 @@ class RepairProfilePageState extends State<RepairProfilePage> {
     ownerNameController.dispose();
     emailController.dispose();
     phoneNoController.dispose();
-    companyNameController.dispose(); // Dispose
-    companyLicenseController.dispose(); // Dispose
+    companyNameController.dispose();
+    companyLicenseController.dispose();
     super.dispose();
+  }
+
+  // Fetch current status from Firestore
+  void _fetchCurrentStatus() async {
+    final docSnapshot =
+        await _firestore.collection('repair').doc(documentId).get();
+    if (docSnapshot.exists) {
+      final data = docSnapshot.data();
+      setState(() {
+        isActive = data?['status'] == true;
+      });
+    }
+  }
+
+  // Toggle status between Active/Inactive
+  void _toggleStatus() async {
+    await _firestore.collection('repair').doc(documentId).update({
+      'status': !isActive,
+    });
+    setState(() {
+      isActive = !isActive;
+    });
   }
 
   void _showEditManagerDialog(Map<String, dynamic> managerData) async {
     File? newLogoFile;
     ownerNameController.text = managerData['ownerName'];
     companyNameController.text = managerData['companyName'];
-    companyLicenseController.text = managerData['CompanyLicense'];
+    companyLicenseController.text = managerData['companyLicense'];
     phoneNoController.text = managerData['phoneNo'];
 
     showDialog(
@@ -147,7 +172,7 @@ class RepairProfilePageState extends State<RepairProfilePage> {
       'ownerName': ownerNameController.text,
       'phoneNo': phoneNoController.text,
       'companyName': companyNameController.text,
-      'CompanyLicense': companyLicenseController.text,
+      'companyLicense': companyLicenseController.text,
     };
 
     if (newLogoUrl != null) {
@@ -323,6 +348,18 @@ class RepairProfilePageState extends State<RepairProfilePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text("Repair Profile"),
+        actions: [
+          IconButton(
+            icon: Icon(
+              isActive ? Icons.toggle_on : Icons.toggle_off,
+              size: 40, // Making the toggle button larger
+              color: isActive
+                  ? Colors.green
+                  : Colors.red, // Color change based on status
+            ),
+            onPressed: _toggleStatus,
+          ),
+        ],
       ),
       body: FutureBuilder<DocumentSnapshot>(
         future: _firestore.collection('repair').doc(documentId).get(),
@@ -341,7 +378,7 @@ class RepairProfilePageState extends State<RepairProfilePage> {
             'email': data['email'],
             'phoneNo': data['phoneNo'],
             'companyName': data['companyName'],
-            'CompanyLicense': data['CompanyLicense'],
+            'companyLicense': data['companyLicense'],
             'companyLogo': data['companyLogo']
           };
           final employees =
@@ -372,7 +409,7 @@ class RepairProfilePageState extends State<RepairProfilePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Owner: ${managerDetails['ownerName']}'),
-                        Text('License: ${managerDetails['CompanyLicense']}'),
+                        Text('License: ${managerDetails['companyLicense']}'),
                         Text('Email: ${managerDetails['email']}'),
                         Text('Phone: ${managerDetails['phoneNo']}'),
                       ],

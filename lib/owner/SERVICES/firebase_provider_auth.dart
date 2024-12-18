@@ -39,7 +39,7 @@ class OwnerAuthServices {
         'ownerName': ownerName,
         'employees': null, // Can be updated later
         'phoneNo': phNo,
-        'CompanyLicense': clicense,
+        'companyLicense': clicense,
         'fuels': null, // Can be updated later
         'companyLogo':
             'https://res.cloudinary.com/dnywnuawz/image/upload/v1734347001/public/fuel/hhalljykskzcxxhxomhi.png'

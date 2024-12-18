@@ -10,7 +10,6 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation> {
   // Firestore instance
   final FirebaseFirestore _firebaseFirestore = FirebaseFirestore.instance;
   String searchQuery = '';
-  String filterStatus = 'All';
   int currentPage = 0;
   final int itemsPerPage = 3;
 
@@ -29,13 +28,17 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation> {
       QuerySnapshot querySnapshot =
           await _firebaseFirestore.collection('fuel').get();
       List<Map<String, dynamic>> stations = querySnapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
         return {
           'id': doc.id,
-          'companyId': doc['companyId'],
-          'companyName': doc['companyName'],
-          'employees': List<String>.from(doc['employees']),
-          'fuels': List<Map<String, dynamic>>.from(doc['fuels']),
-          'owner': doc['owner'],
+          'companyName': data['companyName'] ?? 'Unknown',
+          'companyLicense': data['companyLicense'] ?? 'N/A',
+          'companyLogo': data['companyLogo'] ?? '',
+          'email': data['email'] ?? 'N/A',
+          'phoneNo': data['phoneNo'] ?? 'N/A',
+          'ownerName': data['ownerName'] ?? 'Unknown',
+          'employees': List<Map<String, dynamic>>.from(data['employees'] ?? []),
+          'fuels': List<Map<String, dynamic>>.from(data['fuels'] ?? []),
         };
       }).toList();
       return stations;
@@ -75,7 +78,7 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSearchAndFilter(),
+                _buildSearchBar(),
                 SizedBox(height: 20),
                 Expanded(
                   child: ListView.builder(
@@ -84,7 +87,6 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation> {
                       return _fuelStationCard(
                         context,
                         filteredStations[index],
-                        index,
                       );
                     },
                   ),
@@ -97,37 +99,17 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation> {
     );
   }
 
-  Widget _buildSearchAndFilter() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: TextField(
-            onChanged: (value) {
-              setState(() {
-                searchQuery = value;
-              });
-            },
-            decoration: InputDecoration(
-              labelText: 'Search by company name or location',
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ),
-        SizedBox(width: 10),
-        DropdownButton<String>(
-          value: filterStatus,
-          onChanged: (newStatus) {
-            setState(() {
-              filterStatus = newStatus!;
-            });
-          },
-          items: ['All', 'Active', 'Inactive']
-              .map<DropdownMenuItem<String>>((String value) {
-            return DropdownMenuItem<String>(value: value, child: Text(value));
-          }).toList(),
-        ),
-      ],
+  Widget _buildSearchBar() {
+    return TextField(
+      onChanged: (value) {
+        setState(() {
+          searchQuery = value;
+        });
+      },
+      decoration: InputDecoration(
+        labelText: 'Search by company name or owner',
+        border: OutlineInputBorder(),
+      ),
     );
   }
 
@@ -137,128 +119,106 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation> {
       return station['companyName']!
               .toLowerCase()
               .contains(searchQuery.toLowerCase()) ||
-          station['owner']!.toLowerCase().contains(searchQuery.toLowerCase());
-    }).where((station) {
-      return filterStatus == 'All' || station['status'] == filterStatus;
+          station['ownerName']!
+              .toLowerCase()
+              .contains(searchQuery.toLowerCase());
     }).toList();
   }
 
-  Widget _fuelStationCard(
-      BuildContext context, Map<String, dynamic> station, int index) {
+  Widget _fuelStationCard(BuildContext context, Map<String, dynamic> station) {
     return Card(
       elevation: 4,
       margin: EdgeInsets.symmetric(vertical: 10),
-      child: ListTile(
-        leading: Icon(Icons.local_gas_station, color: Colors.blueGrey),
+      child: ExpansionTile(
+        leading: station['companyLogo'] != ''
+            ? Image.network(
+                station['companyLogo'],
+                width: 50,
+                height: 50,
+                fit: BoxFit.cover,
+              )
+            : Icon(Icons.local_gas_station, color: Colors.blueGrey),
         title: Text(
           station['companyName'],
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
-        subtitle: Text(
-          '${station['owner']} - ${station['companyId']}',
-          style: TextStyle(color: Colors.black54),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Switch(
-              value: station['status'] == 'Active',
-              onChanged: (bool value) {
-                setState(() {
-                  station['status'] = value ? 'Active' : 'Inactive';
-                  _firebaseFirestore
-                      .collection('fuel')
-                      .doc(station['id'])
-                      .update({'status': station['status']});
-                });
-              },
-            ),
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'Edit') {
-                  _showEditFuelStationDialog(context, station, index);
-                } else if (value == 'Delete') {
-                  _confirmDeleteFuelStation(context, station['id'], index);
-                }
-              },
-              itemBuilder: (BuildContext context) {
-                return [
-                  PopupMenuItem(value: 'Edit', child: Text('Edit')),
-                  PopupMenuItem(value: 'Delete', child: Text('Delete')),
-                ];
-              },
-            ),
+            Text('Owner: ${station['ownerName']}'),
+            Text('License: ${station['companyLicense']}'),
+            Text('Phone: ${station['phoneNo']}'),
           ],
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Employees:',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                ),
+                SizedBox(height: 8),
+                ...station['employees'].map<Widget>((employee) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: ListTile(
+                      title: Text(employee['employeeName'] ?? 'Unknown'),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Email: ${employee['employeeEmail'] ?? 'N/A'}'),
+                          Text(
+                              'Phone: ${employee['employeePhoneNo'] ?? 'N/A'}'),
+                          Text('Role: ${employee['employeeRole'] ?? 'N/A'}'),
+                        ],
+                      ),
+                      leading: Icon(Icons.person, color: Colors.blueGrey),
+                    ),
+                  );
+                }).toList(),
+                SizedBox(height: 20),
+                Text(
+                  'Fuels:',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                ),
+                SizedBox(height: 8),
+                ...station['fuels'].map<Widget>((fuel) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: ListTile(
+                      title: Text(fuel['type'] ?? 'Unknown'),
+                      subtitle: Text('Price: ${fuel['price']}'),
+                      leading:
+                          Icon(Icons.local_gas_station, color: Colors.green),
+                    ),
+                  );
+                }).toList(),
+              ],
+            ),
+          )
+        ],
+        trailing: PopupMenuButton<String>(
+          onSelected: (value) {
+            if (value == 'Delete') {
+              _confirmDeleteFuelStation(context, station['id']);
+            }
+          },
+          itemBuilder: (BuildContext context) {
+            return [
+              PopupMenuItem(value: 'Delete', child: Text('Delete')),
+            ];
+          },
         ),
       ),
     );
   }
 
-  void _showEditFuelStationDialog(
-      BuildContext context, Map<String, dynamic> station, int index) {
-    final _nameController = TextEditingController(text: station['companyName']);
-    final _locationController =
-        TextEditingController(text: station['location']);
-    String _status = station['status'];
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Edit Fuel Station'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _nameController,
-                decoration: InputDecoration(labelText: 'Station Name'),
-              ),
-              TextField(
-                controller: _locationController,
-                decoration: InputDecoration(labelText: 'Location'),
-              ),
-              DropdownButton<String>(
-                value: _status,
-                onChanged: (newStatus) {
-                  setState(() {
-                    _status = newStatus!;
-                  });
-                },
-                items: ['Active', 'Inactive']
-                    .map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                      value: value, child: Text(value));
-                }).toList(),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context), child: Text('Cancel')),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _firebaseFirestore
-                      .collection('fuel')
-                      .doc(station['id'])
-                      .update({
-                    'companyName': _nameController.text,
-                    'location': _locationController.text,
-                    'status': _status,
-                  });
-                });
-                Navigator.pop(context);
-              },
-              child: Text('Save Changes'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _confirmDeleteFuelStation(
-      BuildContext context, String stationId, int index) {
+  void _confirmDeleteFuelStation(BuildContext context, String stationId) {
     showDialog(
       context: context,
       builder: (BuildContext context) {

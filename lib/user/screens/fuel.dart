@@ -207,7 +207,7 @@ class _FuelStationListState extends State<FuelStationList> {
             'You ordered $quantity liters of $selectedFuel for ₹${totalPrice.toStringAsFixed(2)}.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context), child: Text('Close')),
+              onPressed: () => Navigator.pop(context), child: Text('ok')),
         ],
       ),
     );

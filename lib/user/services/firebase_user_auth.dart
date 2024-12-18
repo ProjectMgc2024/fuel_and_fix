@@ -31,7 +31,8 @@ class UserAuthServices {
         'location': location,
         'license': license,
         'registrationNo': registrationNo,
-        'vehicleType': vehicleType
+        'vehicleType': vehicleType,
+        'userImage' : 'https://res.cloudinary.com/dnywnuawz/image/upload/v1734431780/public/fuel/imgcnbbfrovh3qjuqc7w.jpg'
       });
       print(user.user?.uid);
 
