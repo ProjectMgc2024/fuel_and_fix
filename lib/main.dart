@@ -21,7 +21,7 @@ Future<void> main() async {
   runApp(
     MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: IntroductionPage(),
+      home: OwnerIntro(),
     ),
   );
 }

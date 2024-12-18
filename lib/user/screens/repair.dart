@@ -7,23 +7,17 @@ class VehicleRepairCategories extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Vehicle Repair Services'),
+        title: Text(
+          'Vehicle Repair Services',
+          style: TextStyle(color: Colors.white),
+        ),
         centerTitle: true,
         elevation: 10,
-        backgroundColor: const Color.fromARGB(255, 232, 145, 47),
+        backgroundColor: Color.fromARGB(255, 83, 89, 162),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(height: 20),
-            Expanded(
-              child:
-                  WorkshopListScreen(), // Automatically show all active workshops
-            ),
-          ],
-        ),
+        child: WorkshopListScreen(),
       ),
     );
   }
@@ -33,10 +27,9 @@ class WorkshopListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
-      // Fetch workshops where status is true (no location filter)
       stream: FirebaseFirestore.instance
           .collection('repair')
-          .where('status', isEqualTo: true) // Filter by status = true
+          .where('status', isEqualTo: true)
           .snapshots(),
       builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -48,7 +41,6 @@ class WorkshopListScreen extends StatelessWidget {
         }
 
         final workshops = snapshot.data?.docs ?? [];
-
         if (workshops.isEmpty) {
           return Center(child: Text('No active workshops available.'));
         }
@@ -57,48 +49,81 @@ class WorkshopListScreen extends StatelessWidget {
           itemCount: workshops.length,
           itemBuilder: (context, index) {
             final workshop = workshops[index];
-
-            return GestureDetector(
-              onTap: () {
-                // Show dialog on tap
-                showDialog(
-                  context: context,
-                  builder: (context) => RequestDialog(workshop: workshop),
-                );
-              },
-              child: Card(
-                margin: EdgeInsets.all(12),
-                elevation: 8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(15.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        workshop['companyName'] ?? 'No Name',
-                        style: TextStyle(
-                            fontSize: 22, fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(height: 8),
-                      Text('Owner: ${workshop['ownerName'] ?? 'N/A'}'),
-                      SizedBox(height: 8),
-                      Text('Contact: ${workshop['phoneNo'] ?? 'N/A'}'),
-                      SizedBox(height: 8),
-                      Text(
-                        'Vehicle Types: ${workshop['vehicleTypes']?.join(', ') ?? 'N/A'}',
-                      ),
-                      SizedBox(height: 8),
-                    ],
-                  ),
-                ),
-              ),
-            );
+            return WorkshopCard(workshop: workshop);
           },
         );
       },
+    );
+  }
+}
+
+class WorkshopCard extends StatelessWidget {
+  final QueryDocumentSnapshot workshop;
+
+  WorkshopCard({required this.workshop});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        showDialog(
+          context: context,
+          builder: (context) => RequestDialog(workshop: workshop),
+        );
+      },
+      child: Card(
+        margin: EdgeInsets.all(12),
+        elevation: 12,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color.fromARGB(243, 21, 30, 108),
+                Color.fromARGB(255, 90, 23, 23),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(15),
+          ),
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Text(
+                  workshop['companyName'] ?? 'No Name',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ),
+              SizedBox(height: 15),
+              _buildInfoRow(Icons.person, 'Owner', workshop['ownerName']),
+              _buildInfoRow(Icons.phone, 'Contact', workshop['phoneNo']),
+              _buildInfoRow(Icons.car_repair, 'Vehicle Types',
+                  workshop['vehicleTypes']?.join(', ')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String? value) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.white),
+        SizedBox(width: 8),
+        Text('$label: ${value ?? 'N/A'}',
+            style: TextStyle(color: Colors.white)),
+      ],
     );
   }
 }
@@ -118,24 +143,21 @@ class _RequestDialogState extends State<RequestDialog> {
 
   void sendRequest() {
     if (userUid == null) {
-      // If the user is not authenticated, show a message and return
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please log in to send a request.')),
       );
       return;
     }
 
-    // Send the request to Firestore or other backend
     FirebaseFirestore.instance.collection('request').add({
-      'workshopId': widget.workshop.id, // Workshop ID
-      'companyName': widget.workshop['companyName'], // Workshop company name
-      'description': descriptionController.text, // User-provided description
-      'userId': userUid, // Store the user ID who is making the request
-      'timestamp': FieldValue
-          .serverTimestamp(), // Timestamp for when the request was made
+      'workshopId': widget.workshop.id,
+      'companyName': widget.workshop['companyName'],
+      'description': descriptionController.text,
+      'userId': userUid,
+      'timestamp': FieldValue.serverTimestamp(),
     });
 
-    Navigator.pop(context); // Close the dialog after sending the request
+    Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Request sent successfully!')),
     );
@@ -148,8 +170,6 @@ class _RequestDialogState extends State<RequestDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('Provide a description of the issue or request:'),
-          SizedBox(height: 8),
           TextField(
             controller: descriptionController,
             decoration: InputDecoration(
@@ -164,8 +184,7 @@ class _RequestDialogState extends State<RequestDialog> {
             onPressed: sendRequest,
             child: Text('Send Request'),
             style: ElevatedButton.styleFrom(
-              backgroundColor:
-                  Color.fromARGB(255, 232, 145, 47), // Button color
+              padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
             ),
           ),
         ],

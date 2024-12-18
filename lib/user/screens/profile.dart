@@ -8,25 +8,27 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(208, 131, 128, 154),
+        backgroundColor: Colors.teal[700],
         elevation: 0,
         title: Text(
           "Profile",
           style: TextStyle(
             fontSize: 26,
-            fontWeight: FontWeight.w600,
-            color: const Color.fromARGB(255, 0, 0, 0),
-            fontFamily: 'Roboto', // Use custom font
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            fontFamily: 'Roboto',
           ),
         ),
         centerTitle: true,
       ),
       body: Container(
+        // Ensure the container fills the entire screen height
+        height: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              const Color.fromARGB(255, 233, 220, 200),
-              const Color.fromARGB(234, 2, 189, 235)
+              Colors.teal[100]!,
+              Colors.blue[100]!,
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -55,7 +57,6 @@ class ProfileScreen extends StatelessWidget {
               final registrationNo =
                   profileData['registrationNo'] ?? 'KL1399999';
               final vehicleType = profileData['vehicleType'];
-
               final userImage = profileData['userImage'] ??
                   'https://res.cloudinary.com/dnywnuawz/image/upload/v1734431780/public/fuel/imgcnbbfrovh3qjuqc7w.jpg';
 
@@ -63,9 +64,8 @@ class ProfileScreen extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.all(20.0),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Profile Image
+                      // Profile Image with Shadow Effect
                       Center(
                         child: GestureDetector(
                           onTap: () {
@@ -83,26 +83,25 @@ class ProfileScreen extends StatelessWidget {
                                 padding: EdgeInsets.all(5),
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: const Color.fromARGB(255, 0, 5, 10),
+                                  color: Colors.white,
                                   border: Border.all(
-                                    color:
-                                        const Color.fromARGB(255, 47, 237, 4),
-                                    width: 3,
+                                    color: Colors.teal,
+                                    width: 4,
                                   ),
-                                ),
-                                child: ColorFiltered(
-                                  colorFilter: ColorFilter.mode(
-                                    const Color.fromARGB(255, 84, 56, 56)
-                                        .withOpacity(0.5),
-                                    BlendMode.darken,
-                                  ),
-                                  child: ClipOval(
-                                    child: Image.network(
-                                      userImage,
-                                      width: 160,
-                                      height: 160,
-                                      fit: BoxFit.cover,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 10,
+                                      offset: Offset(0, 5),
                                     ),
+                                  ],
+                                ),
+                                child: ClipOval(
+                                  child: Image.network(
+                                    userImage,
+                                    width: 160,
+                                    height: 160,
+                                    fit: BoxFit.cover,
                                   ),
                                 ),
                               ),
@@ -110,29 +109,44 @@ class ProfileScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                      SizedBox(height: 30),
+                      SizedBox(height: 20),
 
-                      // User Information Cards inside a Column for vertical alignment
+                      // User Name
+                      Text(
+                        userName,
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+
+                      // Profile Information Section
                       Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildInfoCard(Icons.person, 'Username', userName),
-                          _buildInfoCard(Icons.email, 'Email', userEmail),
-                          _buildInfoCard(
-                              Icons.phone, 'Phone Number', userPhoneno),
-                          _buildInfoCard(
-                              Icons.location_on, 'Location', location),
-                          _buildInfoCard(
-                              Icons.numbers, 'Registration No', registrationNo),
-                          _buildInfoCard(
+                          _buildProfileInfoRow(Icons.email, 'Email', userEmail),
+                          Divider(thickness: 1, color: Colors.teal),
+                          _buildProfileInfoRow(
+                              Icons.phone, 'Phone', userPhoneno),
+                          Divider(thickness: 1, color: Colors.teal),
+                          _buildProfileInfoRow(Icons.card_travel,
+                              'Registration No', registrationNo),
+                          Divider(thickness: 1, color: Colors.teal),
+                          _buildProfileInfoRow(
                               Icons.credit_card, 'License No', licenseNo),
-                          _buildInfoCard(Icons.directions_car, 'Vehicle Type',
-                              vehicleType),
+                          Divider(thickness: 1, color: Colors.teal),
+                          _buildProfileInfoRow(
+                              Icons.location_on, 'Location ', location),
+                          Divider(thickness: 1, color: Colors.teal),
                         ],
                       ),
 
-                      // Edit Profile Button at the Bottom
                       SizedBox(height: 40),
-                      ElevatedButton(
+
+                      // Edit Profile Button with Gradient Background
+                      ElevatedButton.icon(
                         onPressed: () {
                           Navigator.push(
                             context,
@@ -143,20 +157,25 @@ class ProfileScreen extends StatelessWidget {
                         },
                         style: ElevatedButton.styleFrom(
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(25),
                           ),
                           padding: EdgeInsets.symmetric(
-                              vertical: 15, horizontal: 50),
-                          shadowColor: const Color.fromARGB(255, 84, 119, 176),
+                              vertical: 15, horizontal: 10),
+                          shadowColor: const Color.fromARGB(255, 255, 0, 0),
                           elevation: 8,
                           textStyle: TextStyle(
                               fontSize: 18, fontWeight: FontWeight.w600),
                         ),
-                        child: Text(
+                        icon: Icon(
+                          Icons.edit,
+                          size: 24,
+                          color: const Color.fromARGB(255, 30, 0, 112),
+                        ),
+                        label: Text(
                           'Edit Profile',
                           style: TextStyle(
-                            fontSize: 25,
-                            color: const Color.fromARGB(255, 239, 3, 3),
+                            fontSize: 20,
+                            color: const Color.fromARGB(255, 0, 55, 143),
                           ),
                         ),
                       ),
@@ -172,36 +191,34 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // Helper method to build profile info cards
-  Widget _buildInfoCard(IconData icon, String title, String value) {
-    return Container(
-      width: 500, // Adjust the width to fit the design
-      margin: EdgeInsets.symmetric(vertical: 10),
-      child: Card(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
-        elevation: 6,
-        color: const Color.fromARGB(255, 67, 119, 152),
-        child: ListTile(
-          leading: Icon(
+  // Helper method to build profile info rows with icons
+  Widget _buildProfileInfoRow(IconData icon, String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12.0),
+      child: Row(
+        children: [
+          Icon(
             icon,
-            color: const Color.fromARGB(255, 2, 9, 22),
-            size: 30,
+            color: Colors.teal,
+            size: 24,
           ),
-          title: Text(
-            title,
+          SizedBox(width: 10),
+          Text(
+            '$title: ',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: const Color.fromARGB(255, 179, 184, 193),
+              color: Colors.black87,
             ),
           ),
-          subtitle: Text(
-            value,
-            style: TextStyle(fontSize: 16, color: Colors.black54),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(fontSize: 16, color: Colors.black54),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

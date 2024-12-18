@@ -222,7 +222,7 @@ class FuelProfilePageState extends State<FuelProfilePage> {
                   ),
                   TextField(
                     controller: companyLicenseController,
-                    decoration: InputDecoration(labelText: 'Company ID'),
+                    decoration: InputDecoration(labelText: 'Company licence'),
                   ),
                   TextField(
                     controller: phoneNoController,
@@ -270,7 +270,7 @@ class FuelProfilePageState extends State<FuelProfilePage> {
       'ownerName': ownerNameController.text,
       'phoneNo': phoneNoController.text,
       'companyName': companyNameController.text,
-      'CompanyLicense': companyLicenseController.text,
+      'companyLicense': companyLicenseController.text,
     };
 
     if (newLogoUrl != null) {
@@ -446,6 +446,9 @@ class FuelProfilePageState extends State<FuelProfilePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text("Fuel Profile"),
+        centerTitle: true,
+        backgroundColor:
+            const Color.fromARGB(255, 150, 131, 46), // AppBar background color
       ),
       body: FutureBuilder<DocumentSnapshot>(
         future: _firestore.collection('fuel').doc(documentId).get(),
@@ -464,7 +467,7 @@ class FuelProfilePageState extends State<FuelProfilePage> {
             'email': data['email'],
             'phoneNo': data['phoneNo'],
             'companyName': data['companyName'],
-            'CompanyLicense': data['CompanyLicense'],
+            'CompanyLicense': data['companyLicense'],
             'companyLogo': data['companyLogo']
           };
           final employees =
@@ -477,20 +480,30 @@ class FuelProfilePageState extends State<FuelProfilePage> {
               children: [
                 Card(
                   margin: EdgeInsets.only(bottom: 16.0),
+                  elevation: 8.0, // Add shadow for the card
+                  shape: RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(12.0), // Rounded corners
+                  ),
+                  color: Colors.white,
                   child: ListTile(
                     leading: managerDetails['companyLogo'] != null
                         ? Image.network(
                             managerDetails['companyLogo'],
-                            width: 50, // Adjust width as needed
-                            height: 50, // Adjust height as needed
+                            width: 50,
+                            height: 50,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) =>
                                 Icon(Icons.error),
                           )
-                        : Icon(Icons.business,
-                            size: 50), // Placeholder if no logo is available
-                    title:
-                        Text('Company Name ${managerDetails['companyName']}'),
+                        : Icon(Icons.business, size: 50),
+                    title: Text(
+                      'Company Name: ${managerDetails['companyName']}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepPurple,
+                      ),
+                    ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -501,12 +514,12 @@ class FuelProfilePageState extends State<FuelProfilePage> {
                       ],
                     ),
                     trailing: IconButton(
-                      icon: Icon(Icons.edit),
+                      icon: Icon(Icons.edit, color: Colors.deepPurple),
                       onPressed: () => _showEditManagerDialog(managerDetails),
                     ),
                   ),
                 ),
-                // Fuel Section
+                // Fuel Section with gradient background and custom styles
                 Padding(
                   padding: EdgeInsets.symmetric(vertical: 16.0),
                   child: Column(
@@ -518,14 +531,16 @@ class FuelProfilePageState extends State<FuelProfilePage> {
                           Text(
                             "Fuels",
                             style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: const Color.fromARGB(255, 179, 126, 20)),
                           ),
                           ElevatedButton.icon(
                             onPressed: _showAddFuelDialog,
                             icon: Icon(Icons.local_gas_station),
                             label: Text("Add Fuel"),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
+                              backgroundColor: Colors.orange, // Vibrant color
                             ),
                           ),
                         ],
@@ -544,7 +559,11 @@ class FuelProfilePageState extends State<FuelProfilePage> {
                         itemBuilder: (context, index) {
                           final fuel = data['fuels'][index];
                           return Card(
-                            elevation: 2,
+                            elevation: 4,
+                            color: const Color.fromARGB(255, 225, 165, 62),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             child: Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: Row(
@@ -559,7 +578,8 @@ class FuelProfilePageState extends State<FuelProfilePage> {
                                         fuel['type'],
                                         style: TextStyle(
                                             fontSize: 16,
-                                            fontWeight: FontWeight.bold),
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.deepPurple),
                                       ),
                                       Text("Price: ${fuel['price']}"),
                                     ],
@@ -568,7 +588,8 @@ class FuelProfilePageState extends State<FuelProfilePage> {
                                     children: [
                                       IconButton(
                                         icon: Icon(Icons.edit,
-                                            color: Colors.blue),
+                                            color: const Color.fromARGB(
+                                                255, 21, 6, 79)),
                                         onPressed: () =>
                                             _showEditFuelDialog(index, fuel),
                                       ),
@@ -588,45 +609,38 @@ class FuelProfilePageState extends State<FuelProfilePage> {
                     ],
                   ),
                 ),
-
+                // Employees Section with gradient background and styled button
                 Row(
-                  mainAxisAlignment: MainAxisAlignment
-                      .spaceBetween, // Adjust alignment as needed
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       "Employees",
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepPurple,
+                      ),
                     ),
                     ElevatedButton(
                       onPressed: _showAddEmployeeDialog,
                       style: ElevatedButton.styleFrom(
-                        foregroundColor: const Color.fromARGB(194, 105, 47, 47),
-                        backgroundColor: Colors.blue, // Text color
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 12), // Padding
+                        backgroundColor: Colors.blue,
                         shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(8), // Rounded corners
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        elevation: 4, // Shadow effect
+                        elevation: 4,
                       ),
                       child: Row(
-                        mainAxisSize: MainAxisSize
-                            .min, // Ensures button size fits its content
                         children: [
                           Icon(
-                            Icons.person_add, // Icon to display
-                            size: 18, // Icon size
-                            color: Colors.white, // Icon color
+                            Icons.person_add,
+                            size: 18,
+                            color: const Color.fromARGB(255, 79, 63, 63),
                           ),
-                          SizedBox(width: 8), // Space between icon and text
+                          SizedBox(width: 8),
                           Text(
                             "Add Employee",
-                            style: TextStyle(
-                              fontSize: 16, // Font size
-                              fontWeight: FontWeight.bold, // Font weight
-                            ),
+                            style: TextStyle(fontSize: 16),
                           ),
                         ],
                       ),
@@ -641,12 +655,17 @@ class FuelProfilePageState extends State<FuelProfilePage> {
                     final employee = employees[index];
                     return Card(
                       margin: EdgeInsets.only(top: 8.0),
+                      elevation: 4.0,
+                      color: Colors.purple[50], // Light purple background
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.0),
+                      ),
                       child: ListTile(
-                        title: Text('Name : ${employee['employeeName']}'),
+                        title: Text('Name: ${employee['employeeName']}'),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Email : ${employee['employeeEmail']}'),
+                            Text('Email: ${employee['employeeEmail']}'),
                             Text('Role: ${employee['employeeRole']}'),
                             Text('Phone: ${employee['employeePhoneNo']}'),
                           ],
@@ -655,15 +674,13 @@ class FuelProfilePageState extends State<FuelProfilePage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              icon: Icon(Icons.edit),
+                              icon: Icon(Icons.edit,
+                                  color: const Color.fromARGB(255, 23, 4, 75)),
                               onPressed: () =>
                                   _showEditEmployeeDialog(index, employee),
                             ),
                             IconButton(
-                              icon: Icon(
-                                Icons.delete,
-                                color: const Color.fromARGB(255, 198, 30, 18),
-                              ),
+                              icon: Icon(Icons.delete, color: Colors.red),
                               onPressed: () {
                                 showDialog(
                                   context: context,
