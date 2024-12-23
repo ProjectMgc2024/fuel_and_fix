@@ -150,7 +150,7 @@ class _RequestDialogState extends State<RequestDialog> {
     }
 
     FirebaseFirestore.instance.collection('request').add({
-      'workshopId': widget.workshop.id,
+      'ownerId': widget.workshop.id,
       'companyName': widget.workshop['companyName'],
       'description': descriptionController.text,
       'userId': userUid,

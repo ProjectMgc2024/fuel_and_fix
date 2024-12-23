@@ -291,7 +291,13 @@ class _TowProfilePageState extends State<TowProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Tow Profile")),
+      appBar: AppBar(
+        title: Text("Tow Profile",
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+        backgroundColor:
+            const Color.fromARGB(255, 187, 210, 250), // AppBar background color
+        elevation: 8.0, // Shadow effect
+      ),
       body: FutureBuilder<DocumentSnapshot>(
         future: _firestore.collection('tow').doc(documentId).get(),
         builder: (context, snapshot) {
@@ -317,47 +323,92 @@ class _TowProfilePageState extends State<TowProfilePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Manager's Card with gradient background and shadow
                 Card(
                   margin: EdgeInsets.only(bottom: 16.0),
-                  child: ListTile(
-                    leading: managerDetails['companyLogo'] != null
-                        ? Image.network(managerDetails['companyLogo'],
-                            width: 50, height: 50, fit: BoxFit.cover)
-                        : Icon(Icons.business, size: 50),
-                    title: Text('Company: ${managerDetails['companyName']}'),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Owner: ${managerDetails['ownerName']}'),
-                        Text('License: ${managerDetails['CompanyLicense']}'),
-                        Text('Email: ${managerDetails['email']}'),
-                        Text('Phone: ${managerDetails['phoneNo']}'),
-                      ],
+                  elevation: 5.0, // Add shadow for depth
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12), // Rounded corners
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color.fromARGB(255, 180, 208, 255),
+                          const Color.fromARGB(255, 243, 170, 151)
+                        ], // Gradient effect
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    trailing: IconButton(
-                        icon: Icon(Icons.edit),
-                        onPressed: () =>
-                            _showEditManagerDialog(managerDetails)),
+                    child: ListTile(
+                      leading: managerDetails['companyLogo'] != null
+                          ? Image.network(managerDetails['companyLogo'],
+                              width: 50, height: 50, fit: BoxFit.cover)
+                          : Icon(Icons.business,
+                              size: 50,
+                              color: const Color.fromARGB(255, 0, 0, 0)),
+                      title: Text('Company: ${managerDetails['companyName']}',
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: const Color.fromARGB(255, 0, 0, 0))),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Owner: ${managerDetails['ownerName']}',
+                              style: TextStyle(
+                                  color: const Color.fromARGB(179, 0, 0, 0))),
+                          Text('License: ${managerDetails['CompanyLicense']}',
+                              style: TextStyle(
+                                  color: const Color.fromARGB(179, 0, 0, 0))),
+                          Text('Email: ${managerDetails['email']}',
+                              style: TextStyle(
+                                  color: const Color.fromARGB(179, 0, 0, 0))),
+                          Text('Phone: ${managerDetails['phoneNo']}',
+                              style: TextStyle(
+                                  color: const Color.fromARGB(179, 0, 0, 0))),
+                        ],
+                      ),
+                      trailing: IconButton(
+                        icon: Icon(Icons.edit, color: Colors.white),
+                        onPressed: () => _showEditManagerDialog(managerDetails),
+                      ),
+                    ),
                   ),
                 ),
+                // Employees Section Header
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text("Employees",
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blueGrey)),
                     ElevatedButton(
                       onPressed: _showAddEmployeeDialog,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color.fromARGB(
+                            255, 39, 86, 255), // Button background color
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                              8), // Rounded corners for button
+                        ),
+                      ),
                       child: Row(
                         children: [
-                          Icon(Icons.person_add),
+                          Icon(Icons.person_add, color: Colors.white),
                           SizedBox(width: 8),
-                          Text("Add Employee")
+                          Text("Add Employee",
+                              style: TextStyle(color: Colors.white)),
                         ],
                       ),
                     ),
                   ],
                 ),
+                // Employee List with Card Backgrounds and Shadows
                 ListView.builder(
                   shrinkWrap: true,
                   physics: NeverScrollableScrollPhysics(),
@@ -366,8 +417,14 @@ class _TowProfilePageState extends State<TowProfilePage> {
                     final employee = employees[index];
                     return Card(
                       margin: EdgeInsets.only(top: 8.0),
+                      elevation: 5.0, // Shadow effect for cards
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                            10), // Rounded corners for cards
+                      ),
                       child: ListTile(
-                        title: Text('Name: ${employee['employeeName']}'),
+                        title: Text('Name: ${employee['employeeName']}',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -380,12 +437,12 @@ class _TowProfilePageState extends State<TowProfilePage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                                icon: Icon(Icons.edit),
-                                onPressed: () =>
-                                    _showEditEmployeeDialog(index, employee)),
+                              icon: Icon(Icons.edit),
+                              onPressed: () =>
+                                  _showEditEmployeeDialog(index, employee),
+                            ),
                             IconButton(
-                              icon: Icon(Icons.delete),
-                              color: const Color.fromARGB(255, 198, 30, 18),
+                              icon: Icon(Icons.delete, color: Colors.red),
                               onPressed: () => _deleteEmployee(index),
                             ),
                           ],

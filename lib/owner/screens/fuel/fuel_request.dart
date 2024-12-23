@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart'; // Import url_launcher package
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class FuelFillingRequest extends StatefulWidget {
   @override
@@ -7,79 +9,34 @@ class FuelFillingRequest extends StatefulWidget {
 }
 
 class _FuelFillingRequestState extends State<FuelFillingRequest> {
-  // Fuel requests with realistic details (without the date field)
-  List<Map<String, String>> fuelRequests = [
-    {
-      'vehicle': 'Car - KL58AJ9842',
-      'status': 'Pending',
-      'priority': 'High',
-      'fuelAmount': '40',
-      'cost': '80 Rs',
-      'contact': '123-456-7890',
-      'location': '123 Main St, City Center',
-      'notes': 'Urgent request, needs immediate fuel delivery.',
-    },
-    {
-      'vehicle': 'Truck - KL58V9841',
-      'status': 'Approved',
-      'priority': 'Medium',
-      'fuelAmount': '150',
-      'cost': '300 Rs',
-      'contact': '098-765-4321',
-      'location': '456 Industrial Ave, Factory Zone',
-      'notes': 'Scheduled delivery for tomorrow.',
-    },
-    {
-      'vehicle': 'Bike - KL17J7711',
-      'status': 'Completed',
-      'priority': 'Low',
-      'fuelAmount': '10',
-      'cost': '20 Rs',
-      'contact': '555-333-1111',
-      'location': '789 Elm St, Downtown',
-      'notes': 'Request completed without issues.',
-    },
-  ];
+  String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? "";
 
-  String selectedStatus = 'All';
-  TextEditingController searchController = TextEditingController();
-
-  String calculateCost(String fuelAmount) {
-    double amount = double.tryParse(fuelAmount) ?? 0.0;
-    double costPerLiter = 2.0; // Assuming a cost per liter value
-    double totalCost = amount * costPerLiter;
-    return '\$${totalCost.toStringAsFixed(2)}';
-  }
-
-  List<Map<String, String>> getFilteredRequests() {
-    String query = searchController.text.toLowerCase();
-    return fuelRequests.where((request) {
-      bool matchesStatus =
-          selectedStatus == 'All' || request['status'] == selectedStatus;
-      bool matchesQuery = request['vehicle']!.toLowerCase().contains(query);
-      return matchesStatus && matchesQuery;
-    }).toList();
-  }
-
-  void updateStatus(int index, String newStatus) {
-    setState(() {
-      fuelRequests[index]['status'] = newStatus;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Status updated to $newStatus')),
-    );
-  }
-
-  // Launch Google Maps with the breakdown location
-  Future<void> _launchMaps(String location) async {
-    final Uri googleMapUri =
-        Uri.parse('https://www.google.com/maps/search/?q=$location');
-    if (await canLaunch(googleMapUri.toString())) {
-      await launch(googleMapUri.toString());
-    } else {
+  Future<void> updateRequestStatus(String requestId, bool newStatus) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('fuel')
+          .doc(currentUserId)
+          .collection('request')
+          .doc(requestId)
+          .update({'status': newStatus});
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to open Google Maps')),
+        SnackBar(content: Text('Status updated successfully.')),
       );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update status: $e')),
+      );
+    }
+  }
+
+  Future<Map<String, dynamic>?> fetchUserDetails(String userId) async {
+    try {
+      DocumentSnapshot userDoc =
+          await FirebaseFirestore.instance.collection('user').doc(userId).get();
+      return userDoc.data() as Map<String, dynamic>?;
+    } catch (e) {
+      print('Error fetching user details: $e');
+      return null;
     }
   }
 
@@ -89,101 +46,72 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
       appBar: AppBar(
         title: Text('Fuel Requests'),
         backgroundColor: Colors.teal,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.filter_list),
-            onPressed: () async {
-              String? selected = await showDialog<String>(
-                context: context,
-                builder: (context) {
-                  return AlertDialog(
-                    title: Text('Filter by Status'),
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        RadioListTile<String>(
-                          title: Text('All'),
-                          value: 'All',
-                          groupValue: selectedStatus,
-                          onChanged: (value) {
-                            Navigator.pop(context, value);
-                          },
-                        ),
-                        RadioListTile<String>(
-                          title: Text('Pending'),
-                          value: 'Pending',
-                          groupValue: selectedStatus,
-                          onChanged: (value) {
-                            Navigator.pop(context, value);
-                          },
-                        ),
-                        RadioListTile<String>(
-                          title: Text('Approved'),
-                          value: 'Approved',
-                          groupValue: selectedStatus,
-                          onChanged: (value) {
-                            Navigator.pop(context, value);
-                          },
-                        ),
-                        RadioListTile<String>(
-                          title: Text('Completed'),
-                          value: 'Completed',
-                          groupValue: selectedStatus,
-                          onChanged: (value) {
-                            Navigator.pop(context, value);
-                          },
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              );
-              if (selected != null) {
-                setState(() {
-                  selectedStatus = selected;
-                });
-              }
-            },
-          ),
-        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: searchController,
-              decoration: InputDecoration(
-                labelText: 'Search by vehicle',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-                contentPadding:
-                    EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              ),
-              onChanged: (_) {
-                setState(() {});
-              },
-            ),
-            SizedBox(height: 16),
-            Expanded(
-              child: ListView.builder(
-                itemCount: getFilteredRequests().length,
-                itemBuilder: (context, index) {
-                  var request = getFilteredRequests()[index];
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('fuel')
+            .doc(currentUserId)
+            .collection('request')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(child: Text('No requests found.'));
+          }
+
+          final requests = snapshot.data!.docs;
+
+          return ListView.builder(
+            itemCount: requests.length,
+            itemBuilder: (context, index) {
+              var request = requests[index].data() as Map<String, dynamic>;
+              String requestId = requests[index].id;
+
+              return FutureBuilder<Map<String, dynamic>?>(
+                future: fetchUserDetails(request['userId']),
+                builder: (context, userSnapshot) {
+                  if (userSnapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+
+                  if (!userSnapshot.hasData || userSnapshot.data == null) {
+                    return ListTile(
+                      title: Text(request['companyName'] ?? 'No Company Name'),
+                      subtitle: Text('Error fetching user details'),
+                    );
+                  }
+
+                  var userDetails = userSnapshot.data!;
+
                   return Card(
                     elevation: 5,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15),
                     ),
-                    margin: EdgeInsets.symmetric(vertical: 8),
+                    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // User Image
+                          Center(
+                            child: CircleAvatar(
+                              radius: 40,
+                              backgroundImage:
+                                  NetworkImage(userDetails['userImage'] ?? ''),
+                              onBackgroundImageError: (_, __) =>
+                                  Icon(Icons.person, size: 40),
+                            ),
+                          ),
+                          SizedBox(height: 16),
+
+                          // User Details
                           Text(
-                            request['vehicle']!,
+                            userDetails['username'] ?? 'Unknown User',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -191,142 +119,50 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
                             ),
                           ),
                           SizedBox(height: 8),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: request['priority'] == 'High'
-                                  ? Colors.red
-                                  : request['priority'] == 'Medium'
-                                      ? Colors.orange
-                                      : Colors.green,
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            child: Text(
-                              'Priority: ${request['priority']}',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          SizedBox(height: 8),
+                          Text('Email: ${userDetails['email'] ?? 'N/A'}'),
+                          Text('Phone: ${userDetails['phoneno'] ?? 'N/A'}'),
+                          Text('License: ${userDetails['license'] ?? 'N/A'}'),
                           Text(
-                            'Fuel Requested: ${request['fuelAmount']} liters',
-                            style:
-                                TextStyle(fontSize: 14, color: Colors.black45),
-                          ),
+                              'Vehicle Type: ${userDetails['vehicleType'] ?? 'N/A'}'),
                           Text(
-                            'Total Cost: ${calculateCost(request['fuelAmount']!)}',
-                            style:
-                                TextStyle(fontSize: 14, color: Colors.black45),
-                          ),
-                          SizedBox(height: 8),
-                          LinearProgressIndicator(
-                            value: request['status'] == 'Pending'
-                                ? 0.2
-                                : request['status'] == 'Approved'
-                                    ? 0.5
-                                    : request['status'] == 'In Progress'
-                                        ? 0.8
-                                        : 1.0,
-                            backgroundColor: Colors.grey[300],
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                                request['status'] == 'Pending'
-                                    ? Colors.orange
-                                    : request['status'] == 'Approved'
-                                        ? Colors.green
-                                        : request['status'] == 'In Progress'
-                                            ? Colors.blue
-                                            : Colors.grey),
-                          ),
-                          SizedBox(height: 12),
+                              'Registration No: ${userDetails['registrationNo'] ?? 'N/A'}'),
+                          Text('Location: ${userDetails['location'] ?? 'N/A'}'),
+
+                          SizedBox(height: 16),
+
+                          // Buttons
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              if (request['status'] == 'Pending') ...[
-                                ElevatedButton(
-                                  onPressed: () {
-                                    updateStatus(index, 'Approved');
-                                  },
-                                  child: Text('Approve'),
-                                  style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green),
-                                ),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    updateStatus(index, 'Rejected');
-                                  },
-                                  child: Text('Reject'),
-                                  style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red),
-                                ),
-                              ],
-                              if (request['status'] == 'Approved') ...[
-                                ElevatedButton(
-                                  onPressed: () {
-                                    updateStatus(index, 'In Progress');
-                                  },
-                                  child: Text('Start'),
-                                  style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.blue),
-                                ),
-                              ],
-                              if (request['status'] == 'In Progress') ...[
-                                ElevatedButton(
-                                  onPressed: () {
-                                    updateStatus(index, 'Completed');
-                                  },
-                                  child: Text('Complete'),
-                                  style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.purple),
-                                ),
-                              ],
-                            ],
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Contact: ${request['contact']}',
-                            style:
-                                TextStyle(fontSize: 14, color: Colors.black54),
-                          ),
-                          SizedBox(height: 8),
-                          Row(
-                            children: [
                               ElevatedButton(
                                 onPressed: () {
-                                  _launchMaps(request['location']!);
+                                  updateRequestStatus(requestId, true);
                                 },
-                                child: Text('Open in Google Maps'),
+                                child: Text('Accept'),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
+                                  backgroundColor: Colors.green,
+                                ),
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  updateRequestStatus(requestId, false);
+                                },
+                                child: Text('Reject'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
                                 ),
                               ),
                             ],
                           ),
-                          SizedBox(height: 8),
-                          TextButton(
-                            onPressed: () {},
-                            child: Text(
-                              'Location: ${request['location']}',
-                              style: TextStyle(
-                                  fontSize: 14, color: Colors.blueAccent),
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          if (request['notes'] != '') ...[
-                            Text(
-                              'Notes: ${request['notes']}',
-                              style: TextStyle(
-                                  fontSize: 14, fontStyle: FontStyle.italic),
-                            ),
-                          ],
                         ],
                       ),
                     ),
                   );
                 },
-              ),
-            ),
-          ],
-        ),
+              );
+            },
+          );
+        },
       ),
     );
   }

@@ -81,7 +81,7 @@ class HomeScreen extends StatelessWidget {
                       // Navigate to HistoryPage
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => UserHistory()),
+                        MaterialPageRoute(builder: (context) => userHistory()),
                       );
                     },
                   ),
@@ -203,7 +203,8 @@ class HomeScreen extends StatelessWidget {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => TowingServiceApp()),
+                    MaterialPageRoute(
+                        builder: (context) => TowingServiceCategories()),
                   );
                 },
               ),

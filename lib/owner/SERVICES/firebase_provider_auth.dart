@@ -13,6 +13,7 @@ class OwnerAuthServices {
     required String password,
     required String phNo,
     required String ownerName,
+    Map<String, dynamic>? additionalData,
     required String cname,
     required String clicense,
     required String collection, // Collection name: 'fuel' or 'tow'
@@ -32,18 +33,35 @@ class OwnerAuthServices {
 
       String userId = userCredential.user!.uid;
 
+      if (collection == 'fuel') {
+        await firebaseFirestore.collection(collection).doc(userId).set({
+          'email': email,
+          'companyName': cname,
+          'ownerName': ownerName,
+          'employees': null, // Can be updated later
+          'phoneNo': phNo,
+          'companyLicense': clicense,
+          'fuels': null, // Can be updated later
+          'additionalData': additionalData,
+          'companyLogo':
+              'https://res.cloudinary.com/dnywnuawz/image/upload/v1734347001/public/fuel/hhalljykskzcxxhxomhi.png'
+        });
+      } else {
+        await firebaseFirestore.collection(collection).doc(userId).set({
+          'email': email,
+          'companyName': cname,
+          'ownerName': ownerName,
+          'employees': null, // Can be updated later
+          'phoneNo': phNo,
+          'companyLicense': clicense,
+          'fuels': null, // Can be updated later
+
+          'companyLogo':
+              'https://res.cloudinary.com/dnywnuawz/image/upload/v1734347001/public/fuel/hhalljykskzcxxhxomhi.png'
+        });
+      }
+
       // Save user data to Firestore (Don't store password directly)
-      await firebaseFirestore.collection(collection).doc(userId).set({
-        'email': email,
-        'companyName': cname,
-        'ownerName': ownerName,
-        'employees': null, // Can be updated later
-        'phoneNo': phNo,
-        'companyLicense': clicense,
-        'fuels': null, // Can be updated later
-        'companyLogo':
-            'https://res.cloudinary.com/dnywnuawz/image/upload/v1734347001/public/fuel/hhalljykskzcxxhxomhi.png'
-      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

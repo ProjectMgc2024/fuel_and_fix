@@ -20,21 +20,20 @@ class _EmergencyRepairRequestsPageState extends State<EmergencyRepairRequest> {
     }
 
     try {
-      // Fetch requests where workshopId matches the current user's UID
+      // Fetch requests where ownerId matches the current user's UID
       final querySnapshot = await FirebaseFirestore.instance
           .collection('request')
-          .where('workshopId', isEqualTo: userUid)
+          .where('ownerId', isEqualTo: userUid)
           .get();
 
       List<Map<String, dynamic>> tempRequests = [];
 
       for (var doc in querySnapshot.docs) {
         final request = {
-          'companyName': doc['companyName'] ?? 'Unknown',
           'description': doc['description'] ?? 'N/A',
           'timestamp': doc['timestamp']?.toDate().toString() ?? 'N/A',
           'userId': doc['userId'] ?? 'Unknown',
-          'workshopId': doc['workshopId'] ?? 'Unknown',
+          'ownerId': doc['ownerId'] ?? 'Unknown',
           'docId': doc.id, // Document ID for updating status
         };
 
@@ -126,13 +125,6 @@ class _EmergencyRepairRequestsPageState extends State<EmergencyRepairRequest> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Company name
-                            Text(
-                              'Company: ${requests[index]['companyName']}',
-                              style: TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.bold),
-                            ),
-                            SizedBox(height: 8),
                             Text(
                               'Description: ${requests[index]['description']}',
                               style: TextStyle(
@@ -156,7 +148,6 @@ class _EmergencyRepairRequestsPageState extends State<EmergencyRepairRequest> {
                             Text('Username: ${requests[index]['username']}'),
                             Text('Email: ${requests[index]['email']}'),
                             Text('Phone: ${requests[index]['phoneno']}'),
-                            Text('Location: ${requests[index]['location']}'),
                             Text(
                                 'Vehicle Type: ${requests[index]['vehicleType']}'),
                             Text(

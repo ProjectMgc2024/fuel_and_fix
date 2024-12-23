@@ -550,8 +550,8 @@ class FuelProfilePageState extends State<FuelProfilePage> {
                         shrinkWrap: true,
                         physics: NeverScrollableScrollPhysics(),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          childAspectRatio: 2.5,
+                          crossAxisCount: 1,
+                          childAspectRatio: 3.5,
                           crossAxisSpacing: 8,
                           mainAxisSpacing: 8,
                         ),
