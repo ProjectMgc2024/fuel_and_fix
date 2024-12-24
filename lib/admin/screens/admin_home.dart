@@ -36,7 +36,7 @@ class AdminPage extends StatelessWidget {
               _adminOption('Manage Mechanics', Icons.build, () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => MechanicPage()),
+                  MaterialPageRoute(builder: (context) => RepairPage()),
                 );
               }),
               SizedBox(height: 10),

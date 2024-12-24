@@ -1,39 +1,36 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:fuel_and_fix/admin/services/firebase_admin_auth.dart';
 
-class MechanicPage extends StatefulWidget {
+class RepairPage extends StatefulWidget {
   @override
-  _MechanicPageState createState() => _MechanicPageState();
+  _RepairPageState createState() => _RepairPageState();
 }
 
-class _MechanicPageState extends State<MechanicPage> {
-  final AdminAuthServices _authServices = AdminAuthServices();
-  List<Map<String, dynamic>> workshops = [];
+class _RepairPageState extends State<RepairPage> {
+  List<Map<String, dynamic>> repairShops = [];
 
   @override
   void initState() {
     super.initState();
-    _fetchWorkshops(); // Fetch the workshops when the page is loaded
+    _fetchRepairShops(); // Fetch the repair shops when the page is loaded
   }
 
-  // Fetch workshops data from Firestore
-  Future<void> _fetchWorkshops() async {
+  // Fetch repair shops data from Firestore
+  Future<void> _fetchRepairShops() async {
     try {
       QuerySnapshot querySnapshot =
-          await FirebaseFirestore.instance.collection('workShop').get();
-      List<Map<String, dynamic>> workshopList = querySnapshot.docs.map((doc) {
+          await FirebaseFirestore.instance.collection('repair').get();
+      List<Map<String, dynamic>> repairList = querySnapshot.docs.map((doc) {
         return {
           'id': doc.id,
           ...doc.data() as Map<String, dynamic>,
         };
       }).toList();
       setState(() {
-        workshops = workshopList;
+        repairShops = repairList;
       });
     } catch (e) {
-      print('Error fetching workshops: $e');
+      print('Error fetching repair shops: $e');
     }
   }
 
@@ -41,7 +38,7 @@ class _MechanicPageState extends State<MechanicPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Manage Mechanics'),
+        title: Text('Manage Repair Shops'),
         backgroundColor: Colors.deepPurple,
         centerTitle: true,
         elevation: 5.0,
@@ -55,9 +52,9 @@ class _MechanicPageState extends State<MechanicPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Mechanic List Header
+              // Repair Shops List Header
               Text(
-                'List of Workshops',
+                'List of Repair Shops',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w600,
@@ -67,19 +64,20 @@ class _MechanicPageState extends State<MechanicPage> {
               ),
               SizedBox(height: 15),
 
-              // Workshop List
+              // Repair Shops List
               Expanded(
-                child: workshops.isEmpty
+                child: repairShops.isEmpty
                     ? Center(child: CircularProgressIndicator())
                     : ListView.builder(
-                        itemCount: workshops.length,
+                        itemCount: repairShops.length,
                         itemBuilder: (context, index) {
-                          return _workshopCard(
+                          return _repairShopCard(
                             context,
-                            workshops[index]['shopName']!,
-                            workshops[index]['shopId']!,
-                            workshops[index]['status']!,
-                            workshops[index]['workers'] ?? [],
+                            repairShops[index]['companyName'] ?? 'Unknown',
+                            repairShops[index]['email'] ?? 'Unknown',
+                            repairShops[index]['phoneNo'] ?? 'Unknown',
+                            repairShops[index]['status'] ?? false,
+                            repairShops[index]['employees'] ?? [],
                             index,
                           );
                         },
@@ -92,9 +90,9 @@ class _MechanicPageState extends State<MechanicPage> {
     );
   }
 
-  // Workshop Card Widget
-  Widget _workshopCard(BuildContext context, String name, String shopId,
-      String status, List workers, int index) {
+  // Repair Shop Card Widget
+  Widget _repairShopCard(BuildContext context, String companyName, String email,
+      String phoneNo, bool status, List employees, int index) {
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(
@@ -105,10 +103,11 @@ class _MechanicPageState extends State<MechanicPage> {
         leading: CircleAvatar(
           radius: 30,
           backgroundColor: Colors.deepPurple,
-          child: Icon(Icons.local_car_wash, color: Colors.white),
+          backgroundImage:
+              NetworkImage(repairShops[index]['companyLogo'] ?? ''),
         ),
         title: Text(
-          name,
+          companyName,
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -116,35 +115,21 @@ class _MechanicPageState extends State<MechanicPage> {
           ),
         ),
         subtitle: Text(
-          'Shop ID: $shopId\nStatus: $status',
+          'Email: $email\nPhone: $phoneNo\nStatus: ${status ? 'Active' : 'Inactive'}',
           style: TextStyle(color: Colors.black54),
         ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) {
-            if (value == 'Edit') {
-              _showEditWorkshopDialog(
-                  context, name, shopId, status, workers, index);
-            } else if (value == 'Delete') {
-              _confirmDeleteWorkshop(context, name, index);
-            }
-          },
-          itemBuilder: (BuildContext context) {
-            return [
-              PopupMenuItem(value: 'Edit', child: Text('Edit')),
-              PopupMenuItem(value: 'Delete', child: Text('Delete')),
-            ];
-          },
-        ),
+        trailing: Icon(Icons.arrow_forward_ios, color: Colors.deepPurple),
         onTap: () {
-          // Navigate to WorkshopDetailPage
+          // Navigate to RepairShopDetailPage
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => WorkshopDetailPage(
-                name: name,
-                shopId: shopId,
+              builder: (context) => RepairShopDetailPage(
+                companyName: companyName,
+                email: email,
+                phoneNo: phoneNo,
                 status: status,
-                workers: workers,
+                employees: employees,
               ),
             ),
           );
@@ -152,72 +137,28 @@ class _MechanicPageState extends State<MechanicPage> {
       ),
     );
   }
-
-  // Edit Workshop Dialog
-  void _showEditWorkshopDialog(BuildContext context, String name, String shopId,
-      String status, List workers, int index) {
-    // This function can be implemented later
-  }
-
-  // Confirm Delete Workshop
-  void _confirmDeleteWorkshop(BuildContext context, String name, int index) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[800],
-          title: Text(
-            'Delete Workshop',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          content: Text(
-            'Are you sure you want to delete $name?',
-            style: TextStyle(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel',
-                  style: TextStyle(color: Colors.deepPurpleAccent)),
-            ),
-            TextButton(
-              onPressed: () async {
-                await FirebaseFirestore.instance
-                    .collection('workShop')
-                    .doc(workshops[index]['id'])
-                    .delete();
-                setState(() {
-                  workshops.removeAt(index);
-                });
-                Navigator.pop(context);
-              },
-              child: Text('Delete', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        );
-      },
-    );
-  }
 }
 
-class WorkshopDetailPage extends StatelessWidget {
-  final String name;
-  final String shopId;
-  final String status;
-  final List workers;
+class RepairShopDetailPage extends StatelessWidget {
+  final String companyName;
+  final String email;
+  final String phoneNo;
+  final bool status;
+  final List employees;
 
-  const WorkshopDetailPage({
-    required this.name,
-    required this.shopId,
+  const RepairShopDetailPage({
+    required this.companyName,
+    required this.email,
+    required this.phoneNo,
     required this.status,
-    required this.workers,
+    required this.employees,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(name),
+        title: Text(companyName),
         backgroundColor: Colors.deepPurple,
       ),
       body: Padding(
@@ -226,7 +167,7 @@ class WorkshopDetailPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Workshop Details',
+              'Repair Shop Details',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -235,28 +176,37 @@ class WorkshopDetailPage extends StatelessWidget {
             ),
             SizedBox(height: 15),
             Text(
-              'Shop ID: $shopId',
+              'Email: $email',
               style: TextStyle(fontSize: 18, color: Colors.black87),
             ),
             SizedBox(height: 10),
             Text(
-              'Status: $status',
+              'Phone: $phoneNo',
+              style: TextStyle(fontSize: 18, color: Colors.black87),
+            ),
+            SizedBox(height: 10),
+            Text(
+              'Status: ${status ? 'Active' : 'Inactive'}',
               style: TextStyle(fontSize: 18, color: Colors.black87),
             ),
             SizedBox(height: 15),
             Text(
-              'Workers:',
+              'Employees:',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),
             SizedBox(height: 10),
-            workers.isEmpty
-                ? Text('No workers available')
+            employees.isEmpty
+                ? Text('No employees available')
                 : ListView.builder(
                     shrinkWrap: true,
-                    itemCount: workers.length,
+                    itemCount: employees.length,
                     itemBuilder: (context, index) {
+                      final employee = employees[index];
                       return ListTile(
-                        title: Text(workers[index]),
+                        title: Text(employee['employeeName'] ?? 'Unknown'),
+                        subtitle: Text(
+                          'Role: ${employee['employeeRole'] ?? 'Unknown'}\nPhone: ${employee['employeePhoneNo'] ?? 'Unknown'}',
+                        ),
                       );
                     },
                   ),

@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -18,6 +20,8 @@ class _FuelStationListState extends State<FuelStationList> {
   double totalPrice = 0.0;
   String? currentUserId;
   late Razorpay _razorpay;
+  String? oId;
+  String? selectedService;
 
   @override
   void initState() {
@@ -67,6 +71,7 @@ class _FuelStationListState extends State<FuelStationList> {
               key: (fuel) => fuel['type'],
               value: (fuel) => fuel['price'],
             ),
+            'service': doc['service'] ?? '', // Fetch service field
           };
         }).toList();
       });
@@ -94,7 +99,12 @@ class _FuelStationListState extends State<FuelStationList> {
     });
   }
 
-  Future<void> initiatePayment(String ownerId) async {
+  Future<void> initiatePayment(String ownerId, String service) async {
+    setState(() {
+      oId = ownerId;
+      selectedService = service;
+    });
+
     var options = {
       'key': 'rzp_test_D5Vh3hyi1gRBV0',
       'amount': (totalPrice * 100).toInt(), // Amount in paisa
@@ -116,11 +126,10 @@ class _FuelStationListState extends State<FuelStationList> {
     }
   }
 
-  String? oId;
-
   void _handlePaymentSuccess(PaymentSuccessResponse response) async {
     print('Payment successful: ${response.paymentId}');
     await createRequest(response.paymentId!, true);
+    await saveOrderDetails(response.paymentId!);
     _showSuccessDialog();
   }
 
@@ -158,6 +167,31 @@ class _FuelStationListState extends State<FuelStationList> {
     }
   }
 
+  Future<void> saveOrderDetails(String paymentId) async {
+    if (currentUserId == null) {
+      print('User ID not available');
+      return;
+    }
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('user')
+          .doc(currentUserId)
+          .collection('orders')
+          .add({
+        'ownerId': oId,
+        'time': Timestamp.now(),
+        'paymentAmount': totalPrice,
+        'fuelType': selectedFuel,
+        'litres': quantity,
+        'paymentId': paymentId,
+        'service': selectedService, // Save service in orders
+      });
+    } catch (e) {
+      print('Error saving order details: $e');
+    }
+  }
+
   Future<void> _openGoogleMaps(
       {required double latitude, required double longitude}) async {
     final Uri googleMapsUri = Uri.parse(
@@ -170,7 +204,8 @@ class _FuelStationListState extends State<FuelStationList> {
     }
   }
 
-  void _showQuantityDialog(String fuelType, dynamic price, String ownerId) {
+  void _showQuantityDialog(
+      String fuelType, dynamic price, String ownerId, String service) {
     showDialog(
       context: context,
       builder: (context) {
@@ -195,8 +230,7 @@ class _FuelStationListState extends State<FuelStationList> {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                oId = ownerId;
-                initiatePayment(ownerId);
+                initiatePayment(ownerId, service);
               },
               child: Text('Proceed to Pay'),
             ),
@@ -325,8 +359,8 @@ class _FuelStationListState extends State<FuelStationList> {
                             final price = station['fuels'][fuelType];
                             return GestureDetector(
                               onTap: () {
-                                _showQuantityDialog(
-                                    fuelType, price, station['id']);
+                                _showQuantityDialog(fuelType, price,
+                                    station['id'], station['service']);
                               },
                               child: Chip(
                                 label: Text(

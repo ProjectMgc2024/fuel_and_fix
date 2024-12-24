@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/user/screens/login_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Settings extends StatefulWidget {
   const Settings({super.key});
@@ -9,41 +10,49 @@ class Settings extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<Settings> {
-  bool _isDarkMode = false; // Initially set to light mode
-  double _fontSize = 16.0; // Default font size
-  bool _notificationsEnabled = true; // Default notifications state
-  bool _isAppUpdateAvailable = false; // Simulate app update availability
+  bool _notificationsEnabled = true;
+  bool _isAppUpdateAvailable = false;
+  bool _isDarkModeEnabled = false; // New variable for dark mode toggle
 
-  // Method to toggle theme
-  void _toggleTheme(bool value) {
+  @override
+  void initState() {
+    super.initState();
+    _loadDarkModeSetting(); // Load the dark mode setting when the screen is initialized
+  }
+
+  // Load the dark mode setting from SharedPreferences
+  _loadDarkModeSetting() async {
+    final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _isDarkMode = value;
+      _isDarkModeEnabled =
+          prefs.getBool('darkMode') ?? false; // Default to false if not set
     });
   }
 
-  // Method to change font size
-  void _changeFontSize(double value) {
+  // Save the dark mode setting to SharedPreferences
+  _saveDarkModeSetting(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setBool('darkMode', value);
+  }
+
+  // Toggle settings helper function
+  void _toggleSetting(bool value, String setting) {
     setState(() {
-      _fontSize = value;
+      if (setting == 'notifications') {
+        _notificationsEnabled = value;
+      } else if (setting == 'darkMode') {
+        _isDarkModeEnabled = value; // Toggle dark mode
+        _saveDarkModeSetting(value); // Save the updated setting
+      }
     });
   }
 
-  // Method to toggle notifications
-  void _toggleNotifications(bool value) {
-    setState(() {
-      _notificationsEnabled = value;
-    });
-  }
-
-  // Method to simulate checking for app updates
+  // Check for app updates
   void _checkForAppUpdates() {
     setState(() {
-      // Simulating the update check with a mock condition
       _isAppUpdateAvailable = !_isAppUpdateAvailable;
     });
-
     if (_isAppUpdateAvailable) {
-      // Show a dialog if there's an update
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -54,9 +63,7 @@ class _SettingsPageState extends State<Settings> {
             actions: [
               TextButton(
                 child: const Text('OK'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
+                onPressed: () => Navigator.of(context).pop(),
               ),
             ],
           );
@@ -65,136 +72,125 @@ class _SettingsPageState extends State<Settings> {
     }
   }
 
-  // Method to show password change dialog
-  void _showPasswordDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Change Password'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-          ),
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: Color.fromARGB(255, 174, 177, 138),
-      ),
-      body: ListView(
-        children: [
-          // Theme Toggle
-          ListTile(
-            leading: const Icon(Icons.brightness_6, color: Colors.black),
-            title: const Text('Theme'),
-            subtitle: Text(_isDarkMode ? 'Dark Mode' : 'Light Mode'),
-            trailing: Switch(
-              value: _isDarkMode,
-              onChanged: _toggleTheme,
-            ),
-          ),
-          const Divider(),
-
-          // Font Size Adjustment
-          ListTile(
-            leading: const Icon(Icons.text_fields, color: Colors.black),
-            title: const Text('Font Size'),
-            subtitle: Text('Current size: ${_fontSize.toStringAsFixed(1)}'),
-            trailing: DropdownButton<double>(
-              value: _fontSize,
-              items: [14.0, 16.0, 18.0, 20.0, 22.0].map((double size) {
-                return DropdownMenuItem<double>(
-                  value: size,
-                  child: Text(size.toString()),
-                );
-              }).toList(),
-              onChanged: (double? newSize) {
-                if (newSize != null) {
-                  _changeFontSize(newSize);
-                }
-              },
-            ),
-          ),
-          const Divider(),
-
-          // Notifications Toggle
-          ListTile(
-            leading: const Icon(Icons.notifications, color: Colors.black),
-            title: const Text('Notifications'),
-            subtitle: Text(_notificationsEnabled
-                ? 'Notifications Enabled'
-                : 'Notifications Disabled'),
-            trailing: Switch(
-              value: _notificationsEnabled,
-              onChanged: _toggleNotifications,
-            ),
-          ),
-          const Divider(),
-
-          // App Updates
-          ListTile(
-            leading: const Icon(Icons.system_update_alt, color: Colors.black),
-            title: const Text('Check for App Updates'),
-            subtitle:
-                Text(_isAppUpdateAvailable ? 'Update Available' : 'No Updates'),
-            onTap: _checkForAppUpdates,
-          ),
-          const Divider(),
-
-          // Logout
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.black),
-            title: const Text('Logout'),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => LoginScreen()),
-              );
-            },
-          ),
-          const Divider(),
-        ],
-      ),
-    );
-  }
-}
-
-class MyApp extends StatefulWidget {
-  const MyApp({super.key});
-
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  bool _isDarkMode = false;
-
-  // Method to toggle theme
-  void _toggleTheme(bool value) {
-    setState(() {
-      _isDarkMode = value;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      debugShowCheckedModeBanner: false, // This removes the debug banner
+      themeMode: _isDarkModeEnabled
+          ? ThemeMode.dark
+          : ThemeMode.light, // Switch theme based on _isDarkModeEnabled
       theme: ThemeData.light().copyWith(
-        primaryColor: const Color.fromARGB(
-            206, 180, 123, 59), // Custom color for light theme
+        primaryColor: const Color(0xFF5F6368),
       ),
       darkTheme: ThemeData.dark().copyWith(
-        primaryColor: const Color.fromARGB(
-            206, 180, 123, 59), // Custom color for dark theme
+        primaryColor: const Color(0xFF5F6368),
       ),
-      home: const Settings(), // Directly load SettingsPage here for simplicity
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text('Settings'),
+          backgroundColor: const Color(0xFF5F6368),
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.pop(context); // Navigate back to the previous screen
+            },
+          ),
+        ),
+        body: ListView(
+          padding: const EdgeInsets.all(16.0),
+          children: [
+            _buildSettingItem(
+              icon: Icons.notifications,
+              title: 'Notifications',
+              subtitle: _notificationsEnabled ? 'Enabled' : 'Disabled',
+              value: _notificationsEnabled,
+              onToggle: (value) => _toggleSetting(value, 'notifications'),
+            ),
+            const Divider(),
+            _buildListTile(
+              icon: Icons.system_update_alt,
+              title: 'Check for App Updates',
+              subtitle:
+                  _isAppUpdateAvailable ? 'Update Available' : 'No Updates',
+              onTap: _checkForAppUpdates,
+            ),
+            const Divider(),
+            // New Dark Mode toggle
+            _buildSettingItem(
+              icon: Icons.dark_mode,
+              title: 'Dark Mode',
+              subtitle: _isDarkModeEnabled ? 'Enabled' : 'Disabled',
+              value: _isDarkModeEnabled,
+              onToggle: (value) => _toggleSetting(value, 'darkMode'),
+            ),
+            const Divider(),
+            _buildListTile(
+              icon: Icons.logout,
+              title: 'Logout',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginScreen()),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
+
+  // General setting item widget with a switch
+  Widget _buildSettingItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required Function(bool) onToggle,
+  }) {
+    return Card(
+      elevation: 5,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: ListTile(
+        leading: Icon(icon, color: const Color(0xFF5F6368)),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+        subtitle: Text(subtitle, style: const TextStyle(color: Colors.grey)),
+        trailing: Switch(
+          value: value,
+          onChanged: onToggle,
+          activeColor: const Color(0xFF4CAF50),
+        ),
+      ),
+    );
+  }
+
+  // Regular list tile widget (for app updates, logout)
+  Widget _buildListTile({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 5,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: ListTile(
+        leading: Icon(icon, color: const Color(0xFF5F6368)),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+        subtitle: subtitle != null ? Text(subtitle) : null,
+        onTap: onTap,
+      ),
+    );
+  }
+}
+
+void main() {
+  runApp(const Settings());
 }

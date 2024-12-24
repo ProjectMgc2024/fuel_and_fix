@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:fuel_and_fix/user/screens/introduction.dart';
+import 'package:fuel_and_fix/user/screens/splash.dart';
 
 import 'firebase_options.dart';
 
@@ -10,6 +11,6 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   runApp(
-    MaterialApp(debugShowCheckedModeBanner: false, home: IntroductionPage()),
+    MaterialApp(debugShowCheckedModeBanner: false, home: SplashScreen()),
   );
 }

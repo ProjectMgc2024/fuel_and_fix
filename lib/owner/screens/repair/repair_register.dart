@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../SERVICES/firebase_provider_auth.dart';
 
 class RepairRegister extends StatefulWidget {
@@ -9,9 +11,8 @@ class RepairRegister extends StatefulWidget {
 }
 
 class _RepairRegisterState extends State<RepairRegister> {
-  final _formKey = GlobalKey<FormState>(); // Key for form validation
+  final _formKey = GlobalKey<FormState>();
 
-  // TextEditingController for each input field
   final TextEditingController _companyNameController = TextEditingController();
   final TextEditingController _companyLicenseController =
       TextEditingController();
@@ -21,6 +22,12 @@ class _RepairRegisterState extends State<RepairRegister> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmpasswordController =
       TextEditingController();
+
+  String? _currentLocation;
+
+  double? _latitude;
+  double? _longitude;
+  String? _locationName;
 
   Future<void> registerHandling() async {
     try {
@@ -33,13 +40,16 @@ class _RepairRegisterState extends State<RepairRegister> {
         cname: _companyNameController.text,
         clicense: _companyLicenseController.text,
         collection: 'repair',
+        additionalData: {
+          'latitude': _latitude,
+          'longitude': _longitude,
+          'location_name': _locationName,
+        },
       );
-      // Show success message or navigate to another page
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Registration Successful')),
       );
     } catch (e) {
-      // Handle errors, show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Registration Failed: $e')),
       );
@@ -47,9 +57,85 @@ class _RepairRegisterState extends State<RepairRegister> {
     Navigator.pop(context);
   }
 
+  Future<void> _getCurrentLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        bool? userDecision = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Enable Location Services'),
+            content: Text(
+                'Location services are disabled. Please enable them to continue.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop(true);
+                },
+                child: Text('Enable'),
+              ),
+            ],
+          ),
+        );
+
+        if (context.mounted) {
+          if (userDecision == true) {
+            await Geolocator.openLocationSettings();
+          }
+        }
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Location permissions are denied.')),
+          );
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Location permissions are permanently denied.')),
+        );
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+
+      // Fetch location name
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+      Placemark place = placemarks.first;
+
+      setState(() {
+        _currentLocation = '${place.locality}, ${place.country}';
+      });
+
+      // Save location details
+      _latitude = position.latitude;
+      _longitude = position.longitude;
+      _locationName = '${place.locality}, ${place.country}';
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to get location: $e')),
+      );
+    }
+  }
+
   @override
   void dispose() {
-    // Dispose of controllers when the widget is disposed
     _companyNameController.dispose();
     _companyLicenseController.dispose();
     _emailController.dispose();
@@ -69,19 +155,16 @@ class _RepairRegisterState extends State<RepairRegister> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                const Color.fromARGB(
-                    255, 129, 186, 85), // Start color (top left)
-                const Color.fromARGB(
-                    255, 74, 204, 119), // End color (bottom right)
+                const Color.fromARGB(255, 129, 186, 85),
+                const Color.fromARGB(255, 74, 204, 119),
               ],
             ),
           ),
           child: AppBar(
             title: const Text('Repair Register'),
             centerTitle: true,
-            backgroundColor:
-                Colors.transparent, // Make AppBar background transparent
-            elevation: 0, // Remove AppBar's shadow
+            backgroundColor: Colors.transparent,
+            elevation: 0,
           ),
         ),
       ),
@@ -91,9 +174,8 @@ class _RepairRegisterState extends State<RepairRegister> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              const Color.fromARGB(255, 129, 186, 85), // Start color (top left)
-              const Color.fromARGB(
-                  255, 73, 124, 186), // End color (bottom right)
+              const Color.fromARGB(255, 129, 186, 85),
+              const Color.fromARGB(255, 73, 124, 186),
             ],
           ),
         ),
@@ -250,6 +332,29 @@ class _RepairRegisterState extends State<RepairRegister> {
                         }
                         return null;
                       },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.center,
+                  child: SizedBox(
+                    width: 400,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _currentLocation == null
+                                ? 'Location: Not Set'
+                                : 'Location: $_currentLocation',
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.location_on),
+                          color: Colors.blueAccent,
+                          onPressed: _getCurrentLocation,
+                        ),
+                      ],
                     ),
                   ),
                 ),

@@ -43,6 +43,7 @@ class OwnerAuthServices {
           'companyLicense': clicense,
           'fuels': null, // Can be updated later
           'additionalData': additionalData,
+          'service': 'fuel',
           'companyLogo':
               'https://res.cloudinary.com/dnywnuawz/image/upload/v1734347001/public/fuel/hhalljykskzcxxhxomhi.png'
         });
@@ -54,8 +55,9 @@ class OwnerAuthServices {
           'employees': null, // Can be updated later
           'phoneNo': phNo,
           'companyLicense': clicense,
-          'fuels': null, // Can be updated later
-
+          'additionalData': additionalData,
+          'vehicleTypes': null,
+          'service': 'repair',
           'companyLogo':
               'https://res.cloudinary.com/dnywnuawz/image/upload/v1734347001/public/fuel/hhalljykskzcxxhxomhi.png'
         });

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class PaymentsAndEarningsPage extends StatefulWidget {
   @override
@@ -7,92 +9,98 @@ class PaymentsAndEarningsPage extends StatefulWidget {
 }
 
 class _PaymentsAndEarningsPageState extends State<PaymentsAndEarningsPage> {
-  // Mock data for earnings and payments
-  double totalEarnings = 5000.0;
-  double pendingPayments = 1000.0;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Payment history
-  List<Map<String, String>> paymentHistory = [
-    {
-      'registrationNumber': 'KL45AJ7865',
-      'date': '2024-11-01',
-      'serviceType': 'Fuel Delivery',
-      'amount': '1000 Rs',
-      'status': 'Paid',
-      'paymentMethod': 'Bank Transfer'
-    },
-    {
-      'registrationNumber': 'KL45AJ7866',
-      'date': '2024-11-05',
-      'serviceType': 'Maintenance',
-      'amount': '1500 Rs',
-      'status': 'Pending',
-      'paymentMethod': 'PayPal'
-    },
-    {
-      'registrationNumber': 'KL45AJ7867',
-      'date': '2024-11-10',
-      'serviceType': 'Fuel Delivery',
-      'amount': '1500 Rs',
-      'status': 'Failed',
-      'paymentMethod': 'Credit Card'
-    },
-  ];
+  // Fetch the current user ID
+  Future<String?> getCurrentUserId() async {
+    final user = _auth.currentUser;
+    return user?.uid;
+  }
+
+  // Fetch username by user ID
+  Future<String> fetchUsername(String userId) async {
+    final userDoc = await FirebaseFirestore.instance
+        .collection(
+            'user') // Ensure this matches your Firestore collection name
+        .doc(userId)
+        .get();
+
+    if (userDoc.exists) {
+      return userDoc.data()?['username'] ?? 'Unknown User';
+    }
+    return 'Unknown User';
+  }
+
+  // Fetch payment data and include username
+  Future<List<Map<String, dynamic>>> fetchPaymentData() async {
+    final userId = await getCurrentUserId();
+    if (userId == null) {
+      throw Exception('User not logged in');
+    }
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('fuel')
+        .doc(userId) // Use the current user's ID as the document ID
+        .collection('request')
+        .where('isPayment', isEqualTo: true)
+        .get();
+
+    // Fetch payment data with username
+    List<Map<String, dynamic>> paymentData = [];
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      final username = await fetchUsername(data['userId']);
+      paymentData.add({
+        'fuelType': data['fuelType'],
+        'litres': data['litres'],
+        'paymentId': data['paymentId'],
+        'status': data['status'] == true ? 'Successful' : 'Failed',
+        'timestamp': data['timestamp'],
+        'username': username,
+      });
+    }
+    return paymentData;
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Filter only Fuel Delivery payments
-    var fuelPayments = paymentHistory
-        .where((payment) => payment['serviceType'] == 'Fuel Delivery')
-        .toList();
-
     return Scaffold(
       appBar: AppBar(
-          title: Text('Payments & Earnings'), backgroundColor: Colors.teal),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            // Earnings Summary
-            _buildSummary('Total Earnings:', '$totalEarnings Rs'),
-            SizedBox(height: 20),
-            _buildSummary('Pending Payments:', '$pendingPayments Rs',
-                color: Colors.orange),
-            SizedBox(height: 20),
-            // Payment History Section
-            Text('Fuel Delivery Payment History:',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            SizedBox(height: 10),
-            ...fuelPayments.map((payment) => _buildPaymentCard(payment)),
-          ],
-        ),
+        title: Text('Payments & Earnings'),
+        backgroundColor: Colors.teal,
       ),
-    );
-  }
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: fetchPaymentData(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
 
-  // Summary section widget
-  Widget _buildSummary(String title, String amount,
-      {Color color = Colors.black}) {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          SizedBox(height: 10),
-          Text(amount, style: TextStyle(fontSize: 16, color: color)),
-        ],
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Center(child: Text('No payment data found.'));
+          }
+
+          final paymentData = snapshot.data!;
+
+          return ListView.builder(
+            padding: EdgeInsets.all(16),
+            itemCount: paymentData.length,
+            itemBuilder: (context, index) {
+              final payment = paymentData[index];
+              return _buildPaymentCard(payment);
+            },
+          );
+        },
       ),
     );
   }
 
   // Payment card widget
-  Widget _buildPaymentCard(Map<String, String> payment) {
+  Widget _buildPaymentCard(Map<String, dynamic> payment) {
     return Card(
       margin: EdgeInsets.symmetric(vertical: 8),
       elevation: 5,
@@ -101,44 +109,27 @@ class _PaymentsAndEarningsPageState extends State<PaymentsAndEarningsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Registration Number
-            Text('Registration Number: ${payment['registrationNumber']}',
+            Text('Fuel Type: ${payment['fuelType']}',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text('Litres: ${payment['litres']}',
+                style: TextStyle(fontSize: 16, color: Colors.black54)),
+            Text('Payment ID: ${payment['paymentId']}',
                 style: TextStyle(fontSize: 14, color: Colors.blue)),
-            Text('Date: ${payment['date']}',
-                style: TextStyle(fontSize: 14, color: Colors.black45)),
-            // Service Type
-            Text('Service: ${payment['serviceType']}',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            // Amount
-            Text('Amount: ${payment['amount']}',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            // Payment Method
-            Text('Payment Method: ${payment['paymentMethod']}',
-                style: TextStyle(fontSize: 14, color: Colors.black45)),
-            // Status with color
+            Text('Status: ${payment['status']}',
+                style: TextStyle(
+                    fontSize: 14,
+                    color: payment['status'] == 'Successful'
+                        ? Colors.green
+                        : Colors.red)),
             Text(
-              'Status: ${payment['status']}',
-              style: TextStyle(
-                fontSize: 14,
-              ),
+              'Timestamp: ${payment['timestamp'].toDate()}',
+              style: TextStyle(fontSize: 14, color: Colors.black45),
             ),
+            Text('Username: ${payment['username']}',
+                style: TextStyle(fontSize: 14, color: Colors.black45)),
           ],
         ),
       ),
     );
-  }
-
-  // Get status color based on payment status
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Paid':
-        return Colors.green;
-      case 'Pending':
-        return Colors.orange;
-      case 'Failed':
-        return Colors.red;
-      default:
-        return Colors.black;
-    }
   }
 }

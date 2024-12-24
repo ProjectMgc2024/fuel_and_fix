@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/user/screens/about.dart';
 import 'package:fuel_and_fix/user/screens/fuel.dart';
@@ -81,7 +82,8 @@ class HomeScreen extends StatelessWidget {
                       // Navigate to HistoryPage
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => userHistory()),
+                        MaterialPageRoute(
+                            builder: (context) => OrderHistoryPage()),
                       );
                     },
                   ),
@@ -93,7 +95,8 @@ class HomeScreen extends StatelessWidget {
                       // Navigate to SettingsPage
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => Settings()),
+                        MaterialPageRoute(
+                            builder: (context) => OrderHistoryPage()),
                       );
                     },
                   ),
