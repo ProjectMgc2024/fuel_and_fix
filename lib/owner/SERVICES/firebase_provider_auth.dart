@@ -33,38 +33,48 @@ class OwnerAuthServices {
 
       String userId = userCredential.user!.uid;
 
+      // Define the common user data
+      Map<String, dynamic> userData = {
+        'email': email,
+        'companyName': cname,
+        'ownerName': ownerName,
+        'phoneNo': phNo,
+        'companyLicense': clicense,
+        'additionalData': additionalData,
+        'companyLogo':
+            'https://res.cloudinary.com/dnywnuawz/image/upload/v1734347001/public/fuel/hhalljykskzcxxhxomhi.png', // default logo
+        'status': true, // Default status
+      };
+
+      // Check the collection and add data accordingly
       if (collection == 'fuel') {
+        // Fuel collection registration
         await firebaseFirestore.collection(collection).doc(userId).set({
-          'email': email,
-          'companyName': cname,
-          'ownerName': ownerName,
+          ...userData,
           'employees': null, // Can be updated later
-          'phoneNo': phNo,
-          'companyLicense': clicense,
           'fuels': null, // Can be updated later
-          'additionalData': additionalData,
           'service': 'fuel',
-          'companyLogo':
-              'https://res.cloudinary.com/dnywnuawz/image/upload/v1734347001/public/fuel/hhalljykskzcxxhxomhi.png'
         });
-      } else {
+      } else if (collection == 'tow') {
+        // Tow collection registration
         await firebaseFirestore.collection(collection).doc(userId).set({
-          'email': email,
-          'companyName': cname,
-          'ownerName': ownerName,
-          'employees': null, // Can be updated later
-          'phoneNo': phNo,
-          'companyLicense': clicense,
-          'additionalData': additionalData,
+          ...userData,
+          'employees': null,
+          'servicesOffered': null,
+          'service': 'tow', // Tow service type
+        });
+      } else if (collection == 'repair') {
+        // Tow collection registration
+        await firebaseFirestore.collection(collection).doc(userId).set({
+          ...userData,
+          'employees': null,
           'vehicleTypes': null,
           'service': 'repair',
-          'companyLogo':
-              'https://res.cloudinary.com/dnywnuawz/image/upload/v1734347001/public/fuel/hhalljykskzcxxhxomhi.png'
-        });
+        } // Tow service type
+            );
       }
 
-      // Save user data to Firestore (Don't store password directly)
-
+      // Success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Registration Successful for $email'),
@@ -72,6 +82,7 @@ class OwnerAuthServices {
         ),
       );
     } catch (e) {
+      // Error handling
       print(e); // Log error for debugging
 
       ScaffoldMessenger.of(context).showSnackBar(

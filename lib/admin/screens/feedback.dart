@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 
 class ManageFeedbackPage extends StatefulWidget {
   @override
@@ -53,7 +54,11 @@ class _ManageFeedbackPageState extends State<ManageFeedbackPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Manage Feedback and Complaints'),
+        title: Text(
+          'Manage Feedback and Complaints',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: const Color.fromARGB(255, 85, 67, 116),
       ),
       body: feedbackList.isEmpty
           ? Center(child: CircularProgressIndicator())
@@ -61,25 +66,66 @@ class _ManageFeedbackPageState extends State<ManageFeedbackPage> {
               itemCount: feedbackList.length,
               itemBuilder: (context, index) {
                 var feedback = feedbackList[index];
-                return Card(
-                  margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                  child: ListTile(
-                    title: Text('Vehicle: ${feedback['vehicleRegNo']}'),
-                    subtitle: Text('Rating: ${feedback['rating']}'),
-                    trailing: IconButton(
-                      icon: Icon(Icons.delete),
-                      onPressed: () => deleteFeedback(feedback['id']),
+                return Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Card(
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
                     ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => FeedbackDetailPage(
-                            feedbackId: feedback['id'],
-                          ),
+                    child: ListTile(
+                      contentPadding: EdgeInsets.all(16),
+                      title: Text(
+                        'Vehicle: ${feedback['vehicleRegNo']}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.deepPurple,
                         ),
-                      );
-                    },
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(height: 5),
+                          Text(
+                            'Rating: ${feedback['rating']}',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.deepPurpleAccent,
+                            ),
+                          ),
+                          RatingBar.builder(
+                            initialRating: feedback['rating'].toDouble(),
+                            minRating: 1,
+                            direction: Axis.horizontal,
+                            itemCount: 5,
+                            itemSize: 24,
+                            itemBuilder: (context, _) => Icon(
+                              Icons.star,
+                              color: Colors.amber,
+                            ),
+                            onRatingUpdate: (rating) {
+                              // Handle rating change if needed
+                            },
+                          ),
+                        ],
+                      ),
+                      trailing: IconButton(
+                        icon: Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => deleteFeedback(feedback['id']),
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => FeedbackDetailPage(
+                              feedbackId: feedback['id'],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 );
               },
@@ -138,26 +184,55 @@ class FeedbackDetailPage extends StatelessWidget {
           appBar: AppBar(title: Text('Feedback Details')),
           body: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Vehicle Registration No: ${feedback['vehicleRegNo']}',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 10),
-                Text('Rating:${feedback['rating']}',
-                    style: TextStyle(fontSize: 16)),
-                SizedBox(height: 10),
-                Text('Date: ${feedback['date']}',
-                    style: TextStyle(fontSize: 16)),
-                SizedBox(height: 10),
-                Text('Type: ${feedback['type']}',
-                    style: TextStyle(fontSize: 16)),
-                SizedBox(height: 10),
-                Text('Message: ${feedback['message']}',
-                    style: TextStyle(fontSize: 16)),
-              ],
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Vehicle Registration No: ${feedback['vehicleRegNo']}',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.deepPurple,
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    'Rating:',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
+                  RatingBar.builder(
+                    initialRating: feedback['rating'].toDouble(),
+                    minRating: 1,
+                    direction: Axis.horizontal,
+                    itemCount: 5,
+                    itemSize: 30,
+                    itemBuilder: (context, _) => Icon(
+                      Icons.star,
+                      color: Colors.amber,
+                    ),
+                    onRatingUpdate: (rating) {
+                      // Handle rating change if needed
+                    },
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    'Date: ${feedback['date']}',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    'Type: ${feedback['type']}',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    'Message: ${feedback['message']}',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  SizedBox(height: 20),
+                ],
+              ),
             ),
           ),
         );

@@ -24,7 +24,6 @@ class _FuelRegisterState extends State<FuelRegister> {
       TextEditingController();
 
   String? _currentLocation;
-
   double? _latitude;
   double? _longitude;
   String? _locationName;
@@ -82,11 +81,11 @@ class _FuelRegisterState extends State<FuelRegister> {
           ),
         );
 
-       if(context.mounted){
-         if (userDecision == true) {
-          await Geolocator.openLocationSettings();
+        if (context.mounted) {
+          if (userDecision == true) {
+            await Geolocator.openLocationSettings();
+          }
         }
-       }
         return;
       }
 
@@ -147,25 +146,20 @@ class _FuelRegisterState extends State<FuelRegister> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(kToolbarHeight),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color.fromARGB(255, 129, 186, 85),
-                const Color.fromARGB(255, 74, 204, 119),
-              ],
-            ),
-          ),
-          child: AppBar(
-            title: const Text('Fuel Register'),
-            centerTitle: true,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-          ),
+      appBar: AppBar(
+        title: const Text(
+          'Fuel Register',
+          style: TextStyle(color: Colors.white),
+        ),
+        centerTitle: true,
+        backgroundColor: Color.fromARGB(255, 210, 111, 30),
+        elevation: 0,
+        leading: IconButton(
+          icon:
+              const Icon(Icons.arrow_back, color: Color.fromARGB(255, 0, 0, 0)),
+          onPressed: () {
+            Navigator.pop(context); // Go back to the previous screen
+          },
         ),
       ),
       body: Container(
@@ -174,8 +168,10 @@ class _FuelRegisterState extends State<FuelRegister> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              const Color.fromARGB(255, 129, 186, 85),
-              const Color.fromARGB(255, 73, 124, 186),
+              Color(
+                  0xFFFFA500), // Fuel-inspired Orange color (similar to gasoline)
+              Color(0xFFD14D0E), // Darker red-orange for the fuel look
+              Color(0xFF7F4C2E), // Deep brown color (reflecting oil)
             ],
           ),
         ),
@@ -185,198 +181,151 @@ class _FuelRegisterState extends State<FuelRegister> {
             key: _formKey,
             child: ListView(
               children: [
-                Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 400,
-                    child: TextFormField(
-                      controller: _companyNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Company Name',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter company name';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
+                // Company Information Section
+                _buildSectionTitle('Company Information'),
+                _buildTextField(
+                  controller: _companyNameController,
+                  label: 'Company Name',
+                  icon: Icons.business,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter company name';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 400,
-                    child: TextFormField(
-                      controller: _companyLicenseController,
-                      decoration: const InputDecoration(
-                        labelText: 'Company License No',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter company license number';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
+                _buildTextField(
+                  controller: _companyLicenseController,
+                  label: 'Company License No',
+                  icon: Icons.card_membership,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter company license number';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 32),
+
+                // Personal Information Section
+                _buildSectionTitle('Personal Information'),
+                _buildTextField(
+                  controller: _emailController,
+                  label: 'Email',
+                  icon: Icons.email,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter email';
+                    }
+                    if (!RegExp(r'\S+@\S+\.\S+').hasMatch(value)) {
+                      return 'Please enter a valid email';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 400,
-                    child: TextFormField(
-                      controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter email';
-                        }
-                        if (!RegExp(r'\S+@\S+\.\S+').hasMatch(value)) {
-                          return 'Please enter a valid email';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
+                _buildTextField(
+                  controller: _phoneController,
+                  label: 'Phone No',
+                  icon: Icons.phone,
+                  keyboardType: TextInputType.phone,
+                  maxLength: 10,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter phone number';
+                    }
+                    if (!RegExp(r'^\+?[0-9]{10,15}$').hasMatch(value)) {
+                      return 'Please enter a valid phone number';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 400,
-                    child: TextFormField(
-                      controller: _phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Phone No',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.phone,
-                      maxLength: 10,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter phone number';
-                        }
-                        if (!RegExp(r'^\+?[0-9]{10,15}$').hasMatch(value)) {
-                          return 'Please enter a valid phone number';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
+                _buildTextField(
+                  controller: _ownerNameController,
+                  label: 'Owner Name',
+                  icon: Icons.person,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter owner name';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 32),
+
+                // Password Section
+                _buildSectionTitle('Account Details'),
+                _buildTextField(
+                  controller: _passwordController,
+                  label: 'Password',
+                  icon: Icons.lock_outline,
+                  obscureText: true,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter password';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 400,
-                    child: TextFormField(
-                      controller: _ownerNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Owner Name',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter owner name';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
+                _buildTextField(
+                  controller: _confirmpasswordController,
+                  label: 'Confirm Password',
+                  icon: Icons.lock,
+                  obscureText: true,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please confirm your password';
+                    }
+                    if (value != _passwordController.text) {
+                      return 'Passwords do not match';
+                    }
+                    return null;
+                  },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 32),
+
+                // Location Section
+                _buildSectionTitle('Location'),
                 Align(
                   alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 400,
-                    child: TextFormField(
-                      controller: _passwordController,
-                      decoration: const InputDecoration(
-                        labelText: 'Password',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter password';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 400,
-                    child: TextFormField(
-                      controller: _confirmpasswordController,
-                      decoration: const InputDecoration(
-                        labelText: 'Confirm Password',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please confirm your password';
-                        }
-                        if (value != _passwordController.text) {
-                          return 'Passwords do not match';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 400,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _currentLocation == null
-                                ? 'Location: Not Set'
-                                : 'Location: $_currentLocation',
-                          ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _currentLocation == null
+                              ? 'Location: Not Set'
+                              : 'Location: $_currentLocation',
+                          style: TextStyle(fontSize: 16),
                         ),
-                        IconButton(
-                          icon: Icon(Icons.location_on),
-                          color: Colors.blueAccent,
-                          onPressed: _getCurrentLocation,
-                        ),
-                      ],
-                    ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.location_on),
+                        color: Color.fromARGB(
+                            255, 15, 116, 174), // Custom icon color
+                        onPressed: _getCurrentLocation,
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 32),
+
+                // Register Button
                 Align(
                   alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 150,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState?.validate() ?? false) {
-                          registerHandling();
-                        }
-                      },
-                      child: const Text('Register'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        textStyle: const TextStyle(fontSize: 16),
-                        backgroundColor:
-                            const Color.fromARGB(255, 150, 188, 241),
-                      ),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (_formKey.currentState?.validate() ?? false) {
+                        registerHandling();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding:
+                          EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                     ),
+                    child: Text('Register'),
                   ),
                 ),
               ],
@@ -384,6 +333,53 @@ class _FuelRegisterState extends State<FuelRegister> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: const Color.fromARGB(221, 6, 4, 4),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool obscureText = false,
+    int? maxLength,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: obscureText,
+      maxLength: maxLength,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon,
+            color: const Color.fromARGB(255, 52, 42, 42)), // Grey icon color
+        filled: true,
+        fillColor: const Color.fromARGB(255, 205, 202, 110),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: const Color.fromARGB(255, 0, 0, 0)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(25),
+          borderSide: BorderSide(color: const Color.fromARGB(255, 0, 0, 0)),
+        ),
+      ),
+      validator: validator,
     );
   }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'package:fuel_and_fix/admin/screens/feedback.dart';
 import 'package:fuel_and_fix/admin/screens/fuel.dart';
 import 'package:fuel_and_fix/admin/screens/mechanics.dart';
@@ -13,95 +12,72 @@ class AdminPage extends StatelessWidget {
       appBar: AppBar(
         title: Text('Admin Dashboard'),
         centerTitle: true,
-        backgroundColor: Colors.blueGrey,
+        backgroundColor: const Color.fromARGB(255, 88, 90, 82),
+        elevation: 4.0,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // User Management
-              _sectionHeader('User Management'),
-              _adminOption('Manage Users', Icons.manage_accounts, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ManageUser()),
-                );
-              }),
-              SizedBox(height: 10),
-
-              // Mechanic Management
-              _sectionHeader('Mechanic Management'),
-              _adminOption('Manage Mechanics', Icons.build, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => RepairPage()),
-                );
-              }),
-              SizedBox(height: 10),
-
-              // Fuel Station Management
-              _sectionHeader('Fuel Station Management'),
-              _adminOption('Manage Fuel Stations', Icons.local_gas_station, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ManageFuelStation()),
-                );
-              }),
-              SizedBox(height: 10),
-
-              // Fuel Station Management
-              _sectionHeader('Tow Management'),
-              _adminOption('Manage Tow services', Icons.build, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ManageTowStation()),
-                );
-              }),
-              SizedBox(height: 10),
-
-              SizedBox(height: 10),
-
-              // Feedback Management
-              _sectionHeader('Feedback and Complaints'),
-              _adminOption('Manage Feedback', Icons.feedback, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ManageFeedbackPage()),
-                );
-              }),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Dashboard Card Widget
-  Widget _dashboardCard(String title, String value, IconData icon) {
-    return Expanded(
-      // Make sure the cards can flex to fit the space
-      child: Card(
-        elevation: 4,
-        color: Colors.blueGrey[50],
-        child: Container(
-          padding: EdgeInsets.all(16),
-          height: 120, // Increased height for better card spacing
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 30, color: Colors.blueGrey),
-              SizedBox(height: 5),
-              Text(
-                value,
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              // Dashboard Section
+              _sectionCard(
+                context,
+                'User Management',
+                Icons.manage_accounts,
+                () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ManageUser()),
+                  );
+                },
               ),
-              SizedBox(height: 5),
-              Text(
-                title,
-                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-                textAlign: TextAlign.center,
+              _sectionCard(
+                context,
+                'Mechanic Management',
+                Icons.build,
+                () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => RepairPage()),
+                  );
+                },
+              ),
+              _sectionCard(
+                context,
+                'Fuel Station Management',
+                Icons.local_gas_station,
+                () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => ManageFuelStation()),
+                  );
+                },
+              ),
+              _sectionCard(
+                context,
+                'Tow Management',
+                Icons.directions_car,
+                () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ManageTowStation()),
+                  );
+                },
+              ),
+              _sectionCard(
+                context,
+                'Feedback and Complaints',
+                Icons.feedback,
+                () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => ManageFeedbackPage()),
+                  );
+                },
               ),
             ],
           ),
@@ -110,29 +86,23 @@ class AdminPage extends StatelessWidget {
     );
   }
 
-  // Section Header Widget
-  Widget _sectionHeader(String title) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: Colors.blueGrey,
-      ),
-    );
-  }
-
-  // Admin Option Widget
-  Widget _adminOption(String title, IconData icon, VoidCallback onTap) {
+  // Section Card Widget for each Admin Option
+  Widget _sectionCard(
+      BuildContext context, String title, IconData icon, VoidCallback onTap) {
     return Card(
-      elevation: 4,
+      elevation: 5,
+      margin: EdgeInsets.symmetric(vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
-        leading: Icon(icon, color: Colors.blueGrey),
+        leading: Icon(icon, color: Colors.blueGrey, size: 30),
         title: Text(
           title,
-          overflow: TextOverflow.ellipsis, // Handle overflow
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
+        trailing:
+            Icon(Icons.arrow_forward_ios, size: 16, color: Colors.blueGrey),
         onTap: onTap,
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       ),
     );
   }

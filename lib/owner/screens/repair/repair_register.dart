@@ -24,7 +24,6 @@ class _RepairRegisterState extends State<RepairRegister> {
       TextEditingController();
 
   String? _currentLocation;
-
   double? _latitude;
   double? _longitude;
   String? _locationName;
@@ -81,7 +80,6 @@ class _RepairRegisterState extends State<RepairRegister> {
             ],
           ),
         );
-
         if (context.mounted) {
           if (userDecision == true) {
             await Geolocator.openLocationSettings();
@@ -113,10 +111,8 @@ class _RepairRegisterState extends State<RepairRegister> {
           desiredAccuracy: LocationAccuracy.high);
 
       // Fetch location name
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
+      List<Placemark> placemarks =
+          await placemarkFromCoordinates(position.latitude, position.longitude);
       Placemark place = placemarks.first;
 
       setState(() {
@@ -150,21 +146,19 @@ class _RepairRegisterState extends State<RepairRegister> {
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(kToolbarHeight),
         child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color.fromARGB(255, 129, 186, 85),
-                const Color.fromARGB(255, 74, 204, 119),
-              ],
-            ),
-          ),
           child: AppBar(
-            title: const Text('Repair Register'),
+            title: const Text('Repair Register',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             centerTitle: true,
-            backgroundColor: Colors.transparent,
+            backgroundColor: const Color.fromARGB(255, 178, 198, 143),
             elevation: 0,
+            // Adding the back button in the app bar
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back),
+              onPressed: () {
+                Navigator.pop(context); // Go back to the previous screen
+              },
+            ),
           ),
         ),
       ),
@@ -174,8 +168,8 @@ class _RepairRegisterState extends State<RepairRegister> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              const Color.fromARGB(255, 129, 186, 85),
-              const Color.fromARGB(255, 73, 124, 186),
+              const Color.fromARGB(255, 197, 174, 100),
+              const Color.fromARGB(255, 184, 103, 76),
             ],
           ),
         ),
@@ -185,202 +179,133 @@ class _RepairRegisterState extends State<RepairRegister> {
             key: _formKey,
             child: ListView(
               children: [
-                Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 400,
-                    child: TextFormField(
-                      controller: _companyNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Company Name',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter company name';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 400,
-                    child: TextFormField(
-                      controller: _companyLicenseController,
-                      decoration: const InputDecoration(
-                        labelText: 'Company License No',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter company license number';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 400,
-                    child: TextFormField(
-                      controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter email';
-                        }
-                        if (!RegExp(r'\S+@\S+\.\S+').hasMatch(value)) {
-                          return 'Please enter a valid email';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 400,
-                    child: TextFormField(
-                      controller: _phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Phone No',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.phone,
-                      maxLength: 10,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter phone number';
-                        }
-                        if (!RegExp(r'^\+?[0-9]{10,15}$').hasMatch(value)) {
-                          return 'Please enter a valid phone number';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 400,
-                    child: TextFormField(
-                      controller: _ownerNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Owner Name',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter owner name';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 400,
-                    child: TextFormField(
-                      controller: _passwordController,
-                      decoration: const InputDecoration(
-                        labelText: 'Password',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter password';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 400,
-                    child: TextFormField(
-                      controller: _confirmpasswordController,
-                      decoration: const InputDecoration(
-                        labelText: 'Confirm Password',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please confirm your password';
-                        }
-                        if (value != _passwordController.text) {
-                          return 'Passwords do not match';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 400,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _currentLocation == null
-                                ? 'Location: Not Set'
-                                : 'Location: $_currentLocation',
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.location_on),
-                          color: Colors.blueAccent,
-                          onPressed: _getCurrentLocation,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                SizedBox(height: 50),
+                _buildTextField(_companyNameController, 'Company Name',
+                    'Please enter company name', Icons.business),
+                SizedBox(height: 20),
+                _buildTextField(
+                    _companyLicenseController,
+                    'Company License No',
+                    'Please enter company license number',
+                    Icons.card_membership),
+                SizedBox(height: 20),
+                _buildTextField(_emailController, 'Email',
+                    'Please enter a valid email', Icons.email,
+                    email: true),
+                SizedBox(height: 20),
+                _buildTextField(_phoneController, 'Phone No',
+                    'Please enter a valid phone number', Icons.phone,
+                    phone: true),
+                SizedBox(height: 20),
+                _buildTextField(_ownerNameController, 'Owner Name',
+                    'Please enter owner name', Icons.person),
+                SizedBox(height: 30),
+                _buildTextField(_passwordController, 'Password',
+                    'Please enter password', Icons.lock,
+                    password: true),
+                SizedBox(height: 20),
+                _buildTextField(_confirmpasswordController, 'Confirm Password',
+                    'Please confirm your password', Icons.lock,
+                    password: true, confirmPassword: true),
+                _buildLocationField(),
                 const SizedBox(height: 32),
-                Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 150,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState?.validate() ?? false) {
-                          registerHandling();
-                        }
-                      },
-                      child: const Text('Register'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        textStyle: const TextStyle(fontSize: 16),
-                        backgroundColor:
-                            const Color.fromARGB(255, 150, 188, 241),
-                      ),
-                    ),
-                  ),
-                ),
+                _buildRegisterButton(),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label,
+      String validationMessage, IconData icon,
+      {bool email = false,
+      bool phone = false,
+      bool password = false,
+      bool confirmPassword = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          prefixIcon: Icon(icon,
+              color: const Color.fromARGB(
+                  255, 36, 29, 29)), // Icon color changed to grey
+          labelText: label,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          filled: true,
+          fillColor: const Color.fromARGB(255, 220, 220, 140),
+        ),
+        obscureText: password || confirmPassword,
+        keyboardType: phone
+            ? TextInputType.phone
+            : email
+                ? TextInputType.emailAddress
+                : TextInputType.text,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return validationMessage;
+          }
+          if (email && !RegExp(r'\S+@\S+\.\S+').hasMatch(value)) {
+            return 'Please enter a valid email';
+          }
+          if (phone && !RegExp(r'^\+?[0-9]{10,15}$').hasMatch(value)) {
+            return 'Please enter a valid phone number';
+          }
+          if (confirmPassword && value != _passwordController.text) {
+            return 'Passwords do not match';
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
+  Widget _buildLocationField() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Text(
+            _currentLocation == null
+                ? 'Location: Not Set'
+                : 'Location: $_currentLocation',
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: const Color.fromARGB(255, 0, 0, 0)),
+          ),
+        ),
+        IconButton(
+          icon: Icon(Icons.location_on,
+              color: const Color.fromARGB(
+                  255, 6, 68, 175)), // Icon color changed to dark blue
+          onPressed: _getCurrentLocation,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRegisterButton() {
+    return Align(
+      alignment: Alignment.center,
+      child: SizedBox(
+        width: 150,
+        child: ElevatedButton(
+          onPressed: () {
+            if (_formKey.currentState?.validate() ?? false) {
+              registerHandling();
+            }
+          },
+          child: const Text('Register', style: TextStyle(fontSize: 18)),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            textStyle: const TextStyle(fontSize: 16),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
           ),
         ),
       ),

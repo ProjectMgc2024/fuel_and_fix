@@ -47,6 +47,34 @@ class _ManageUsersPageState extends State<ManageUser> {
     });
   }
 
+  // ❌ Show confirmation dialog before deleting a user
+  void _showDeleteConfirmation(int index) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Confirm Deletion'),
+          content: Text('Are you sure you want to delete this user?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                _deleteUser(index); // Proceed to delete
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // ❌ Delete a user from Firestore and update the local list
   void _deleteUser(int index) async {
     String userId = filteredUsers[index]['id']; // Get the Firestore document ID
@@ -55,7 +83,8 @@ class _ManageUsersPageState extends State<ManageUser> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('User deleted successfully'),
-          backgroundColor: Colors.green,
+          backgroundColor: Colors.greenAccent,
+          duration: Duration(seconds: 2),
         ),
       );
       _fetchUsers(); // Refresh the user list
@@ -63,7 +92,8 @@ class _ManageUsersPageState extends State<ManageUser> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to delete user: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.redAccent,
+          duration: Duration(seconds: 2),
         ),
       );
     }
@@ -74,24 +104,33 @@ class _ManageUsersPageState extends State<ManageUser> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Manage Users'),
-        backgroundColor: Colors.blueGrey,
+        backgroundColor: const Color.fromARGB(255, 103, 179, 189),
+        elevation: 4,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 🔍 Search bar
-            TextField(
-              controller: searchController,
-              decoration: InputDecoration(
-                labelText: 'Search Users',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+            // 🔍 Stylish Search Bar
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.teal.shade50,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [BoxShadow(blurRadius: 10, color: Colors.grey)],
+              ),
+              child: TextField(
+                controller: searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search by Username...',
+                  prefixIcon: Icon(Icons.search, color: Colors.teal),
+                  border: InputBorder.none,
+                ),
               ),
             ),
             SizedBox(height: 20),
-            // 📜 User List
+            // 📜 User List with Stylish Cards
             Expanded(
               child: filteredUsers.isEmpty
                   ? Center(child: CircularProgressIndicator())
@@ -100,21 +139,28 @@ class _ManageUsersPageState extends State<ManageUser> {
                       itemBuilder: (context, index) {
                         Map<String, dynamic> user = filteredUsers[index];
                         return Card(
-                          elevation: 4,
-                          margin: EdgeInsets.symmetric(vertical: 8),
+                          elevation: 5,
+                          margin: EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
                           child: ListTile(
-                            title: Text(user['username']),
-                            subtitle: Text(user['email']),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: Icon(Icons.delete),
-                                  onPressed: () {
-                                    _deleteUser(index);
-                                  },
-                                ),
-                              ],
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 15),
+                            title: Text(
+                              user['username'],
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 18),
+                            ),
+                            subtitle: Text(
+                              user['email'],
+                              style:
+                                  TextStyle(fontSize: 14, color: Colors.grey),
+                            ),
+                            trailing: IconButton(
+                              icon:
+                                  Icon(Icons.delete_forever, color: Colors.red),
+                              onPressed: () => _showDeleteConfirmation(index),
                             ),
                           ),
                         );

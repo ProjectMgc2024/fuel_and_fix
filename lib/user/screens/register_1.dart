@@ -16,7 +16,6 @@ class _VehicleRegistrationPageState extends State<VehicleRegistrationPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _vehicleTypeController = TextEditingController();
   final TextEditingController _registrationController = TextEditingController();
-  final TextEditingController _locationController = TextEditingController();
   final TextEditingController _licenceNumberController =
       TextEditingController();
 
@@ -141,25 +140,6 @@ class _VehicleRegistrationPageState extends State<VehicleRegistrationPage> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Location Input
-                    SizedBox(
-                      width: 400,
-                      child: TextFormField(
-                        controller: _locationController,
-                        decoration: const InputDecoration(
-                          labelText: 'Location',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.location_on), // Location icon
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter a location';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 20),
                     // Register Button with normal size
                     ElevatedButton(
                       onPressed: () {
@@ -174,12 +154,11 @@ class _VehicleRegistrationPageState extends State<VehicleRegistrationPage> {
                             context,
                             MaterialPageRoute(
                                 builder: (context) => Register(
-                                      location: _locationController.text,
                                       license: _licenceNumberController.text,
                                       registration:
                                           _registrationController.text,
                                       vehicleType: _vehicleTypeController.text,
-                                    )), // Replace `NextScreen` with the name of your next screen widget
+                                    )),
                           );
                         }
                       },

@@ -1,150 +1,18 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:fuel_and_fix/user/screens/feedback.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-class VehicleRepairCategories extends StatelessWidget {
+class WorkshopScreen extends StatefulWidget {
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Vehicle Repair Services',
-          style: TextStyle(color: Colors.white),
-        ),
-        centerTitle: true,
-        elevation: 10,
-        backgroundColor: Color.fromARGB(255, 83, 89, 162),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: WorkshopListScreen(),
-      ),
-    );
-  }
+  _WorkshopScreenState createState() => _WorkshopScreenState();
 }
 
-class WorkshopListScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder(
-      stream: FirebaseFirestore.instance
-          .collection('repair')
-          .where('status', isEqualTo: true)
-          .snapshots(),
-      builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        }
-
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
-
-        final workshops = snapshot.data?.docs ?? [];
-        if (workshops.isEmpty) {
-          return Center(child: Text('No active workshops available.'));
-        }
-
-        return ListView.builder(
-          itemCount: workshops.length,
-          itemBuilder: (context, index) {
-            final workshop = workshops[index];
-            return WorkshopCard(workshop: workshop);
-          },
-        );
-      },
-    );
-  }
-}
-
-class WorkshopCard extends StatelessWidget {
-  final QueryDocumentSnapshot workshop;
-
-  WorkshopCard({required this.workshop});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        showDialog(
-          context: context,
-          builder: (context) => RequestDialog(workshop: workshop),
-        );
-      },
-      child: Card(
-        margin: EdgeInsets.all(12),
-        elevation: 12,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Color.fromARGB(243, 21, 30, 108),
-                Color.fromARGB(255, 90, 23, 23),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(15),
-          ),
-          padding: EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Text(
-                  workshop['companyName'] ?? 'No Name',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ),
-              SizedBox(height: 15),
-              _buildInfoRow(Icons.person, 'Owner', workshop['ownerName']),
-              _buildInfoRow(Icons.phone, 'Contact', workshop['phoneNo']),
-              _buildInfoRow(Icons.car_repair, 'Vehicle Types',
-                  workshop['vehicleTypes']?.join(', ')),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String label, String? value) {
-    return Row(
-      children: [
-        Icon(icon, color: Colors.white),
-        SizedBox(width: 8),
-        Text('$label: ${value ?? 'N/A'}',
-            style: TextStyle(color: Colors.white)),
-      ],
-    );
-  }
-}
-
-class RequestDialog extends StatefulWidget {
-  final QueryDocumentSnapshot workshop;
-
-  RequestDialog({required this.workshop});
-
-  @override
-  _RequestDialogState createState() => _RequestDialogState();
-}
-
-class _RequestDialogState extends State<RequestDialog> {
-  TextEditingController descriptionController = TextEditingController();
+class _WorkshopScreenState extends State<WorkshopScreen> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late Razorpay _razorpay;
-  String? userUid = FirebaseAuth.instance.currentUser?.uid;
-  String? selectedIssue;
-
-  final List<String> issues = ["Puncture", "Breakdown", "Engine Failure"];
 
   @override
   void initState() {
@@ -161,140 +29,159 @@ class _RequestDialogState extends State<RequestDialog> {
     super.dispose();
   }
 
-  void _handlePaymentSuccess(PaymentSuccessResponse response) {
-    _saveRequestToFirestore(
-      isPayment: true,
-      paymentId: response.paymentId,
-    );
+  Future<List<Map<String, dynamic>>> _getWorkshops() async {
+    QuerySnapshot querySnapshot = await _firestore
+        .collection('repair')
+        .where('status', isEqualTo: true)
+        .get();
+
+    List<Map<String, dynamic>> workshops = [];
+    for (var doc in querySnapshot.docs) {
+      workshops.add({
+        'id': doc.id,
+        ...doc.data() as Map<String, dynamic>,
+      });
+    }
+    return workshops;
+  }
+
+  Future<void> _openGoogleMaps(
+      {required double latitude, required double longitude}) async {
+    final Uri googleMapsUri = Uri.parse(
+        "https://www.google.com/maps/search/?api=1&query=$latitude,$longitude");
+
+    if (await canLaunch(googleMapsUri.toString())) {
+      await launch(googleMapsUri.toString());
+    } else {
+      throw "Could not launch Google Maps";
+    }
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    await _firestore.collection('user').doc(user.uid).collection('orders').add({
+      'ownerId': user.uid,
+      'paymentAmount': 500,
+      'paymentId': response.paymentId,
+      'service': 'repair',
+      'time': DateTime.now(),
+      'description': 'Repair service payment',
+    });
+
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Payment successful! Request sent.')),
+      SnackBar(content: Text("Payment Successful!")),
     );
-    Navigator.pop(context);
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Payment failed. Please try again.')),
+      SnackBar(content: Text("Payment Failed: ${response.message}")),
     );
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-          content: Text('External wallet selected: ${response.walletName}')),
+          content: Text("External Wallet Selected: ${response.walletName}")),
     );
   }
 
-  void _initiatePayment() {
+  void _payWithRazorpay(String userId) {
     var options = {
-      'key': 'rzp_test_D5Vh3hyi1gRBV0', // Razorpay API key
-      'amount': 600 * 100, // Amount in paise
-      'currency': 'INR',
-      'name': widget.workshop['companyName'],
-      'description': 'Vehicle Repair Request',
+      'key': 'rzp_test_D5Vh3hyi1gRBV0',
+      'amount': 250, // Amount in paise (500.00 INR)
+      'name': 'Repair Service',
+      'description': 'Repair service payment',
       'prefill': {
         'contact': '1234567890',
-        'email': 'test@example.com',
+        'email': 'user@example.com',
       },
     };
 
     try {
       _razorpay.open(options);
     } catch (e) {
-      debugPrint('Error: $e');
+      debugPrint(e.toString());
     }
-  }
-
-  void _saveRequestToFirestore({required bool isPayment, String? paymentId}) {
-    if (userUid == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please log in to send a request.')),
-      );
-      return;
-    }
-
-    String ownerId = widget.workshop['ownerId'] ?? 'N/A';
-    int paymentAmount = 600;
-    String service = selectedIssue ?? 'Unknown';
-    String time = DateTime.now().toLocal().toString();
-    String description = descriptionController.text;
-
-    FirebaseFirestore.instance
-        .collection('user')
-        .doc(userUid)
-        .collection('orders')
-        .add({
-      'ownerId': ownerId,
-      'paymentAmount': paymentAmount,
-      'paymentId': paymentId,
-      'service': service,
-      'time': time,
-      'description': description,
-      'status': true,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
-
-    FirebaseFirestore.instance
-        .collection('repair')
-        .doc(widget.workshop.id)
-        .collection('request')
-        .add({
-      'isPayment': isPayment,
-      'description': description,
-      'paymentId': paymentId,
-      'status': true,
-      'timestamp': FieldValue.serverTimestamp(),
-      'userId': userUid,
-      'issue': selectedIssue,
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text('Send Request to ${widget.workshop['companyName']}'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                labelText: 'Select Issue',
-                border: OutlineInputBorder(),
-              ),
-              value: selectedIssue,
-              items: issues
-                  .map((issue) => DropdownMenuItem(
-                        value: issue,
-                        child: Text(issue),
-                      ))
-                  .toList(),
-              onChanged: (value) {
-                setState(() {
-                  selectedIssue = value;
-                });
+    return Scaffold(
+      appBar: AppBar(title: Text('Workshops')),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _getWorkshops(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Center(child: Text('No active workshops available.'));
+          } else {
+            List<Map<String, dynamic>> workshops = snapshot.data!;
+
+            return ListView.builder(
+              itemCount: workshops.length,
+              itemBuilder: (context, index) {
+                var workshop = workshops[index];
+                return Card(
+                  margin: EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                  child: ListTile(
+                    leading: Image.network(workshop['companyLogo']),
+                    title: Text(workshop['companyName']),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                            'Location: ${workshop['location_name'] ?? 'Not Available'}'),
+                        Text('Phone: ${workshop['phoneNo']}'),
+                        Text('Service: ${workshop['service']}'),
+                      ],
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.location_on),
+                          onPressed: () => _openGoogleMaps(
+                            latitude: workshop['latitude'],
+                            longitude: workshop['longitude'],
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.payment),
+                          onPressed: () => _payWithRazorpay(
+                            FirebaseAuth.instance.currentUser!.uid,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.feedback),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FeedbackScreen(
+                                  stationId: workshop['id'],
+                                  stationName: workshop['companyName'],
+                                  service: 'repair',
+                                  userId:
+                                      FirebaseAuth.instance.currentUser?.uid,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                );
               },
-            ),
-            SizedBox(height: 20),
-            TextField(
-              controller: descriptionController,
-              decoration: InputDecoration(
-                labelText: 'Description (Optional)',
-                hintText: 'Enter details about the repair or issue',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _initiatePayment,
-              child: Text('Pay & Send Request'),
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-              ),
-            ),
-          ],
-        ),
+            );
+          }
+        },
       ),
     );
   }

@@ -42,7 +42,6 @@ class _ProfileScreenState extends State<EditProfile> {
   final TextEditingController licenseController = TextEditingController();
   final TextEditingController registrationController = TextEditingController();
   final TextEditingController vehicleTypeController = TextEditingController();
-  final TextEditingController locationController = TextEditingController();
 
   final _formKey = GlobalKey<FormState>();
   final CloudinaryService cloudinaryService =
@@ -69,7 +68,6 @@ class _ProfileScreenState extends State<EditProfile> {
             usernameController.text = profileData['username'] ?? '';
             phoneNumberController.text = profileData['phoneno'] ?? '';
             emailController.text = profileData['email'] ?? '';
-            locationController.text = profileData['location'] ?? '';
             registrationController.text = profileData['registrationNo'] ?? '';
             licenseController.text = profileData['license'] ?? '';
             vehicleTypeController.text = profileData['vehicleType'] ?? '';
@@ -113,7 +111,6 @@ class _ProfileScreenState extends State<EditProfile> {
             'phoneno': phoneNumberController.text.trim(),
             'email': emailController.text.trim(),
             'license': licenseController.text.trim(),
-            'location': locationController.text.trim(),
             'registrationNo': registrationController.text.trim(),
             'vehicleType': vehicleTypeController.text.trim(),
             'userImage':
@@ -234,8 +231,7 @@ class _ProfileScreenState extends State<EditProfile> {
                         licenseController, 'License', Icons.card_membership),
                     _buildTextFormField(registrationController,
                         'Registration Number', Icons.details),
-                    _buildTextFormField(
-                        locationController, 'Location', Icons.location_on),
+
                     _buildTextFormField(vehicleTypeController, 'Vehicle Type',
                         Icons.car_repair),
 
@@ -293,7 +289,6 @@ class _ProfileScreenState extends State<EditProfile> {
       usernameController.clear();
       phoneNumberController.clear();
       emailController.clear();
-      locationController.clear();
       registrationController.clear();
       licenseController.clear();
       vehicleTypeController.clear();

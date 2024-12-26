@@ -4,9 +4,11 @@ import 'package:fuel_and_fix/user/screens/about.dart';
 import 'package:fuel_and_fix/user/screens/fuel.dart';
 import 'package:fuel_and_fix/user/screens/history.dart';
 import 'package:fuel_and_fix/user/screens/profile.dart';
+import 'package:fuel_and_fix/user/screens/register_1.dart';
 import 'package:fuel_and_fix/user/screens/repair.dart';
 import 'package:fuel_and_fix/user/screens/setting.dart';
 import 'package:fuel_and_fix/user/screens/tow.dart';
+import 'package:fuel_and_fix/user/screens/viewfeedback.dart';
 
 class HomeScreen extends StatelessWidget {
   @override
@@ -90,13 +92,13 @@ class HomeScreen extends StatelessWidget {
                   // Settings Icon
                   IconButton(
                     iconSize: 25,
-                    icon: Icon(Icons.settings, color: Colors.white),
+                    icon: Icon(Icons.feedback, color: Colors.white),
                     onPressed: () {
                       // Navigate to SettingsPage
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (context) => OrderHistoryPage()),
+                            builder: (context) => ViewFeedbackPage()),
                       );
                     },
                   ),
@@ -183,8 +185,7 @@ class HomeScreen extends StatelessWidget {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                        builder: (context) => VehicleRepairCategories()),
+                    MaterialPageRoute(builder: (context) => WorkshopScreen()),
                   );
                 },
               ),

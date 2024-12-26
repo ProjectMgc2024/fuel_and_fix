@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../SERVICES/firebase_provider_auth.dart';
 
 class TowRegister extends StatefulWidget {
@@ -10,9 +11,8 @@ class TowRegister extends StatefulWidget {
 }
 
 class _TowRegisterState extends State<TowRegister> {
-  final _formKey = GlobalKey<FormState>(); // Key for form validation
+  final _formKey = GlobalKey<FormState>();
 
-  // TextEditingController for each input field
   final TextEditingController _companyNameController = TextEditingController();
   final TextEditingController _companyLicenseController =
       TextEditingController();
@@ -22,6 +22,11 @@ class _TowRegisterState extends State<TowRegister> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmpasswordController =
       TextEditingController();
+
+  String? _currentLocation;
+  double? _latitude;
+  double? _longitude;
+  String? _locationName;
 
   Future<void> registerHandling() async {
     try {
@@ -34,13 +39,16 @@ class _TowRegisterState extends State<TowRegister> {
         cname: _companyNameController.text,
         clicense: _companyLicenseController.text,
         collection: 'tow',
+        additionalData: {
+          'latitude': _latitude,
+          'longitude': _longitude,
+          'location_name': _locationName,
+        },
       );
-      // Show success message or navigate to another page
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Registration Successful')),
       );
     } catch (e) {
-      // Handle errors, show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Registration Failed: $e')),
       );
@@ -48,9 +56,82 @@ class _TowRegisterState extends State<TowRegister> {
     Navigator.pop(context);
   }
 
+  Future<void> _getCurrentLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        bool? userDecision = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Enable Location Services'),
+            content: Text(
+                'Location services are disabled. Please enable them to continue.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop(true);
+                },
+                child: Text('Enable'),
+              ),
+            ],
+          ),
+        );
+        if (context.mounted) {
+          if (userDecision == true) {
+            await Geolocator.openLocationSettings();
+          }
+        }
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Location permissions are denied.')),
+          );
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Location permissions are permanently denied.')),
+        );
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+
+      // Fetch location name
+      List<Placemark> placemarks =
+          await placemarkFromCoordinates(position.latitude, position.longitude);
+      Placemark place = placemarks.first;
+
+      setState(() {
+        _currentLocation = '${place.locality}, ${place.country}';
+      });
+
+      // Save location details
+      _latitude = position.latitude;
+      _longitude = position.longitude;
+      _locationName = '${place.locality}, ${place.country}';
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to get location: $e')),
+      );
+    }
+  }
+
   @override
   void dispose() {
-    // Dispose of controllers when the widget is disposed
     _companyNameController.dispose();
     _companyLicenseController.dispose();
     _emailController.dispose();
@@ -65,24 +146,19 @@ class _TowRegisterState extends State<TowRegister> {
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(kToolbarHeight),
         child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color.fromARGB(
-                    255, 129, 186, 85), // Start color (top left)
-                const Color.fromARGB(
-                    255, 74, 204, 119), // End color (bottom right)
-              ],
-            ),
-          ),
           child: AppBar(
-            title: const Text('Tow Register'),
+            title: const Text('Tow Register',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             centerTitle: true,
-            backgroundColor:
-                Colors.transparent, // Make AppBar background transparent
-            elevation: 0, // Remove AppBar's shadow
+            backgroundColor: const Color.fromARGB(255, 175, 177, 125),
+            elevation: 0,
+            // Adding the back button in the app bar
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back),
+              onPressed: () {
+                Navigator.pop(context); // Go back to the previous screen
+              },
+            ),
           ),
         ),
       ),
@@ -92,9 +168,8 @@ class _TowRegisterState extends State<TowRegister> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              const Color.fromARGB(255, 129, 186, 85), // Start color (top left)
-              const Color.fromARGB(
-                  255, 73, 124, 186), // End color (bottom right)
+              const Color.fromARGB(255, 197, 174, 100),
+              const Color.fromARGB(255, 184, 103, 76),
             ],
           ),
         ),
@@ -104,207 +179,133 @@ class _TowRegisterState extends State<TowRegister> {
             key: _formKey,
             child: ListView(
               children: [
-                Align(
-                  alignment: Alignment
-                      .center, // You can align it left, center, or right
-                  child: SizedBox(
-                    width: 400, // Adjust this value for the desired width
-                    child: // Company Name Field
-                        TextFormField(
-                      controller: _companyNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Company Name',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter company name';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                Align(
-                  alignment: Alignment
-                      .center, // You can align it left, center, or right
-                  child: SizedBox(
-                    width: 400, // Adjust this value for the desired width
-                    child: // Company License Number Field
-                        TextFormField(
-                      controller: _companyLicenseController,
-                      decoration: const InputDecoration(
-                        labelText: 'Company License No',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter company license number';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                Align(
-                  alignment: Alignment
-                      .center, // You can align it left, center, or right
-                  child: SizedBox(
-                    width: 400, // Adjust this value for the desired width
-                    child: // Email Field
-                        TextFormField(
-                      controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter email';
-                        }
-                        if (!RegExp(r'\S+@\S+\.\S+').hasMatch(value)) {
-                          return 'Please enter a valid email';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                Align(
-                  alignment: Alignment
-                      .center, // You can align it left, center, or right
-                  child: SizedBox(
-                    width: 400, // Adjust this value for the desired width
-                    child: // Phone Number Field
-                        TextFormField(
-                      controller: _phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Phone No',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.phone,
-                      maxLength: 10,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter phone number';
-                        }
-                        if (!RegExp(r'^\+?[0-9]{10,15}$').hasMatch(value)) {
-                          return 'Please enter a valid phone number';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                Align(
-                  alignment: Alignment
-                      .center, // You can align it left, center, or right
-                  child: SizedBox(
-                    width: 400, // Adjust this value for the desired width
-                    child: // Owner Name Field
-                        TextFormField(
-                      controller: _ownerNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Owner Name',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter owner name';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                Align(
-                  alignment: Alignment
-                      .center, // You can align it left, center, or right
-                  child: SizedBox(
-                    width: 400, // Adjust this value for the desired width
-                    child: // Password Field
-                        TextFormField(
-                      controller: _passwordController,
-                      decoration: const InputDecoration(
-                        labelText: 'Password',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter password';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                Align(
-                  alignment: Alignment
-                      .center, // You can align it left, center, or right
-                  child: SizedBox(
-                    width: 400, // Adjust this value for the desired width
-                    child: // Confirm Password Field
-                        TextFormField(
-                      controller: _confirmpasswordController,
-                      decoration: const InputDecoration(
-                        labelText: 'Confirm Password',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter password';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
+                SizedBox(height: 50),
+                _buildTextField(_companyNameController, 'Company Name',
+                    'Please enter company name', Icons.business),
+                SizedBox(height: 20),
+                _buildTextField(
+                    _companyLicenseController,
+                    'Company License No',
+                    'Please enter company license number',
+                    Icons.card_membership),
+                SizedBox(height: 20),
+                _buildTextField(_emailController, 'Email',
+                    'Please enter a valid email', Icons.email,
+                    email: true),
+                SizedBox(height: 20),
+                _buildTextField(_phoneController, 'Phone No',
+                    'Please enter a valid phone number', Icons.phone,
+                    phone: true),
+                SizedBox(height: 20),
+                _buildTextField(_ownerNameController, 'Owner Name',
+                    'Please enter owner name', Icons.person),
+                SizedBox(height: 30),
+                _buildTextField(_passwordController, 'Password',
+                    'Please enter password', Icons.lock,
+                    password: true),
+                SizedBox(height: 20),
+                _buildTextField(_confirmpasswordController, 'Confirm Password',
+                    'Please confirm your password', Icons.lock,
+                    password: true, confirmPassword: true),
+                _buildLocationField(),
                 const SizedBox(height: 32),
-
-                // Register Button
-                // Reduced width for Register Button
-
-                Align(
-                  alignment: Alignment.center,
-                  child: SizedBox(
-                    width: 150, // Fixed width for the button
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState?.validate() ?? false) {
-                          if (_passwordController.text ==
-                              _confirmpasswordController.text) {
-                            registerHandling();
-                          } else {
-                            // Show an alert or message if passwords don't match
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Passwords do not match')),
-                            );
-                          }
-                        }
-                      },
-                      child: const Text('Register'),
-                      style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          textStyle: const TextStyle(fontSize: 16),
-                          backgroundColor:
-                              const Color.fromARGB(255, 150, 188, 241)),
-                    ),
-                  ),
-                ),
+                _buildRegisterButton(),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label,
+      String validationMessage, IconData icon,
+      {bool email = false,
+      bool phone = false,
+      bool password = false,
+      bool confirmPassword = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          prefixIcon: Icon(icon,
+              color: const Color.fromARGB(
+                  255, 36, 29, 29)), // Icon color changed to grey
+          labelText: label,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          filled: true,
+          fillColor: const Color.fromARGB(255, 201, 201, 160),
+        ),
+        obscureText: password || confirmPassword,
+        keyboardType: phone
+            ? TextInputType.phone
+            : email
+                ? TextInputType.emailAddress
+                : TextInputType.text,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return validationMessage;
+          }
+          if (email && !RegExp(r'\S+@\S+\.\S+').hasMatch(value)) {
+            return 'Please enter a valid email';
+          }
+          if (phone && !RegExp(r'^\+?[0-9]{10,15}$').hasMatch(value)) {
+            return 'Please enter a valid phone number';
+          }
+          if (confirmPassword && value != _passwordController.text) {
+            return 'Passwords do not match';
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
+  Widget _buildLocationField() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Text(
+            _currentLocation == null
+                ? 'Location: Not Set'
+                : 'Location: $_currentLocation',
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: const Color.fromARGB(255, 0, 0, 0)),
+          ),
+        ),
+        IconButton(
+          icon: Icon(Icons.location_on,
+              color: const Color.fromARGB(
+                  255, 6, 68, 175)), // Icon color changed to dark blue
+          onPressed: _getCurrentLocation,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRegisterButton() {
+    return Align(
+      alignment: Alignment.center,
+      child: SizedBox(
+        width: 150,
+        child: ElevatedButton(
+          onPressed: () {
+            if (_formKey.currentState?.validate() ?? false) {
+              registerHandling();
+            }
+          },
+          child: const Text('Register', style: TextStyle(fontSize: 18)),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            textStyle: const TextStyle(fontSize: 16),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
           ),
         ),
       ),

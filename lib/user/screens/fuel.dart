@@ -3,9 +3,12 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:fuel_and_fix/user/screens/feedback.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:fuel_and_fix/user/screens/home_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geocoding/geocoding.dart'; // For reverse geocoding
 
 class FuelStationList extends StatefulWidget {
   @override
@@ -22,6 +25,10 @@ class _FuelStationListState extends State<FuelStationList> {
   late Razorpay _razorpay;
   String? oId;
   String? selectedService;
+  Position? currentPosition;
+  String? _locationName;
+  double? _latitude;
+  double? _longitude;
 
   @override
   void initState() {
@@ -71,7 +78,7 @@ class _FuelStationListState extends State<FuelStationList> {
               key: (fuel) => fuel['type'],
               value: (fuel) => fuel['price'],
             ),
-            'service': doc['service'] ?? '', // Fetch service field
+            'service': doc['service'] ?? '',
           };
         }).toList();
       });
@@ -99,6 +106,64 @@ class _FuelStationListState extends State<FuelStationList> {
     });
   }
 
+  Future<void> fetchCurrentLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return Future.error('Location services are disabled.');
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('Location permissions are denied.');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error(
+          'Location permissions are permanently denied, we cannot request permissions.');
+    }
+
+    Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+      Placemark place = placemarks.first;
+
+      setState(() {
+        _latitude = position.latitude;
+        _longitude = position.longitude;
+        _locationName = '${place.locality}, ${place.country}';
+      });
+
+      // Save location details
+      if (currentUserId != null) {
+        FirebaseFirestore.instance
+            .collection('user')
+            .doc(currentUserId)
+            .update({
+          'additionalData': {
+            'latitude': _latitude,
+            'longitude': _longitude,
+            'location_name': _locationName,
+          },
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to get location: $e')),
+      );
+    }
+  }
+
   Future<void> initiatePayment(String ownerId, String service) async {
     setState(() {
       oId = ownerId;
@@ -107,7 +172,7 @@ class _FuelStationListState extends State<FuelStationList> {
 
     var options = {
       'key': 'rzp_test_D5Vh3hyi1gRBV0',
-      'amount': (totalPrice * 100).toInt(), // Amount in paisa
+      'amount': (totalPrice * 100).toInt(),
       'name': 'Fuel & Fix',
       'description': 'Fuel purchase',
       'prefill': {
@@ -185,7 +250,7 @@ class _FuelStationListState extends State<FuelStationList> {
         'fuelType': selectedFuel,
         'litres': quantity,
         'paymentId': paymentId,
-        'service': selectedService, // Save service in orders
+        'service': selectedService,
       });
     } catch (e) {
       print('Error saving order details: $e');
@@ -211,16 +276,37 @@ class _FuelStationListState extends State<FuelStationList> {
       builder: (context) {
         return AlertDialog(
           title: Text('Select Quantity'),
-          content: TextField(
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(labelText: 'Enter Quantity in Liters'),
-            onChanged: (value) {
-              final qty = double.tryParse(value);
-              final pre = double.tryParse(price.toString());
-              if (qty != null && qty > 0) {
-                calculatePrice(fuelType, pre!, qty);
-              }
-            },
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                keyboardType: TextInputType.number,
+                decoration:
+                    InputDecoration(labelText: 'Enter Quantity in Liters'),
+                onChanged: (value) {
+                  final qty = double.tryParse(value);
+                  final pre = double.tryParse(price.toString());
+                  if (qty != null && qty > 0) {
+                    calculatePrice(fuelType, pre!, qty);
+                  }
+                },
+              ),
+              SizedBox(height: 10),
+              ElevatedButton.icon(
+                icon: Icon(Icons.location_on),
+                label: Text('Fetch Current Location'),
+                onPressed: () async {
+                  await fetchCurrentLocation();
+                  Navigator.pop(context);
+                  _showQuantityDialog(fuelType, price, ownerId, service);
+                },
+              ),
+              if (_locationName != null) ...[
+                SizedBox(height: 10),
+                Text('Current Location: $_locationName',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ],
           ),
           actions: [
             TextButton(
@@ -370,6 +456,29 @@ class _FuelStationListState extends State<FuelStationList> {
                               ),
                             );
                           }).toList(),
+                        ),
+                        SizedBox(height: 10),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FeedbackScreen(
+                                  stationId: station['id'],
+                                  stationName: station['name'],
+                                  service: 'fuel',
+                                  userId: currentUserId,
+                                ),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'Give Feedback',
+                            style: TextStyle(
+                              color: Colors.blue,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ],
                     ),

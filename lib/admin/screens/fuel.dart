@@ -7,13 +7,8 @@ class ManageFuelStation extends StatefulWidget {
 }
 
 class _ManageFuelStationsPageState extends State<ManageFuelStation> {
-  // Firestore instance
   final FirebaseFirestore _firebaseFirestore = FirebaseFirestore.instance;
   String searchQuery = '';
-  int currentPage = 0;
-  final int itemsPerPage = 3;
-
-  // Fuel Station data from Firestore
   late Future<List<Map<String, dynamic>>> fuelStations;
 
   @override
@@ -27,7 +22,7 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation> {
     try {
       QuerySnapshot querySnapshot =
           await _firebaseFirestore.collection('fuel').get();
-      List<Map<String, dynamic>> stations = querySnapshot.docs.map((doc) {
+      return querySnapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         return {
           'id': doc.id,
@@ -41,7 +36,6 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation> {
           'fuels': List<Map<String, dynamic>>.from(data['fuels'] ?? []),
         };
       }).toList();
-      return stations;
     } catch (e) {
       print('Error fetching fuel stations: $e');
       return [];
@@ -53,7 +47,8 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Manage Fuel Stations'),
-        backgroundColor: Colors.blueGrey,
+        backgroundColor: const Color.fromARGB(255, 101, 186, 139),
+        elevation: 6,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -99,6 +94,7 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation> {
     );
   }
 
+  // Search bar widget
   Widget _buildSearchBar() {
     return TextField(
       onChanged: (value) {
@@ -108,11 +104,16 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation> {
       },
       decoration: InputDecoration(
         labelText: 'Search by company name or owner',
-        border: OutlineInputBorder(),
+        prefixIcon: Icon(Icons.search, color: Colors.teal),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(30),
+          borderSide: BorderSide(color: Colors.teal),
+        ),
       ),
     );
   }
 
+  // Filter fuel stations based on search query
   List<Map<String, dynamic>> _getFilteredStations(
       List<Map<String, dynamic>> stations) {
     return stations.where((station) {
@@ -125,10 +126,14 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation> {
     }).toList();
   }
 
+  // Fuel station card widget
   Widget _fuelStationCard(BuildContext context, Map<String, dynamic> station) {
     return Card(
-      elevation: 4,
-      margin: EdgeInsets.symmetric(vertical: 10),
+      elevation: 5,
+      margin: EdgeInsets.symmetric(vertical: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: ExpansionTile(
         leading: station['companyLogo'] != ''
             ? Image.network(
@@ -137,29 +142,26 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation> {
                 height: 50,
                 fit: BoxFit.cover,
               )
-            : Icon(Icons.local_gas_station, color: Colors.blueGrey),
+            : Icon(Icons.local_gas_station, color: Colors.teal),
         title: Text(
           station['companyName'],
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          style: TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 18, color: Colors.teal),
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Owner: ${station['ownerName']}'),
-            Text('License: ${station['companyLicense']}'),
-            Text('Phone: ${station['phoneNo']}'),
-          ],
+        subtitle: Text(
+          'Owner: ${station['ownerName']}',
+          style: TextStyle(fontSize: 14, color: Colors.grey),
         ),
         children: [
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(12.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Employees:',
                   style: TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                      fontWeight: FontWeight.bold, color: Colors.teal),
                 ),
                 SizedBox(height: 8),
                 ...station['employees'].map<Widget>((employee) {
@@ -176,15 +178,15 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation> {
                           Text('Role: ${employee['employeeRole'] ?? 'N/A'}'),
                         ],
                       ),
-                      leading: Icon(Icons.person, color: Colors.blueGrey),
+                      leading: Icon(Icons.person, color: Colors.teal),
                     ),
                   );
                 }).toList(),
                 SizedBox(height: 20),
                 Text(
-                  'Fuels:',
+                  'Fuels Available:',
                   style: TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                      fontWeight: FontWeight.bold, color: Colors.teal),
                 ),
                 SizedBox(height: 8),
                 ...station['fuels'].map<Widget>((fuel) {
@@ -218,6 +220,7 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation> {
     );
   }
 
+  // Confirmation dialog for fuel station deletion
   void _confirmDeleteFuelStation(BuildContext context, String stationId) {
     showDialog(
       context: context,

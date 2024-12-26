@@ -52,7 +52,6 @@ class ProfileScreen extends StatelessWidget {
               final userEmail = profileData['email'] ?? 'noemail@gmail.com';
               final userPhoneno = profileData['phoneno'] ?? '999999999';
               final userName = profileData['username'] ?? 'Unknown';
-              final location = profileData['location'] ?? 'unknown';
               final licenseNo = profileData['license'] ?? 'KL000000';
               final registrationNo =
                   profileData['registrationNo'] ?? 'KL1399999';
@@ -138,7 +137,7 @@ class ProfileScreen extends StatelessWidget {
                               Icons.credit_card, 'License No', licenseNo),
                           Divider(thickness: 1, color: Colors.teal),
                           _buildProfileInfoRow(
-                              Icons.location_on, 'Location ', location),
+                              Icons.card_travel, 'Vehicle Type', vehicleType),
                           Divider(thickness: 1, color: Colors.teal),
                         ],
                       ),

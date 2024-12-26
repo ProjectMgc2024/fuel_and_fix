@@ -39,7 +39,7 @@ class _RepairPageState extends State<RepairPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Manage Repair Shops'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: const Color.fromARGB(255, 110, 92, 140),
         centerTitle: true,
         elevation: 5.0,
         shape: RoundedRectangleBorder(

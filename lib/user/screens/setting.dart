@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/user/screens/login_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class Settings extends StatefulWidget {
-  const Settings({super.key});
+class Setting extends StatefulWidget {
+  const Setting({super.key});
 
   @override
   _SettingsPageState createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<Settings> {
+class _SettingsPageState extends State<Setting> {
   bool _notificationsEnabled = true;
   bool _isAppUpdateAvailable = false;
   bool _isDarkModeEnabled = false; // New variable for dark mode toggle
@@ -192,5 +192,5 @@ class _SettingsPageState extends State<Settings> {
 }
 
 void main() {
-  runApp(const Settings());
+  runApp(const Setting());
 }

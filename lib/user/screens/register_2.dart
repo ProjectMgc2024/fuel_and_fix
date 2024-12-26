@@ -8,13 +8,12 @@ class Register extends StatefulWidget {
   final String license;
   final String vehicleType;
   final String registration;
-  final String location;
-  const Register(
-      {super.key,
-      required this.license,
-      required this.vehicleType,
-      required this.registration,
-      required this.location});
+  const Register({
+    super.key,
+    required this.license,
+    required this.vehicleType,
+    required this.registration,
+  });
 
   @override
   State<Register> createState() => _RegisterState();
@@ -59,7 +58,7 @@ class _RegisterState extends State<Register> {
 
     // Basic email format validation
     final emailRegExp =
-        RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+        RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\$');
     if (!emailRegExp.hasMatch(value)) {
       return 'Enter a valid email address';
     }
@@ -98,15 +97,15 @@ class _RegisterState extends State<Register> {
       print('Phone Number: ${phoneController.text}');
 
       await UserAuthServices().register(
-          context: context,
-          username: usernameController.text,
-          phoneno: passwordController.text,
-          email: emailController.text,
-          password: passwordController.text,
-          location: widget.location,
-          license: widget.license,
-          registrationNo: widget.registration,
-          vehicleType: widget.vehicleType);
+        context: context,
+        username: usernameController.text,
+        phoneno: phoneController.text,
+        email: emailController.text,
+        password: passwordController.text,
+        license: widget.license,
+        registrationNo: widget.registration,
+        vehicleType: widget.vehicleType,
+      );
 
       setState(() {
         loading = false;
@@ -302,7 +301,7 @@ class _RegisterState extends State<Register> {
                               gradient: LinearGradient(
                                 colors: [
                                   Color.fromARGB(255, 244, 208, 147),
-                                  Color.fromARGB(255, 129, 154, 223),
+                                  Color.fromARGB(255, 131, 153, 214),
                                 ],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
@@ -314,37 +313,36 @@ class _RegisterState extends State<Register> {
                               obscureText: showPassword,
                               decoration: InputDecoration(
                                 filled: true,
-                                fillColor: Colors
-                                    .transparent, // Make sure the fill color is transparent
+                                fillColor: Colors.transparent,
                                 labelText: 'Password',
                                 hintText: 'Enter password',
-                                enabledBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(width: 1.0),
-                                ),
                                 prefixIcon: Icon(
                                   Icons.lock,
                                   color: Colors.black.withOpacity(0.5),
                                 ),
                                 suffixIcon: IconButton(
+                                  icon: Icon(
+                                    showPassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                  ),
                                   onPressed: () {
                                     setState(() {
                                       showPassword = !showPassword;
                                     });
                                   },
-                                  icon: Icon(
-                                    showPassword
-                                        ? Icons.visibility
-                                        : Icons.visibility_off,
-                                  ),
                                 ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(width: 1.0),
+                                ),
+                                border: OutlineInputBorder(),
                               ),
                               validator: validatePassword,
                             ),
                           ),
                         ),
-
                         SizedBox(height: 20),
-                        // Confirm Password Field with fixed width
+                        // Confirm Password Field
                         SizedBox(
                           width: 300,
                           child: Container(
@@ -367,45 +365,74 @@ class _RegisterState extends State<Register> {
                                 fillColor: Colors.transparent,
                                 labelText: 'Confirm Password',
                                 hintText: 'Re-enter password',
-                                enabledBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(width: 1.0),
-                                ),
                                 prefixIcon: Icon(
-                                  Icons.lock_outline,
+                                  Icons.lock,
                                   color: Colors.black.withOpacity(0.5),
                                 ),
                                 suffixIcon: IconButton(
+                                  icon: Icon(
+                                    showConfirmPassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                  ),
                                   onPressed: () {
                                     setState(() {
                                       showConfirmPassword =
                                           !showConfirmPassword;
                                     });
                                   },
-                                  icon: Icon(
-                                    showConfirmPassword
-                                        ? Icons.visibility
-                                        : Icons.visibility_off,
-                                  ),
                                 ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(width: 1.0),
+                                ),
+                                border: OutlineInputBorder(),
                               ),
-                              validator:
-                                  validateConfirmPassword, // Attach the confirm password validator
+                              validator: validateConfirmPassword,
                             ),
                           ),
                         ),
-                        SizedBox(height: 20),
-
-                        loading
-                            ? CircularProgressIndicator()
-                            : ElevatedButton(
-                                onPressed: submitForm,
-                                style: ElevatedButton.styleFrom(
-                                  elevation: 7.0,
-                                  shadowColor:
-                                      const Color.fromARGB(255, 255, 0, 0),
-                                ),
-                                child: Text('Register'),
+                        SizedBox(height: 30),
+                        // Submit Button
+                        SizedBox(
+                          width: 300,
+                          child: ElevatedButton(
+                            onPressed: loading ? null : submitForm,
+                            style: ElevatedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 15),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
                               ),
+                              backgroundColor: Colors.blue,
+                            ),
+                            child: loading
+                                ? CircularProgressIndicator(
+                                    color: Colors.white,
+                                  )
+                                : Text(
+                                    'Register',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                        // Already have an account
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => LoginScreen(),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'Already have an account? Login',
+                            style: TextStyle(
+                              color: Colors.black,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
