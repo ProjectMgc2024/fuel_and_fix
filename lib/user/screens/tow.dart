@@ -1,26 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Towing Service',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: TowingServiceCategories(),
-    );
-  }
-}
+import 'package:fuel_and_fix/owner/screens/feedbackview.dart';
 
 class TowingServiceCategories extends StatelessWidget {
   @override
@@ -111,12 +92,11 @@ class TowingCompanyCard extends StatelessWidget {
                     fit: BoxFit.cover,
                   ),
                 ),
-              SizedBox(width: 16), // Increased space between logo and details
+              SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Center the company name
                     Center(
                       child: Text(
                         company['companyName'] ?? 'No Name',
@@ -129,7 +109,26 @@ class TowingCompanyCard extends StatelessWidget {
                     SizedBox(height: 5),
                     _buildInfoRow(Icons.phone, 'Contact', company['phoneNo']),
                     _buildInfoRow(Icons.email, 'Email', company['email']),
-                    _buildServicesRow(company['servicesOffered']),
+                    _buildServicesRow(company['additionalData']),
+                    SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FeedbackScreen(
+                                  
+                                ),
+                              ),
+                            );
+                          },
+                          child: Text('Feedback'),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -151,17 +150,19 @@ class TowingCompanyCard extends StatelessWidget {
     );
   }
 
-  Widget _buildServicesRow(List services) {
+  Widget _buildServicesRow(Map<String, dynamic>? additionalData) {
+    if (additionalData == null || additionalData.isEmpty) {
+      return Text('No additional information available.',
+          style: TextStyle(fontStyle: FontStyle.italic));
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Services Offered:',
+        Text('Additional Information:',
             style: TextStyle(fontWeight: FontWeight.bold)),
-        for (var service in services)
-          Padding(
-            padding: const EdgeInsets.only(top: 4.0),
-            child: Text('- $service'),
-          ),
+        Text('License: ${additionalData['companyLicense'] ?? 'N/A'}'),
+        Text('Location: ${additionalData['location_name'] ?? 'N/A'}'),
       ],
     );
   }

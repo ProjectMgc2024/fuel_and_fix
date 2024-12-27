@@ -75,7 +75,7 @@ class AdminPage extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => ManageFeedbackPage()),
+                        builder: (context) => adminfeedback()),
                   );
                 },
               ),

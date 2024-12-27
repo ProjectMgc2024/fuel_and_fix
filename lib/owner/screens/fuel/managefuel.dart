@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fuel_and_fix/owner/screens/feedbackview.dart';
 import 'package:fuel_and_fix/owner/screens/fuel/fuel_request.dart';
 import 'package:fuel_and_fix/owner/screens/fuel/f_payment.dart';
 import 'package:fuel_and_fix/owner/screens/owner.dart';
@@ -62,6 +63,12 @@ class FuelManagement extends StatelessWidget {
                   'Track your fuel service payments',
                   Icons.account_balance_wallet,
                   PaymentsAndEarningsPage()),
+              _buildDashboardSection(
+                  context,
+                  'Feedback',
+                  'View and manage customer feedback',
+                  Icons.feedback,
+                  FeedbackScreen()), // Feedback card
             ],
           ),
         ),
@@ -81,10 +88,8 @@ class FuelManagement extends StatelessWidget {
           );
         },
         child: Container(
-          width: MediaQuery.of(context).size.width, // Adjust width to 80%
-
+          width: MediaQuery.of(context).size.width,
           padding: EdgeInsets.all(20),
-
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fuel_and_fix/owner/screens/feedbackview.dart';
 import 'package:fuel_and_fix/owner/screens/tow/t_payment.dart';
 import 'package:fuel_and_fix/owner/screens/tow/tow_profile.dart';
 import 'package:fuel_and_fix/owner/screens/tow/tow_request.dart';
@@ -62,6 +63,12 @@ class TowManagementPage extends StatelessWidget {
                   'Track your towing service payments',
                   Icons.account_balance_wallet,
                   TPaymentsAndEarningsPage()),
+              _buildVerticalCard(
+                  context,
+                  'Feedback',
+                  'View feedback from your customers',
+                  Icons.feedback,
+                  FeedbackScreen()), // New feedback card
             ],
           ),
         ),
@@ -120,22 +127,6 @@ class TowManagementPage extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-// New page for Towing Requests
-class TowingRequestPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Towing Requests'),
-        backgroundColor: Color.fromARGB(255, 160, 128, 39),
-      ),
-      body: Center(
-        child: Text('This page will list all towing service requests.'),
       ),
     );
   }

@@ -40,6 +40,19 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
     }
   }
 
+  Future<void> openGoogleMaps(double latitude, double longitude) async {
+    final String googleMapsUrl =
+        "https://www.google.com/maps/search/?api=1&query=$latitude,$longitude";
+
+    if (await canLaunch(googleMapsUrl)) {
+      await launch(googleMapsUrl);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open Google Maps.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,6 +98,11 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
                   }
 
                   var userDetails = userSnapshot.data!;
+                  var additionalData = userDetails['additionalData'] ?? {};
+                  double latitude = additionalData['latitude'] ?? 0.0;
+                  double longitude = additionalData['longitude'] ?? 0.0;
+                  String locationName =
+                      additionalData['location_name'] ?? 'Unknown Location';
 
                   return Card(
                     elevation: 5,
@@ -126,7 +144,7 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
                               'Vehicle Type: ${userDetails['vehicleType'] ?? 'N/A'}'),
                           Text(
                               'Registration No: ${userDetails['registrationNo'] ?? 'N/A'}'),
-                          Text('Location: ${userDetails['location'] ?? 'N/A'}'),
+                          Text('Location: $locationName'),
 
                           SizedBox(height: 16),
 
@@ -151,6 +169,13 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.red,
                                 ),
+                              ),
+                              IconButton(
+                                icon:
+                                    Icon(Icons.location_on, color: Colors.blue),
+                                onPressed: () {
+                                  openGoogleMaps(latitude, longitude);
+                                },
                               ),
                             ],
                           ),

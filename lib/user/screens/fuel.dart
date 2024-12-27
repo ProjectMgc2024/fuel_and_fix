@@ -361,12 +361,26 @@ class _FuelStationListState extends State<FuelStationList> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Fuel Stations',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          'Fuel Stations',
+          style: TextStyle(
+              fontWeight: FontWeight.bold, fontSize: 22, color: Colors.white),
+        ),
         centerTitle: true,
-        backgroundColor: const Color.fromARGB(255, 206, 137, 59),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color.fromARGB(255, 145, 106, 39),
+                Color.fromARGB(255, 220, 81, 62)
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
             Navigator.pushAndRemoveUntil(
               context,
@@ -376,118 +390,197 @@ class _FuelStationListState extends State<FuelStationList> {
           },
         ),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(15.0),
-            child: TextField(
-              onChanged: (text) {
-                setState(() {
-                  enteredLocation = text;
-                });
-              },
-              decoration: InputDecoration(
-                labelText: 'Enter Location',
-                prefixIcon: Icon(Icons.location_on, color: Colors.blueAccent),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15.0),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color.fromARGB(255, 158, 139, 106),
+              Color.fromARGB(255, 155, 132, 57),
+            ],
+          ),
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                onChanged: (text) {
+                  setState(() {
+                    enteredLocation = text;
+                  });
+                },
+                decoration: InputDecoration(
+                  labelText: 'Search for a location',
+                  prefixIcon: Icon(Icons.search, color: Colors.blueAccent),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30.0),
+                  ),
+                  filled: true,
+                  fillColor: const Color.fromARGB(255, 212, 226, 255),
+                  contentPadding:
+                      EdgeInsets.symmetric(vertical: 15.0, horizontal: 20.0),
                 ),
               ),
             ),
-          ),
-          if (filteredStations.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Text(
-                'No fuel stations found for the entered location.',
-                style: TextStyle(fontSize: 16, color: Colors.red),
+            if (filteredStations.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    vertical: 20.0, horizontal: 16.0),
+                child: Text(
+                  'No fuel stations found for the entered location.',
+                  style: TextStyle(
+                      fontSize: 16,
+                      color: const Color.fromARGB(255, 255, 32, 17),
+                      fontWeight: FontWeight.w600),
+                  textAlign: TextAlign.center,
+                ),
               ),
-            ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: filteredStations.length,
-              itemBuilder: (context, index) {
-                final station = filteredStations[index];
-                return Card(
-                  margin: EdgeInsets.all(12),
-                  elevation: 8,
-                  child: Padding(
-                    padding: const EdgeInsets.all(15.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(station['name'],
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold)),
-                        Row(
-                          children: [
-                            Text(station['location'],
-                                style: TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.bold)),
-                            Spacer(),
-                            IconButton(
-                                onPressed: () {
-                                  _openGoogleMaps(
-                                      latitude: station['latitude'],
-                                      longitude: station['longitude']);
-                                },
-                                icon: Icon(Icons.location_on))
+            Expanded(
+              child: ListView.builder(
+                itemCount: filteredStations.length,
+                itemBuilder: (context, index) {
+                  final station = filteredStations[index];
+                  return Card(
+                    margin: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                    elevation: 8,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            const Color.fromARGB(255, 130, 80, 27),
+                            const Color.fromARGB(255, 114, 87, 17)!,
                           ],
                         ),
-                        SizedBox(height: 10),
-                        Text('Address: ${station['address']}'),
-                        Text('Contact: ${station['contactNumber']}'),
-                        SizedBox(height: 10),
-                        Wrap(
-                          spacing: 10,
-                          children:
-                              station['fuels'].keys.map<Widget>((fuelType) {
-                            final price = station['fuels'][fuelType];
-                            return GestureDetector(
-                              onTap: () {
-                                _showQuantityDialog(fuelType, price,
-                                    station['id'], station['service']);
-                              },
-                              child: Chip(
-                                label: Text(
-                                    '$fuelType ₹${price.toStringAsFixed(2)}'),
-                                backgroundColor: Colors.blueAccent,
-                                labelStyle: TextStyle(color: Colors.white),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Center(
+                              child: Text(
+                                station['name'],
+                                style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87),
                               ),
-                            );
-                          }).toList(),
-                        ),
-                        SizedBox(height: 10),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => FeedbackScreen(
-                                  stationId: station['id'],
-                                  stationName: station['name'],
-                                  service: 'fuel',
-                                  userId: currentUserId,
+                            ),
+                            SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(Icons.place, color: Colors.orangeAccent),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    station['location'],
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        color: const Color.fromARGB(
+                                            255, 255, 255, 255)),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () {
+                                    _openGoogleMaps(
+                                      latitude: station['latitude'],
+                                      longitude: station['longitude'],
+                                    );
+                                  },
+                                  icon: Icon(Icons.location_on,
+                                      color: Colors.blueAccent),
+                                ),
+                              ],
+                            ),
+                            Divider(height: 20, color: Colors.grey[300]),
+                            Text(
+                              'Address: ${station['address']}',
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  color:
+                                      const Color.fromARGB(255, 255, 255, 255)),
+                            ),
+                            SizedBox(height: 5),
+                            Text(
+                              'Contact: ${station['contactNumber']}',
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  color:
+                                      const Color.fromARGB(255, 255, 255, 255)),
+                            ),
+                            SizedBox(height: 15),
+                            Wrap(
+                              spacing: 8,
+                              children:
+                                  station['fuels'].keys.map<Widget>((fuelType) {
+                                final price = station['fuels'][fuelType];
+                                return GestureDetector(
+                                  onTap: () {
+                                    _showQuantityDialog(fuelType, price,
+                                        station['id'], station['service']);
+                                  },
+                                  child: Chip(
+                                    label: Text(
+                                        '$fuelType ₹${price.toStringAsFixed(2)}'),
+                                    backgroundColor:
+                                        const Color.fromARGB(255, 147, 96, 20),
+                                    labelStyle: TextStyle(color: Colors.white),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                            SizedBox(height: 15),
+                            Center(
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => FeedbackScreen(
+                                        stationId: station['id'],
+                                        stationName: station['name'],
+                                        service: 'fuel',
+                                        userId: currentUserId,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      Color.fromARGB(255, 7, 51, 69),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(25),
+                                  ),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 30.0, vertical: 12.0),
+                                ),
+                                child: Text(
+                                  'Give Feedback',
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white),
                                 ),
                               ),
-                            );
-                          },
-                          child: Text(
-                            'Give Feedback',
-                            style: TextStyle(
-                              color: Colors.blue,
-                              fontWeight: FontWeight.bold,
                             ),
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

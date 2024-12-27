@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class ViewFeedbackPage extends StatefulWidget {
   @override
@@ -12,8 +13,7 @@ class _ViewFeedbackPageState extends State<ViewFeedbackPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   User? _user;
   bool _isLoading = true;
-  Map<String, Map<String, String?>> _companyDetails =
-      {}; // Map to store company details (company name and owner) by service
+  Map<String, Map<String, String?>> _companyDetails = {};
 
   @override
   void initState() {
@@ -21,23 +21,13 @@ class _ViewFeedbackPageState extends State<ViewFeedbackPage> {
     _getCurrentUser();
   }
 
-  // Get the current user
   Future<void> _getCurrentUser() async {
     _user = _auth.currentUser;
-    if (_user != null) {
-      // After getting the user, fetch the feedback data
-      setState(() {
-        _isLoading = false;
-      });
-    } else {
-      // Handle case when the user is not authenticated
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    setState(() {
+      _isLoading = false;
+    });
   }
 
-  // Fetch feedback data for the current user
   Future<QuerySnapshot> _getFeedbackData() async {
     return _firestore
         .collection('feedback')
@@ -45,19 +35,14 @@ class _ViewFeedbackPageState extends State<ViewFeedbackPage> {
         .get();
   }
 
-  // Fetch the company details (company name and owner) from the dynamically referenced collection
   Future<void> _getCompanyDetails(String service, String ownerId) async {
     if (_companyDetails.containsKey(service)) {
-      return; // If the company details for the service are already fetched, do nothing
+      return;
     }
 
     try {
-      // Use the service value to dynamically reference the collection, and fetch the document using ownerId as the document ID
-      DocumentSnapshot companyDoc = await _firestore
-          .collection(service) // Use service field as collection name
-          .doc(
-              ownerId) // Use ownerId from feedback to fetch the correct document
-          .get();
+      DocumentSnapshot companyDoc =
+          await _firestore.collection(service).doc(ownerId).get();
 
       if (companyDoc.exists) {
         setState(() {
@@ -69,20 +54,26 @@ class _ViewFeedbackPageState extends State<ViewFeedbackPage> {
       } else {
         setState(() {
           _companyDetails[service] = {
-            'companyName': 'No company name found',
-            'ownerName': 'No owner found'
+            'companyName': 'Unknown Company',
+            'ownerName': 'Unknown Owner'
           };
         });
       }
     } catch (e) {
-      print('Error fetching company details: $e');
       setState(() {
         _companyDetails[service] = {
-          'companyName': 'Error fetching company name',
+          'companyName': 'Error fetching company',
           'ownerName': 'Error fetching owner'
         };
       });
     }
+  }
+
+  String _formatTimestamp(Timestamp timestamp) {
+    // Convert Firestore Timestamp to DateTime
+    DateTime dateTime = timestamp.toDate();
+    // Format the DateTime into the desired format
+    return DateFormat('d MMMM yyyy at HH:mm:ss z').format(dateTime);
   }
 
   @override
@@ -90,6 +81,8 @@ class _ViewFeedbackPageState extends State<ViewFeedbackPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Feedback Collection'),
+        centerTitle: true,
+        backgroundColor: const Color.fromARGB(255, 170, 130, 61),
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
@@ -101,52 +94,120 @@ class _ViewFeedbackPageState extends State<ViewFeedbackPage> {
                 }
 
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
+                  return Center(
+                    child: Text(
+                      'Error: ${snapshot.error}',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  );
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(child: Text('No feedback found.'));
+                  return Center(
+                    child: Text(
+                      'No feedback found.',
+                      style: TextStyle(fontSize: 18, color: Colors.grey),
+                    ),
+                  );
                 }
 
-                // Data found for the current user
                 final feedbackDocs = snapshot.data!.docs;
+
                 return ListView.builder(
+                  padding: EdgeInsets.all(8),
                   itemCount: feedbackDocs.length,
                   itemBuilder: (context, index) {
                     var feedbackData = feedbackDocs[index];
                     var service = feedbackData['service'] ?? 'defaultService';
                     var ownerId = feedbackData['ownerId'] ?? '';
+                    var timestamp = feedbackData['timestamp'] as Timestamp?;
 
-                    // Fetch company details based on service value and ownerId
                     _getCompanyDetails(service, ownerId);
 
-                    return ListTile(
-                      title: Text('Feedback for service: $service'),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(feedbackData['feedback'] ?? 'No Message'),
-                          SizedBox(height: 8),
-                          FutureBuilder(
-                            future: _getCompanyDetails(service, ownerId),
-                            builder: (context, companySnapshot) {
-                              if (_companyDetails.containsKey(service)) {
-                                var companyDetails = _companyDetails[service];
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                        'Company: ${companyDetails?['companyName']}'),
-                                    Text(
-                                        'Owner: ${companyDetails?['ownerName']}'),
-                                  ],
-                                );
-                              } else {
-                                return CircularProgressIndicator();
-                              }
-                            },
-                          ),
-                        ],
+                    return Card(
+                      margin: EdgeInsets.symmetric(vertical: 8),
+                      elevation: 3,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.feedback,
+                                    color: const Color.fromARGB(
+                                        255, 152, 122, 47)),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Feedback for $service',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 17,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              feedbackData['feedback'] ??
+                                  'No feedback provided.',
+                              style: TextStyle(fontSize: 14),
+                            ),
+                            SizedBox(height: 12),
+                            if (timestamp != null)
+                              Text(
+                                'Submitted on: ${_formatTimestamp(timestamp)}',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    color:
+                                        const Color.fromARGB(255, 46, 6, 95)),
+                              ),
+                            SizedBox(height: 12),
+                            FutureBuilder(
+                              future: _getCompanyDetails(service, ownerId),
+                              builder: (context, _) {
+                                if (_companyDetails.containsKey(service)) {
+                                  var companyDetails = _companyDetails[service];
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(Icons.business,
+                                              color: Colors.green),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Company: ${companyDetails?['companyName']}',
+                                            style: TextStyle(fontSize: 16),
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.person,
+                                              color: const Color.fromARGB(
+                                                  255, 74, 65, 50)),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Owner: ${companyDetails?['ownerName']}',
+                                            style: TextStyle(fontSize: 14),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  );
+                                } else {
+                                  return Center(
+                                    child: CircularProgressIndicator(),
+                                  );
+                                }
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },

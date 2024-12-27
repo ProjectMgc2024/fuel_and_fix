@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/user/screens/feedback.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -13,6 +14,7 @@ class WorkshopScreen extends StatefulWidget {
 class _WorkshopScreenState extends State<WorkshopScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late Razorpay _razorpay;
+  String _locationName = "Use Current Location"; // Initial placeholder text
 
   @override
   void initState() {
@@ -37,9 +39,12 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
 
     List<Map<String, dynamic>> workshops = [];
     for (var doc in querySnapshot.docs) {
+      var data = doc.data() as Map<String, dynamic>;
+      print('Document data: $data'); // Debug statement
+
       workshops.add({
         'id': doc.id,
-        ...doc.data() as Map<String, dynamic>,
+        ...data,
       });
     }
     return workshops;
@@ -107,81 +112,346 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
     }
   }
 
+  Future<void> _getLocationAndSendRequest() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Fetching location...'),
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ],
+        ),
+        duration: Duration(minutes: 1),
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(20.0),
+        backgroundColor: Colors.deepPurple,
+      ),
+    );
+
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Check if location services are enabled
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Location services are disabled.')),
+      );
+      return;
+    }
+
+    // Check location permission
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Location permission is denied.')),
+        );
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Location permission is permanently denied.')),
+      );
+      return;
+    }
+
+    // Get current position
+    Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    // Store the location data in Firebase
+    await _firestore.collection('user').doc(user.uid).set({
+      'additionalData': {
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'location_name': 'Punnad, India', // Example static location
+      },
+    }, SetOptions(merge: true));
+
+    // Fetch and update location name
+    DocumentSnapshot userDoc =
+        await _firestore.collection('user').doc(user.uid).get();
+    setState(() {
+      _locationName = (userDoc.data() as Map<String, dynamic>)['additionalData']
+              ['location_name'] ??
+          "Use Current Location";
+    });
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Location saved successfully!')),
+    );
+  }
+
+  void _showLocationMenu() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Choose an Option'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text(_locationName),
+                onTap: () {
+                  Navigator.pop(context);
+                  _getLocationAndSendRequest();
+                },
+              ),
+              ListTile(
+                title: Text('Pay Now'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _payWithRazorpay(
+                      FirebaseAuth.instance.currentUser?.uid ?? '');
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Workshops')),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _getWorkshops(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(child: Text('No active workshops available.'));
-          } else {
-            List<Map<String, dynamic>> workshops = snapshot.data!;
+      appBar: AppBar(
+        backgroundColor: const Color.fromARGB(255, 95, 73, 133),
+        title: Text(
+          'Available Workshops',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 22,
+            letterSpacing: 1.2,
+          ),
+        ),
+        centerTitle: true,
+        elevation: 4.0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          color: Colors.white,
+          onPressed: () {
+            Navigator.pop(
+                context); // This will pop the current screen from the stack and navigate back.
+          },
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+        child: FutureBuilder<List<Map<String, dynamic>>>(
+          future: _getWorkshops(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation(Colors.deepPurple),
+                ),
+              );
+            } else if (snapshot.hasError) {
+              return Center(child: Text('Error: ${snapshot.error}'));
+            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return Center(child: Text('No active workshops available.'));
+            } else {
+              List<Map<String, dynamic>> workshops = snapshot.data!;
 
-            return ListView.builder(
-              itemCount: workshops.length,
-              itemBuilder: (context, index) {
-                var workshop = workshops[index];
-                return Card(
-                  margin: EdgeInsets.symmetric(vertical: 10, horizontal: 15),
-                  child: ListTile(
-                    leading: Image.network(workshop['companyLogo']),
-                    title: Text(workshop['companyName']),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                            'Location: ${workshop['location_name'] ?? 'Not Available'}'),
-                        Text('Phone: ${workshop['phoneNo']}'),
-                        Text('Service: ${workshop['service']}'),
-                      ],
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.location_on),
-                          onPressed: () => _openGoogleMaps(
-                            latitude: workshop['latitude'],
-                            longitude: workshop['longitude'],
+              return ListView.builder(
+                itemCount: workshops.length,
+                itemBuilder: (context, index) {
+                  var workshop = workshops[index];
+                  debugPrint('Workshop data: $workshop');
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12.0),
+                    child: Card(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      elevation: 8,
+                      shadowColor: Colors.deepPurple.withOpacity(0.2),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color.fromARGB(255, 33, 93, 128)!,
+                              const Color.fromARGB(255, 116, 29, 29)!
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        IconButton(
-                          icon: Icon(Icons.payment),
-                          onPressed: () => _payWithRazorpay(
-                            FirebaseAuth.instance.currentUser!.uid,
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.feedback),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => FeedbackScreen(
-                                  stationId: workshop['id'],
-                                  stationName: workshop['companyName'],
-                                  service: 'repair',
-                                  userId:
-                                      FirebaseAuth.instance.currentUser?.uid,
-                                ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Image.network(
+                                      workshop['companyLogo'],
+                                      width: 90,
+                                      height: 90,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                  SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          workshop['companyName'],
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: const Color.fromARGB(
+                                                255, 251, 159, 120),
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          'Location: ${workshop['location_name'] ?? 'Not Available'}',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: const Color.fromARGB(
+                                                255, 255, 255, 255),
+                                          ),
+                                        ),
+                                        Text(
+                                          'Phone: ${workshop['phoneNo']}',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: const Color.fromARGB(
+                                                255, 255, 255, 255),
+                                          ),
+                                        ),
+                                        Text(
+                                          'Service: ${workshop['service']}',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: const Color.fromARGB(
+                                                255, 255, 255, 255),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
-                            );
-                          },
+                              SizedBox(height: 20),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 12),
+                                    ),
+                                    onPressed: () async {
+                                      if (workshop['additionalData']
+                                                  ['latitude'] ==
+                                              null ||
+                                          workshop['additionalData']
+                                                  ['longitude'] ==
+                                              null) {
+                                        debugPrint(
+                                            'Latitude or Longitude is null for workshop: ${workshop['id']}');
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content: Text(
+                                                  'Location data is not available for this workshop.')),
+                                        );
+                                        return;
+                                      }
+                                      debugPrint(
+                                          'Opening Google Maps for ${workshop['additionalData']['latitude']}, ${workshop['additionalData']['longitude']}');
+                                      await _openGoogleMaps(
+                                        latitude: workshop['additionalData']
+                                            ['latitude'],
+                                        longitude: workshop['additionalData']
+                                            ['longitude'],
+                                      );
+                                    },
+                                    icon: Icon(Icons.location_on),
+                                    label: Text('Directions'),
+                                  ),
+                                  ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 12),
+                                    ),
+                                    onPressed: _showLocationMenu,
+                                    icon: Icon(Icons.send),
+                                    label: Text('Send Request'),
+                                  ),
+                                  ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 12),
+                                    ),
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => FeedbackScreen(
+                                            stationId: workshop['id'],
+                                            stationName:
+                                                workshop['companyName'],
+                                            service: 'repair',
+                                            userId: FirebaseAuth
+                                                .instance.currentUser?.uid,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    icon: Icon(Icons.feedback),
+                                    label: Text('Feedback'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                );
-              },
-            );
-          }
-        },
+                  );
+                },
+              );
+            }
+          },
+        ),
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fuel_and_fix/owner/screens/feedbackview.dart';
 import 'package:fuel_and_fix/owner/screens/repair/r_payment.dart';
 import 'package:fuel_and_fix/owner/screens/repair/repair_profile.dart';
 import 'package:fuel_and_fix/owner/screens/repair/repair_request.dart'; // Import the repair request page
@@ -62,6 +63,12 @@ class RepairManagementPage extends StatelessWidget {
                   'Track your repair service payments',
                   Icons.account_balance_wallet,
                   RPaymentsAndEarningsPage()),
+              _buildVerticalCard(
+                  context,
+                  'Feedback',
+                  'View and manage customer feedback',
+                  Icons.feedback,
+                  FeedbackScreen()),
             ],
           ),
         ),
@@ -79,7 +86,6 @@ class RepairManagementPage extends StatelessWidget {
         );
       },
       child: Center(
-        // Center the card in the layout
         child: Container(
           width: MediaQuery.of(context).size.width *
               0.6, // Reduce the width to 80% of the screen width

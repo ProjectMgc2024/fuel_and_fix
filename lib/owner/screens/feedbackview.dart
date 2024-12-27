@@ -1,97 +1,105 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class FeedbackPage extends StatelessWidget {
+class FeedbackScreen extends StatefulWidget {
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Feedback'),
-        backgroundColor: Color.fromARGB(255, 160, 128, 39),
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('feedback').snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(child: Text('No feedback available.'));
-          }
-
-          return ListView.builder(
-            itemCount: snapshot.data!.docs.length,
-            itemBuilder: (context, index) {
-              var feedbackData =
-                  snapshot.data!.docs[index].data() as Map<String, dynamic>;
-              String serviceName = feedbackData['service'] ?? 'Unknown Service';
-
-              return Card(
-                margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                child: ListTile(
-                  title: Text(serviceName,
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('Tap to view details'),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          ServiceDetailsPage(serviceName: serviceName),
-                    ),
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
+  _FeedbackScreenState createState() => _FeedbackScreenState();
 }
 
-class ServiceDetailsPage extends StatelessWidget {
-  final String serviceName;
+class _FeedbackScreenState extends State<FeedbackScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  ServiceDetailsPage({required this.serviceName});
+  String? currentUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    _getCurrentUserId();
+  }
+
+  void _getCurrentUserId() {
+    final user = _auth.currentUser;
+    setState(() {
+      currentUserId = user?.uid;
+    });
+  }
+
+  Future<String> _getUsername(String userId) async {
+    try {
+      final userDoc = await _firestore.collection('user').doc(userId).get();
+      if (userDoc.exists) {
+        return userDoc.data()?['username'] ?? 'Unknown';
+      } else {
+        return 'Unknown';
+      }
+    } catch (e) {
+      return 'Error';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('$serviceName Details'),
-        backgroundColor: Color.fromARGB(255, 160, 128, 39),
+        title: Text('Feedback Details'),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection(serviceName).snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
+      body: currentUserId == null
+          ? Center(child: CircularProgressIndicator())
+          : StreamBuilder<QuerySnapshot>(
+              stream: _firestore.collection('feedback').snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(
-                child: Text('No details available for $serviceName.'));
-          }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(child: Text('No feedback available.'));
+                }
 
-          return ListView.builder(
-            itemCount: snapshot.data!.docs.length,
-            itemBuilder: (context, index) {
-              var detailData =
-                  snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                final feedbackDocs = snapshot.data!.docs;
+                final userFeedback = feedbackDocs
+                    .where((doc) => doc['ownerId'] == currentUserId);
 
-              return Card(
-                margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                child: ListTile(
-                  title: Text(detailData['title'] ?? 'No Title',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(detailData['description'] ?? 'No Description'),
-                ),
-              );
-            },
-          );
-        },
-      ),
+                if (userFeedback.isEmpty) {
+                  return Center(child: Text('No feedback for this user.'));
+                }
+
+                return ListView(
+                  children: userFeedback.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    return FutureBuilder<String>(
+                      future: _getUsername(data['userId']),
+                      builder: (context, userSnapshot) {
+                        if (userSnapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Center(child: CircularProgressIndicator());
+                        }
+
+                        final username = userSnapshot.data ?? 'Unknown';
+
+                        return Card(
+                          margin: EdgeInsets.all(10),
+                          child: ListTile(
+                            title: Text('Service: ${data['service']}'),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Feedback: ${data['feedback']}'),
+                                Text(
+                                    'Timestamp: ${data['timestamp'].toDate()}'),
+                                Text('Username: $username'),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }).toList(),
+                );
+              },
+            ),
     );
   }
 }

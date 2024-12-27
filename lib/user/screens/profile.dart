@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/user/screens/edit_screen.dart';
+import 'package:fuel_and_fix/user/screens/introduction.dart';
 
 class ProfileScreen extends StatelessWidget {
   @override
@@ -9,6 +10,22 @@ class ProfileScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.teal[700],
+        actions: [
+          // Log out Icon Button in the AppBar
+          IconButton(
+            icon: const Icon(
+              Icons.logout, // Log out icon
+              color: Color.fromARGB(255, 98, 10, 10), // Icon color
+            ),
+            onPressed: () {
+              // Navigate to Introduction Page and clear the navigation stack
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => IntroductionPage()),
+                (route) => false, // Remove all routes
+              );
+            },
+          ),
+        ],
         elevation: 0,
         title: Text(
           "Profile",

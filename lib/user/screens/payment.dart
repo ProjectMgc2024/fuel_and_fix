@@ -22,7 +22,7 @@ class PaymentScreen extends StatefulWidget {
   // ignore: prefer_typing_uninitialized_variables
   final userid;
 
-  PaymentScreen({required this.workshop, required this.userid});
+  PaymentScreen({required this.workshop, required this.userid, String? userId});
 
   @override
   _PaymentScreenState createState() => _PaymentScreenState();
