@@ -10,14 +10,27 @@ class TowManagementPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back), // Custom back button icon
+          onPressed: () {
+            // Pop the current screen when the button is pressed
+            Navigator.pop(context);
+          },
+        ),
         title: Text(
           'Tow Management',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style: TextStyle(
+              fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        backgroundColor: Color.fromARGB(255, 160, 128, 39),
+        backgroundColor: Color.fromARGB(255, 74, 80, 100),
         actions: [
           IconButton(
-            icon: Icon(Icons.logout, size: 30),
+            icon: Icon(
+              Icons.logout,
+              size: 30,
+              color: const Color.fromARGB(255, 141, 29, 29),
+            ),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Logged out!')),
@@ -34,8 +47,8 @@ class TowManagementPage extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Color.fromARGB(255, 202, 113, 36),
-              Color.fromARGB(255, 4, 163, 34),
+              const Color.fromARGB(255, 105, 125, 127), // Gradient color 1
+              const Color.fromARGB(255, 128, 113, 103), // Gradient color 2
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -97,32 +110,46 @@ class TowManagementPage extends StatelessWidget {
             ),
             color: Colors.white,
             margin: EdgeInsets.symmetric(vertical: 8.0),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Icon(
-                    icon,
-                    size: 50,
-                    color: Colors.deepPurple,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
+            child: Ink(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Color.fromARGB(255, 126, 119, 102), // Gradient color 1
+                    const Color.fromARGB(255, 44, 50, 72), // Gradient color 2
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16.0),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Icon(
+                      icon,
+                      size: 50,
+                      color: const Color.fromARGB(255, 255, 255, 255),
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    description,
-                    style: TextStyle(color: Colors.black54),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                    SizedBox(height: 16),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: const Color.fromARGB(255, 254, 253, 255),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      description,
+                      style: TextStyle(
+                          color: const Color.fromARGB(224, 255, 248, 248)),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

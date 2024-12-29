@@ -10,11 +10,19 @@ class FuelManagement extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back), // Custom back button icon
+          onPressed: () {
+            // Pop the current screen when the button is pressed
+            Navigator.pop(context);
+          },
+        ),
+        centerTitle: true,
         title: Text(
           'Fuel Management',
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Color.fromARGB(255, 160, 128, 39),
+        backgroundColor: const Color.fromARGB(255, 137, 152, 108),
         actions: [
           IconButton(
             icon: Icon(Icons.logout, size: 30),
@@ -34,15 +42,15 @@ class FuelManagement extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Color.fromARGB(255, 202, 113, 36),
-              Color.fromARGB(255, 4, 163, 34),
+              const Color.fromARGB(255, 176, 179, 163),
+              const Color.fromARGB(255, 96, 85, 62),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
         ),
         child: Padding(
-          padding: EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(40.0),
           child: ListView(
             children: [
               _buildDashboardSection(
@@ -89,9 +97,17 @@ class FuelManagement extends StatelessWidget {
         },
         child: Container(
           width: MediaQuery.of(context).size.width,
-          padding: EdgeInsets.all(20),
+          padding: EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: Colors.white,
+            // Add a gradient color to the card
+            gradient: LinearGradient(
+              colors: [
+                Color.fromARGB(255, 106, 107, 69), // Dark gradient color
+                Color.fromRGBO(85, 63, 52, 1), // Light gradient color
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
@@ -107,8 +123,8 @@ class FuelManagement extends StatelessWidget {
               children: [
                 Icon(
                   icon,
-                  size: 40,
-                  color: Colors.deepPurple,
+                  size: 50,
+                  color: const Color.fromARGB(255, 255, 255, 255),
                 ),
                 SizedBox(width: 16),
                 Expanded(
@@ -120,13 +136,14 @@ class FuelManagement extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Colors.deepPurple,
+                          color: const Color.fromARGB(255, 253, 245, 255),
                         ),
                       ),
                       SizedBox(height: 8),
                       Text(
                         description,
-                        style: TextStyle(color: Colors.black54),
+                        style: TextStyle(
+                            color: const Color.fromARGB(224, 255, 248, 248)),
                       ),
                     ],
                   ),
@@ -134,7 +151,7 @@ class FuelManagement extends StatelessWidget {
                 Icon(
                   Icons.arrow_forward_ios,
                   size: 20,
-                  color: Colors.deepPurple,
+                  color: const Color.fromARGB(255, 0, 0, 0),
                 ),
               ],
             ),

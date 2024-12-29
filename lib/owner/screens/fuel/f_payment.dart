@@ -67,7 +67,7 @@ class _PaymentsAndEarningsPageState extends State<PaymentsAndEarningsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Payments & Earnings'),
-        backgroundColor: Colors.teal,
+        backgroundColor: const Color.fromARGB(255, 111, 150, 146),
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: fetchPaymentData(),

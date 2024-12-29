@@ -448,7 +448,14 @@ class FuelProfilePageState extends State<FuelProfilePage> {
         title: Text("Fuel Profile"),
         centerTitle: true,
         backgroundColor:
-            const Color.fromARGB(255, 150, 131, 46), // AppBar background color
+            Color.fromARGB(255, 209, 147, 24), // AppBar background color
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back), // Custom back button icon
+          onPressed: () {
+            // Pop the current screen when the button is pressed
+            Navigator.pop(context);
+          },
+        ),
       ),
       body: FutureBuilder<DocumentSnapshot>(
         future: _firestore.collection('fuel').doc(documentId).get(),
@@ -472,33 +479,38 @@ class FuelProfilePageState extends State<FuelProfilePage> {
           };
           final employees =
               List<Map<String, dynamic>>.from(data['employees'] ?? []);
+          final fuels = List<Map<String, dynamic>>.from(data['fuels'] ?? []);
 
           return SingleChildScrollView(
             padding: EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Manager Section
+                _buildSectionHeader(
+                    title: "Company Details",
+                    icon: Icons.business,
+                    color: Colors.deepPurple),
                 Card(
-                  margin: EdgeInsets.only(bottom: 16.0),
-                  elevation: 8.0, // Add shadow for the card
+                  margin: EdgeInsets.symmetric(vertical: 8.0),
+                  elevation: 6.0,
                   shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(12.0), // Rounded corners
+                    borderRadius: BorderRadius.circular(12.0),
                   ),
-                  color: Colors.white,
                   child: ListTile(
                     leading: managerDetails['companyLogo'] != null
-                        ? Image.network(
-                            managerDetails['companyLogo'],
-                            width: 50,
-                            height: 50,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Icon(Icons.error),
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              managerDetails['companyLogo'],
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                            ),
                           )
-                        : Icon(Icons.business, size: 50),
+                        : Icon(Icons.business, size: 50, color: Colors.orange),
                     title: Text(
-                      'Company Name: ${managerDetails['companyName']}',
+                      managerDetails['companyName'],
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.deepPurple,
@@ -519,205 +531,194 @@ class FuelProfilePageState extends State<FuelProfilePage> {
                     ),
                   ),
                 ),
-                // Fuel Section with gradient background and custom styles
-                Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "Fuels",
-                            style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: const Color.fromARGB(255, 179, 126, 20)),
-                          ),
-                          ElevatedButton.icon(
-                            onPressed: _showAddFuelDialog,
-                            icon: Icon(Icons.local_gas_station),
-                            label: Text("Add Fuel"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange, // Vibrant color
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 8),
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: NeverScrollableScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 1,
-                          childAspectRatio: 3.5,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                        ),
-                        itemCount: data['fuels']?.length ?? 0,
-                        itemBuilder: (context, index) {
-                          final fuel = data['fuels'][index];
-                          return Card(
-                            elevation: 4,
-                            color: const Color.fromARGB(255, 225, 165, 62),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        fuel['type'],
-                                        style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.deepPurple),
-                                      ),
-                                      Text("Price: ${fuel['price']}"),
-                                    ],
-                                  ),
-                                  Row(
-                                    children: [
-                                      IconButton(
-                                        icon: Icon(Icons.edit,
-                                            color: const Color.fromARGB(
-                                                255, 21, 6, 79)),
-                                        onPressed: () =>
-                                            _showEditFuelDialog(index, fuel),
-                                      ),
-                                      IconButton(
-                                        icon: Icon(Icons.delete,
-                                            color: Colors.red),
-                                        onPressed: () => _deleteFuel(index),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
+
+                // Fuels Section
+                _buildSectionHeader(
+                    title: "Fuels",
+                    icon: Icons.local_gas_station,
+                    color: Colors.orange),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 1,
+                    childAspectRatio: 4.5,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                  ),
+                  itemCount: fuels.length,
+                  itemBuilder: (context, index) {
+                    final fuel = fuels[index];
+                    return _buildFuelCard(fuel, index);
+                  },
+                ),
+                SizedBox(height: 8),
+                Center(
+                  child: ElevatedButton.icon(
+                    onPressed: _showAddFuelDialog,
+                    icon: Icon(Icons.add, size: 18),
+                    label: Text("Add Fuel"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    ),
                   ),
                 ),
-                // Employees Section with gradient background and styled button
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Employees",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: _showAddEmployeeDialog,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        elevation: 4,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.person_add,
-                            size: 18,
-                            color: const Color.fromARGB(255, 79, 63, 63),
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            "Add Employee",
-                            style: TextStyle(fontSize: 16),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+
+                // Employees Section
+                _buildSectionHeader(
+                    title: "Employees", icon: Icons.group, color: Colors.blue),
                 ListView.builder(
                   shrinkWrap: true,
                   physics: NeverScrollableScrollPhysics(),
                   itemCount: employees.length,
                   itemBuilder: (context, index) {
                     final employee = employees[index];
-                    return Card(
-                      margin: EdgeInsets.only(top: 8.0),
-                      elevation: 4.0,
-                      color: Colors.purple[50], // Light purple background
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.0),
-                      ),
-                      child: ListTile(
-                        title: Text('Name: ${employee['employeeName']}'),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Email: ${employee['employeeEmail']}'),
-                            Text('Role: ${employee['employeeRole']}'),
-                            Text('Phone: ${employee['employeePhoneNo']}'),
-                          ],
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: Icon(Icons.edit,
-                                  color: const Color.fromARGB(255, 23, 4, 75)),
-                              onPressed: () =>
-                                  _showEditEmployeeDialog(index, employee),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.delete, color: Colors.red),
-                              onPressed: () {
-                                showDialog(
-                                  context: context,
-                                  builder: (context) {
-                                    return AlertDialog(
-                                      title: Text("Delete Employee"),
-                                      content: Text(
-                                          "Are you sure you want to delete this employee?"),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context),
-                                          child: Text("Cancel"),
-                                        ),
-                                        TextButton(
-                                          onPressed: () {
-                                            _deleteEmployee(index);
-                                            Navigator.pop(context);
-                                          },
-                                          child: Text("Delete"),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
+                    return _buildEmployeeCard(employee, index);
                   },
+                ),
+                SizedBox(height: 8),
+                Center(
+                  child: ElevatedButton.icon(
+                    onPressed: _showAddEmployeeDialog,
+                    icon: Icon(Icons.person_add, size: 18),
+                    label: Text("Add Employee"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    ),
+                  ),
                 ),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+
+// Helper Methods
+  Widget _buildSectionHeader(
+      {required String title, required IconData icon, required Color color}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Icon(icon, color: color),
+          SizedBox(width: 8),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFuelCard(Map<String, dynamic> fuel, int index) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color.fromARGB(255, 219, 160, 51),
+              Color.fromARGB(255, 216, 197, 85)
+            ], // Orange gradient
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    fuel['type'],
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepPurple),
+                  ),
+                  Text("Price: ${fuel['price']}"),
+                ],
+              ),
+              Row(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.edit, color: Colors.deepPurple),
+                    onPressed: () => _showEditFuelDialog(index, fuel),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _deleteFuel(index),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmployeeCard(Map<String, dynamic> employee, int index) {
+    return Card(
+      margin: EdgeInsets.only(top: 8.0),
+      elevation: 4.0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color.fromARGB(255, 151, 176, 165),
+              Color.fromARGB(222, 196, 196, 227)
+            ], // Purple gradient
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+        child: ListTile(
+          title: Text('Name: ${employee['employeeName']}'),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Email: ${employee['employeeEmail']}'),
+              Text('Role: ${employee['employeeRole']}'),
+              Text('Phone: ${employee['employeePhoneNo']}'),
+            ],
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(Icons.edit, color: Colors.deepPurple),
+                onPressed: () => _showEditEmployeeDialog(index, employee),
+              ),
+              IconButton(
+                icon: Icon(Icons.delete, color: Colors.red),
+                onPressed: () => _deleteEmployee(index),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

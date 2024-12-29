@@ -58,7 +58,7 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Fuel Requests'),
-        backgroundColor: Colors.teal,
+        backgroundColor: const Color.fromARGB(255, 123, 173, 168),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance

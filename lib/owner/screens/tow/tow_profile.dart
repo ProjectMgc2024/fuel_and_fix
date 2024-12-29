@@ -334,8 +334,8 @@ class _TowProfilePageState extends State<TowProfilePage> {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          const Color.fromARGB(255, 180, 208, 255),
-                          const Color.fromARGB(255, 243, 170, 151)
+                          const Color.fromARGB(255, 187, 210, 250),
+                          const Color.fromARGB(255, 131, 115, 154)
                         ], // Gradient effect
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
@@ -372,7 +372,8 @@ class _TowProfilePageState extends State<TowProfilePage> {
                         ],
                       ),
                       trailing: IconButton(
-                        icon: Icon(Icons.edit, color: Colors.white),
+                        icon: Icon(Icons.edit,
+                            color: const Color.fromARGB(255, 8, 8, 129)),
                         onPressed: () => _showEditManagerDialog(managerDetails),
                       ),
                     ),
@@ -386,12 +387,12 @@ class _TowProfilePageState extends State<TowProfilePage> {
                         style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Colors.blueGrey)),
+                            color: const Color.fromARGB(255, 7, 59, 85))),
                     ElevatedButton(
                       onPressed: _showAddEmployeeDialog,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color.fromARGB(
-                            255, 39, 86, 255), // Button background color
+                            255, 50, 78, 181), // Button background color
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(
                               8), // Rounded corners for button
@@ -437,7 +438,10 @@ class _TowProfilePageState extends State<TowProfilePage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              icon: Icon(Icons.edit),
+                              icon: Icon(
+                                Icons.edit,
+                                color: Colors.blueAccent,
+                              ),
                               onPressed: () =>
                                   _showEditEmployeeDialog(index, employee),
                             ),

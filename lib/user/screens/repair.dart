@@ -5,6 +5,7 @@ import 'package:fuel_and_fix/user/screens/feedback.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geocoding/geocoding.dart'; // Import geocoding package
 
 class WorkshopScreen extends StatefulWidget {
   @override
@@ -169,6 +170,12 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
     Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high);
 
+    // Use geocoding to get the place name from the coordinates
+    List<Placemark> placemarks =
+        await placemarkFromCoordinates(position.latitude, position.longitude);
+
+    Placemark place = placemarks.first;
+
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
@@ -177,7 +184,8 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
       'additionalData': {
         'latitude': position.latitude,
         'longitude': position.longitude,
-        'location_name': 'Punnad, India', // Example static location
+        'location_name':
+            '${place.locality}, ${place.country}', // Dynamically fetched location
       },
     }, SetOptions(merge: true));
 
@@ -192,7 +200,12 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
 
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Location saved successfully!')),
+      SnackBar(
+        content: Text('Location saved successfully!'),
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(20.0),
+        backgroundColor: Colors.deepPurple,
+      ),
     );
   }
 
@@ -277,7 +290,6 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                 itemCount: workshops.length,
                 itemBuilder: (context, index) {
                   var workshop = workshops[index];
-                  debugPrint('Workshop data: $workshop');
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12.0),
                     child: Card(
@@ -286,164 +298,221 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                       ),
                       elevation: 8,
                       shadowColor: Colors.deepPurple.withOpacity(0.2),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              const Color.fromARGB(255, 33, 93, 128)!,
-                              const Color.fromARGB(255, 116, 29, 29)!
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
+                      child: Stack(
+                        children: [
+                          // Card content (company details, etc.)
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color.fromARGB(255, 33, 93, 128)!,
+                                  const Color.fromARGB(255, 116, 29, 29)!
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: Image.network(
-                                      workshop['companyLogo'],
-                                      width: 90,
-                                      height: 90,
-                                      fit: BoxFit.cover,
-                                    ),
+                                  // Row for company logo and details
+                                  Row(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Image.network(
+                                          workshop['companyLogo'],
+                                          width: 80,
+                                          height: 80,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                      SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              workshop['companyName'],
+                                              style: TextStyle(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                                color: const Color.fromARGB(
+                                                    255, 251, 159, 120),
+                                              ),
+                                            ),
+                                            SizedBox(height: 8),
+                                            // Location text placed back under company details
+                                            Row(
+                                              children: [
+                                                Icon(Icons.location_on,
+                                                    color: const Color.fromARGB(
+                                                        255, 216, 214, 255),
+                                                    size: 18),
+                                                SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    // Access location_name from additionalData map
+                                                    workshop['additionalData'] !=
+                                                                null &&
+                                                            workshop['additionalData']
+                                                                    [
+                                                                    'location_name'] !=
+                                                                null
+                                                        ? workshop[
+                                                                'additionalData']
+                                                            ['location_name']
+                                                        : 'Not Available',
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                Icon(Icons.phone,
+                                                    color: Colors.white,
+                                                    size: 18),
+                                                SizedBox(width: 8),
+                                                Text(
+                                                  workshop['phoneNo'] ??
+                                                      'Not Available',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                Icon(Icons.build,
+                                                    color: Colors.white,
+                                                    size: 18),
+                                                SizedBox(width: 8),
+                                                Text(
+                                                  workshop['service'] ??
+                                                      'Not Available',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          workshop['companyName'],
-                                          style: TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
-                                            color: const Color.fromARGB(
-                                                255, 251, 159, 120),
+                                  SizedBox(height: 20),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      // Send Request Button
+                                      Flexible(
+                                        child: ElevatedButton.icon(
+                                          style: ElevatedButton.styleFrom(
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 6),
+                                            minimumSize:
+                                                Size(0, 30), // Smaller size
                                           ),
+                                          onPressed: _showLocationMenu,
+                                          icon: Icon(Icons.send),
+                                          label: Text('Send Request'),
                                         ),
-                                        SizedBox(height: 4),
-                                        Text(
-                                          'Location: ${workshop['location_name'] ?? 'Not Available'}',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: const Color.fromARGB(
-                                                255, 255, 255, 255),
+                                      ),
+                                      SizedBox(width: 8),
+                                      // Feedback Button
+                                      Flexible(
+                                        child: ElevatedButton.icon(
+                                          style: ElevatedButton.styleFrom(
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 6),
+                                            minimumSize:
+                                                Size(0, 30), // Smaller size
                                           ),
+                                          onPressed: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    FeedbackScreen(
+                                                  stationId: workshop['id'],
+                                                  stationName:
+                                                      workshop['companyName'],
+                                                  service: 'repair',
+                                                  userId: FirebaseAuth.instance
+                                                      .currentUser?.uid,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          icon: Icon(Icons.feedback),
+                                          label: Text('Feedback'),
                                         ),
-                                        Text(
-                                          'Phone: ${workshop['phoneNo']}',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: const Color.fromARGB(
-                                                255, 255, 255, 255),
-                                          ),
-                                        ),
-                                        Text(
-                                          'Service: ${workshop['service']}',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: const Color.fromARGB(
-                                                255, 255, 255, 255),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                              SizedBox(height: 20),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  ElevatedButton.icon(
-                                    style: ElevatedButton.styleFrom(
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 12),
-                                    ),
-                                    onPressed: () async {
-                                      if (workshop['additionalData']
-                                                  ['latitude'] ==
-                                              null ||
-                                          workshop['additionalData']
-                                                  ['longitude'] ==
-                                              null) {
-                                        debugPrint(
-                                            'Latitude or Longitude is null for workshop: ${workshop['id']}');
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                              content: Text(
-                                                  'Location data is not available for this workshop.')),
-                                        );
-                                        return;
-                                      }
-                                      debugPrint(
-                                          'Opening Google Maps for ${workshop['additionalData']['latitude']}, ${workshop['additionalData']['longitude']}');
-                                      await _openGoogleMaps(
-                                        latitude: workshop['additionalData']
-                                            ['latitude'],
-                                        longitude: workshop['additionalData']
-                                            ['longitude'],
-                                      );
-                                    },
-                                    icon: Icon(Icons.location_on),
-                                    label: Text('Directions'),
-                                  ),
-                                  ElevatedButton.icon(
-                                    style: ElevatedButton.styleFrom(
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 12),
-                                    ),
-                                    onPressed: _showLocationMenu,
-                                    icon: Icon(Icons.send),
-                                    label: Text('Send Request'),
-                                  ),
-                                  ElevatedButton.icon(
-                                    style: ElevatedButton.styleFrom(
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 12),
-                                    ),
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => FeedbackScreen(
-                                            stationId: workshop['id'],
-                                            stationName:
-                                                workshop['companyName'],
-                                            service: 'repair',
-                                            userId: FirebaseAuth
-                                                .instance.currentUser?.uid,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    icon: Icon(Icons.feedback),
-                                    label: Text('Feedback'),
-                                  ),
-                                ],
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
+                          // Location Button positioned at top-right of the card
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                if (workshop['additionalData']['latitude'] ==
+                                        null ||
+                                    workshop['additionalData']['longitude'] ==
+                                        null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text(
+                                            'Location data is not available for this workshop.')),
+                                  );
+                                  return;
+                                }
+                                await _openGoogleMaps(
+                                  latitude: workshop['additionalData']
+                                      ['latitude'],
+                                  longitude: workshop['additionalData']
+                                      ['longitude'],
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                shape: CircleBorder(),
+                                padding: EdgeInsets.all(8),
+                                backgroundColor: Colors.white,
+                              ),
+                              child: Icon(
+                                Icons.location_on,
+                                color: Colors.deepPurple,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   );

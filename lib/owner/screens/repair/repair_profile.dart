@@ -349,14 +349,14 @@ class RepairProfilePageState extends State<RepairProfilePage> {
       appBar: AppBar(
         title: Text("Repair Profile"),
         backgroundColor:
-            const Color.fromARGB(255, 150, 131, 46), // AppBar color
+            const Color.fromARGB(255, 189, 176, 117), // AppBar color
         actions: [
           IconButton(
             icon: Icon(
               isActive ? Icons.toggle_on : Icons.toggle_off,
               size: 60, // Making the toggle button larger
               color: isActive
-                  ? const Color.fromARGB(255, 7, 25, 193)
+                  ? const Color.fromARGB(255, 52, 64, 165)
                   : const Color.fromARGB(
                       255, 102, 81, 80), // Color change based on status
             ),
@@ -395,7 +395,7 @@ class RepairProfilePageState extends State<RepairProfilePage> {
                 Card(
                   margin: EdgeInsets.only(bottom: 16.0),
                   color: const Color.fromARGB(
-                      255, 203, 196, 113), // Light blue background for the card
+                      255, 189, 185, 138), // Light blue background for the card
                   elevation: 5, // Add shadow effect
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15), // Rounded corners
@@ -413,9 +413,10 @@ class RepairProfilePageState extends State<RepairProfilePage> {
                         : Icon(Icons.business,
                             size: 50), // Placeholder if no logo is available
                     title: Text(
-                      'Company Name : ${managerDetails['companyName']}',
+                      'Company Name: ${managerDetails['companyName']}',
                       style: TextStyle(
-                        color: Colors.blue[900], // Dark blue color for text
+                        color: const Color.fromARGB(
+                            255, 12, 19, 29), // Dark blue color for text
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -424,14 +425,14 @@ class RepairProfilePageState extends State<RepairProfilePage> {
                       children: [
                         Text('Owner: ${managerDetails['ownerName']}'),
                         Text('License: ${managerDetails['companyLicense']}'),
-                        Text('Email: ${managerDetails['email']}'),
+                        Text('Email:${managerDetails['email']}'),
                         Text('Phone: ${managerDetails['phoneNo']}'),
                       ],
                     ),
                     trailing: IconButton(
                       icon: Icon(Icons.edit),
                       color: const Color.fromARGB(
-                          255, 6, 48, 121), // Edit icon color
+                          255, 121, 6, 6), // Edit icon color
                       onPressed: () => _showEditManagerDialog(managerDetails),
                     ),
                   ),
@@ -450,8 +451,10 @@ class RepairProfilePageState extends State<RepairProfilePage> {
                     ElevatedButton(
                       onPressed: _showAddEmployeeDialog,
                       style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: Colors.green, // Button color
+                        foregroundColor:
+                            const Color.fromARGB(255, 255, 255, 255),
+                        backgroundColor: const Color.fromARGB(
+                            255, 95, 110, 172), // Button color
                         padding: EdgeInsets.symmetric(
                             horizontal: 24, vertical: 12), // Padding
                         shape: RoundedRectangleBorder(
@@ -467,7 +470,7 @@ class RepairProfilePageState extends State<RepairProfilePage> {
                             Icons.person_add, // Icon to display
                             size: 18, // Icon size
                             color: const Color.fromARGB(
-                                255, 93, 76, 76), // Icon color
+                                255, 255, 246, 246), // Icon color
                           ),
                           SizedBox(width: 8), // Space between icon and text
                           Text(

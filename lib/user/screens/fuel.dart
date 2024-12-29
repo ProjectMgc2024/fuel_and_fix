@@ -1,4 +1,3 @@
-import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -355,7 +354,6 @@ class _FuelStationListState extends State<FuelStationList> {
     );
   }
 
-  @override
   Widget build(BuildContext context) {
     final filteredStations = getFilteredStations();
 
@@ -364,21 +362,11 @@ class _FuelStationListState extends State<FuelStationList> {
         title: Text(
           'Fuel Stations',
           style: TextStyle(
-              fontWeight: FontWeight.bold, fontSize: 22, color: Colors.white),
+              fontWeight: FontWeight.bold, fontSize: 24, color: Colors.white),
         ),
         centerTitle: true,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Color.fromARGB(255, 145, 106, 39),
-                Color.fromARGB(255, 220, 81, 62)
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
+        backgroundColor: Color.fromARGB(255, 24, 85, 123), // Solid Blue
+        elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
@@ -391,20 +379,16 @@ class _FuelStationListState extends State<FuelStationList> {
         ),
       ),
       body: Container(
+        padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color.fromARGB(255, 158, 139, 106),
-              Color.fromARGB(255, 155, 132, 57),
-            ],
-          ),
+          color: Color.fromARGB(255, 238, 238, 238), // Light Gray Background
+          borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(25), topRight: Radius.circular(25)),
         ),
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.symmetric(vertical: 16),
               child: TextField(
                 onChanged: (text) {
                   setState(() {
@@ -413,26 +397,24 @@ class _FuelStationListState extends State<FuelStationList> {
                 },
                 decoration: InputDecoration(
                   labelText: 'Search for a location',
-                  prefixIcon: Icon(Icons.search, color: Colors.blueAccent),
+                  prefixIcon: Icon(Icons.search, color: Colors.blue),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30.0),
+                    borderRadius: BorderRadius.circular(50.0),
                   ),
                   filled: true,
-                  fillColor: const Color.fromARGB(255, 212, 226, 255),
-                  contentPadding:
-                      EdgeInsets.symmetric(vertical: 15.0, horizontal: 20.0),
+                  fillColor: Color.fromARGB(255, 255, 255, 255),
+                  contentPadding: EdgeInsets.symmetric(vertical: 15.0),
                 ),
               ),
             ),
             if (filteredStations.isEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(
-                    vertical: 20.0, horizontal: 16.0),
+                padding: const EdgeInsets.symmetric(vertical: 20.0),
                 child: Text(
                   'No fuel stations found for the entered location.',
                   style: TextStyle(
                       fontSize: 16,
-                      color: const Color.fromARGB(255, 255, 32, 17),
+                      color: Colors.redAccent,
                       fontWeight: FontWeight.w600),
                   textAlign: TextAlign.center,
                 ),
@@ -443,20 +425,21 @@ class _FuelStationListState extends State<FuelStationList> {
                 itemBuilder: (context, index) {
                   final station = filteredStations[index];
                   return Card(
-                    margin: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                    elevation: 8,
+                    margin: EdgeInsets.symmetric(vertical: 10),
+                    elevation: 5,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Container(
+                      // Applying the gradient effect
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
+                          colors: [
+                            const Color.fromARGB(255, 27, 47, 109),
+                            const Color.fromARGB(255, 141, 169, 210)
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [
-                            const Color.fromARGB(255, 130, 80, 27),
-                            const Color.fromARGB(255, 114, 87, 17)!,
-                          ],
                         ),
                         borderRadius: BorderRadius.circular(20),
                       ),
@@ -471,7 +454,7 @@ class _FuelStationListState extends State<FuelStationList> {
                                 style: TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.black87),
+                                    color: Colors.white),
                               ),
                             ),
                             SizedBox(height: 8),
@@ -496,29 +479,26 @@ class _FuelStationListState extends State<FuelStationList> {
                                     );
                                   },
                                   icon: Icon(Icons.location_on,
-                                      color: Colors.blueAccent),
+                                      color:
+                                          const Color.fromARGB(255, 170, 0, 0)),
                                 ),
                               ],
                             ),
-                            Divider(height: 20, color: Colors.grey[300]),
+                            Divider(height: 20, color: Colors.white60),
                             Text(
                               'Address: ${station['address']}',
                               style: TextStyle(
-                                  fontSize: 14,
-                                  color:
-                                      const Color.fromARGB(255, 255, 255, 255)),
+                                  fontSize: 14, color: Colors.white70),
                             ),
                             SizedBox(height: 5),
                             Text(
                               'Contact: ${station['contactNumber']}',
                               style: TextStyle(
-                                  fontSize: 14,
-                                  color:
-                                      const Color.fromARGB(255, 255, 255, 255)),
+                                  fontSize: 14, color: Colors.white70),
                             ),
                             SizedBox(height: 15),
                             Wrap(
-                              spacing: 8,
+                              spacing: 10,
                               children:
                                   station['fuels'].keys.map<Widget>((fuelType) {
                                 final price = station['fuels'][fuelType];
@@ -531,7 +511,7 @@ class _FuelStationListState extends State<FuelStationList> {
                                     label: Text(
                                         '$fuelType ₹${price.toStringAsFixed(2)}'),
                                     backgroundColor:
-                                        const Color.fromARGB(255, 147, 96, 20),
+                                        const Color.fromARGB(255, 169, 144, 31),
                                     labelStyle: TextStyle(color: Colors.white),
                                   ),
                                 );
@@ -554,10 +534,10 @@ class _FuelStationListState extends State<FuelStationList> {
                                   );
                                 },
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      Color.fromARGB(255, 7, 51, 69),
+                                  backgroundColor: const Color.fromARGB(
+                                      255, 200, 136, 96), // Solid Green
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(25),
+                                    borderRadius: BorderRadius.circular(30),
                                   ),
                                   padding: EdgeInsets.symmetric(
                                       horizontal: 30.0, vertical: 12.0),

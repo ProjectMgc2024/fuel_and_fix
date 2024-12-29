@@ -1,137 +1,56 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:http/http.dart' as http;
 
 class TowRequest extends StatefulWidget {
   @override
-  _TowRequestPageState createState() => _TowRequestPageState();
+  _TowRequestState createState() => _TowRequestState();
 }
 
-class _TowRequestPageState extends State<TowRequest> {
-  final List<Map<String, dynamic>> requests = [
-    {
-      'customer': 'John Doe',
-      'vehicle': 'Car - Toyota Corolla',
-      'issue': 'Accident, needs towing',
-      'location': 'Near Sree Padmanabhaswamy Temple, Thiruvananthapuram',
-      'status': 'Pending',
-      'time': '12:45 PM',
-      'latitude': 8.5241, // Latitude for Thiruvananthapuram, Kerala
-      'longitude': 76.9366, // Longitude for Thiruvananthapuram, Kerala
-    },
-    {
-      'customer': 'Sarah Connor',
-      'vehicle': 'Bike - Honda CBR',
-      'issue': 'Breakdown, needs towing',
-      'location': 'Kochi, Kerala',
-      'status': 'In Progress',
-      'time': '1:30 PM',
-      'latitude': 9.9312, // Latitude for Kochi, Kerala
-      'longitude': 76.2673, // Longitude for Kochi, Kerala
-    },
-    {
-      'customer': 'Amit Sharma',
-      'vehicle': 'Truck - Tata 407',
-      'issue': 'Engine failure, requires towing',
-      'location': 'Munnar, Kerala',
-      'status': 'Pending',
-      'time': '2:00 PM',
-      'latitude': 10.0881, // Latitude for Munnar, Kerala
-      'longitude': 77.0590, // Longitude for Munnar, Kerala
-    },
-    // Add more requests as needed
-  ];
+class _TowRequestState extends State<TowRequest> {
+  String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? "";
 
-  // Fetch the address from coordinates using reverse geocoding
-  Future<String> getAddressFromCoordinates(
-      double latitude, double longitude) async {
-    final apiKey =
-        'YOUR_GOOGLE_API_KEY'; // Replace with your Google Maps API Key
-    final url =
-        'https://maps.googleapis.com/maps/api/geocode/json?latlng=$latitude,$longitude&key=$apiKey';
-
-    final response = await http.get(Uri.parse(url));
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-
-      if (data['results'].isNotEmpty) {
-        return data['results'][0]['formatted_address'];
-      } else {
-        return 'No address found';
-      }
-    } else {
-      throw Exception('Failed to fetch address');
-    }
-  }
-
-  void _updateStatus(int index, String newStatus) {
-    setState(() {
-      requests[index]['status'] = newStatus;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Request marked as $newStatus'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
-
-  void _launchMapsUrl(double latitude, double longitude) async {
-    final String googleUrl =
-        'https://www.google.com/maps?q=$latitude,$longitude';
-    if (await canLaunch(googleUrl)) {
-      await launch(googleUrl);
-    } else {
+  Future<void> updateRequestStatus(String requestId, bool newStatus) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('tow')
+          .doc(currentUserId)
+          .collection('request')
+          .doc(requestId)
+          .update({'status': newStatus});
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Could not open the map.")),
+        SnackBar(content: Text('Status updated successfully.')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update status: $e')),
       );
     }
   }
 
-  void _viewDetails(int index) async {
-    final request = requests[index];
-    final address = await getAddressFromCoordinates(
-        request['latitude'], request['longitude']);
+  Future<Map<String, dynamic>?> fetchUserDetails(String userId) async {
+    try {
+      DocumentSnapshot userDoc =
+          await FirebaseFirestore.instance.collection('user').doc(userId).get();
+      return userDoc.data() as Map<String, dynamic>?;
+    } catch (e) {
+      print('Error fetching user details: $e');
+      return null;
+    }
+  }
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Request Details'),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Customer: ${request['customer']}'),
-                Text('Vehicle: ${request['vehicle']}'),
-                Text('Issue: ${request['issue']}'),
-                Text('Location: $address'), // Show the formatted address here
-                Text('Requested At: ${request['time']}'),
-                SizedBox(height: 10),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    _launchMapsUrl(request['latitude'], request['longitude']);
-                  },
-                  icon: Icon(Icons.map),
-                  label: Text('View Location on Map'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
+  Future<void> openGoogleMaps(double latitude, double longitude) async {
+    final String googleMapsUrl =
+        "https://www.google.com/maps/search/?api=1&query=$latitude,$longitude";
+
+    if (await canLaunch(googleMapsUrl)) {
+      await launch(googleMapsUrl);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open Google Maps.')),
+      );
+    }
   }
 
   @override
@@ -139,153 +58,137 @@ class _TowRequestPageState extends State<TowRequest> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Tow Requests'),
-        backgroundColor: Colors.teal,
-        centerTitle: true,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(
-                context); // This pops the current screen off the stack
-          },
-        ),
+        backgroundColor: const Color.fromARGB(255, 123, 173, 168),
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: SingleChildScrollView(
-            // Wrap the whole body in a SingleChildScrollView
-            child: Column(
-              children: [
-                for (int index = 0; index < requests.length; index++)
-                  Card(
-                    elevation: 6,
-                    margin: EdgeInsets.symmetric(vertical: 8),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('tow')
+            .doc(currentUserId)
+            .collection('request')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(child: Text('No requests found.'));
+          }
+
+          final requests = snapshot.data!.docs;
+
+          return ListView.builder(
+            itemCount: requests.length,
+            itemBuilder: (context, index) {
+              var request = requests[index].data() as Map<String, dynamic>;
+              String requestId = requests[index].id;
+
+              return FutureBuilder<Map<String, dynamic>?>(
+                future: fetchUserDetails(request['userId']),
+                builder: (context, userSnapshot) {
+                  if (userSnapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+
+                  if (!userSnapshot.hasData || userSnapshot.data == null) {
+                    return ListTile(
+                      title: Text(request['companyName'] ?? 'No Company Name'),
+                      subtitle: Text('Error fetching user details'),
+                    );
+                  }
+
+                  var userDetails = userSnapshot.data!;
+                  var additionalData = userDetails['additionalData'] ?? {};
+                  double latitude = additionalData['latitude'] ?? 0.0;
+                  double longitude = additionalData['longitude'] ?? 0.0;
+                  String locationName =
+                      additionalData['location_name'] ?? 'Unknown Location';
+
+                  return Card(
+                    elevation: 5,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(15),
                     ),
+                    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                     child: Padding(
-                      padding: const EdgeInsets.all(12.0),
+                      padding: const EdgeInsets.all(16.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Customer and status row
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  requests[index]['customer'],
-                                  style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      overflow: TextOverflow.ellipsis),
-                                ),
-                              ),
-                              _statusChip(requests[index]['status']),
-                            ],
+                          // User Image
+                          Center(
+                            child: CircleAvatar(
+                              radius: 40,
+                              backgroundImage:
+                                  NetworkImage(userDetails['userImage'] ?? ''),
+                              onBackgroundImageError: (_, __) =>
+                                  Icon(Icons.person, size: 40),
+                            ),
+                          ),
+                          SizedBox(height: 16),
+
+                          // User Details
+                          Text(
+                            userDetails['username'] ?? 'Unknown User',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.teal,
+                            ),
                           ),
                           SizedBox(height: 8),
-                          // Vehicle and issue information
+                          Text('Email: ${userDetails['email'] ?? 'N/A'}'),
+                          Text('Phone: ${userDetails['phoneno'] ?? 'N/A'}'),
+                          Text('License: ${userDetails['license'] ?? 'N/A'}'),
                           Text(
-                            'Vehicle: ${requests[index]['vehicle']}',
-                            style: TextStyle(
-                                fontSize: 16, color: Colors.grey[700]),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: 4),
+                              'Vehicle Type: ${userDetails['vehicleType'] ?? 'N/A'}'),
                           Text(
-                            'Issue: ${requests[index]['issue']}',
-                            style: TextStyle(
-                                fontSize: 14, color: Colors.grey[600]),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: 8),
-                          // Location and time row
-                          Row(
-                            children: [
-                              Icon(Icons.location_on,
-                                  color: Colors.blueGrey, size: 18),
-                              SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  requests[index]['location'],
-                                  style: TextStyle(
-                                      fontSize: 14, color: Colors.grey[700]),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Requested At: ${requests[index]['time']}',
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey[600]),
-                          ),
-                          SizedBox(height: 10),
-                          // Action buttons for Accept, Reject, and Details
+                              'Registration No: ${userDetails['registrationNo'] ?? 'N/A'}'),
+                          Text('Location: $locationName'),
+
+                          SizedBox(height: 16),
+
+                          // Buttons
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               ElevatedButton(
-                                onPressed: () =>
-                                    _updateStatus(index, 'In Progress'),
-                                style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green),
+                                onPressed: () {
+                                  updateRequestStatus(requestId, true);
+                                },
                                 child: Text('Accept'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                ),
                               ),
                               ElevatedButton(
-                                onPressed: () =>
-                                    _updateStatus(index, 'Rejected'),
-                                style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red),
+                                onPressed: () {
+                                  updateRequestStatus(requestId, false);
+                                },
                                 child: Text('Reject'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                ),
                               ),
-                              TextButton(
-                                onPressed: () => _viewDetails(index),
-                                child: Text('Details',
-                                    style: TextStyle(color: Colors.blueGrey)),
+                              IconButton(
+                                icon:
+                                    Icon(Icons.location_on, color: Colors.blue),
+                                onPressed: () {
+                                  openGoogleMaps(latitude, longitude);
+                                },
                               ),
                             ],
                           ),
                         ],
                       ),
                     ),
-                  ),
-              ],
-            ),
-          ),
-        ),
+                  );
+                },
+              );
+            },
+          );
+        },
       ),
-    );
-  }
-
-  // Status Chip Widget
-  Widget _statusChip(String status) {
-    Color chipColor;
-    switch (status) {
-      case 'Pending':
-        chipColor = Colors.orange;
-        break;
-      case 'In Progress':
-        chipColor = Colors.blue;
-        break;
-      case 'Rejected':
-        chipColor = Colors.red;
-        break;
-      case 'Completed':
-        chipColor = Colors.green;
-        break;
-      default:
-        chipColor = Colors.grey;
-    }
-
-    return Chip(
-      label: Text(
-        status,
-        style: TextStyle(color: Colors.white),
-      ),
-      backgroundColor: chipColor,
     );
   }
 }

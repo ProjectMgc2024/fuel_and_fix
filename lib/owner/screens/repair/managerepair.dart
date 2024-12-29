@@ -10,14 +10,20 @@ class RepairManagementPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         title: Text(
           'Repair Management',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style: TextStyle(
+              fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        backgroundColor: Color.fromARGB(255, 160, 128, 39),
+        backgroundColor: Color.fromARGB(255, 86, 101, 102),
         actions: [
           IconButton(
-            icon: Icon(Icons.logout, size: 30),
+            icon: Icon(
+              Icons.logout,
+              size: 30,
+              color: const Color.fromARGB(255, 72, 6, 6),
+            ),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Logged out!')),
@@ -34,8 +40,8 @@ class RepairManagementPage extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Color.fromARGB(255, 202, 113, 36),
-              Color.fromARGB(255, 4, 163, 34),
+              const Color.fromARGB(255, 181, 160, 130),
+              const Color.fromARGB(255, 140, 146, 177),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -88,40 +94,56 @@ class RepairManagementPage extends StatelessWidget {
       child: Center(
         child: Container(
           width: MediaQuery.of(context).size.width *
-              0.6, // Reduce the width to 80% of the screen width
+              0.6, // Reduce the width to 60% of the screen width
           child: Card(
             elevation: 8.0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16.0),
             ),
-            color: Colors.white,
             margin: EdgeInsets.symmetric(vertical: 8.0),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Icon(
-                    icon,
-                    size: 50,
-                    color: Colors.deepPurple,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
+            child: Ink(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    const Color.fromARGB(255, 83, 83, 95), // Gradient color 1
+                    const Color.fromARGB(
+                        255, 102, 102, 101), // Gradient color 2
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16.0),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Icon(
+                      icon,
+                      size: 50,
+                      color: const Color.fromARGB(255, 255, 255,
+                          255), // Icon color for visibility on gradient background
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    description,
-                    style: TextStyle(color: Colors.black54),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                    SizedBox(height: 16),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white, // Text color for better contrast
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      description,
+                      style: TextStyle(
+                          color: Colors
+                              .white70), // Slightly transparent white text
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
