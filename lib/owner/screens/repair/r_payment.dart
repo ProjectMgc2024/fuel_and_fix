@@ -1,81 +1,104 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class RPaymentsAndEarningsPage extends StatefulWidget {
   @override
-  _PaymentsAndEarningsPageState createState() =>
-      _PaymentsAndEarningsPageState();
+  _RPaymentsAndEarningsPageState createState() =>
+      _RPaymentsAndEarningsPageState();
 }
 
-class _PaymentsAndEarningsPageState extends State<RPaymentsAndEarningsPage> {
-  // Mock data for earnings and payments related to repair services
-  double totalEarnings = 5000.0;
-  double pendingPayments = 1000.0;
+class _RPaymentsAndEarningsPageState extends State<RPaymentsAndEarningsPage> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Payment history for Repair Service with registration numbers
-  final paymentHistory = [
-    {
-      'registrationNumber': 'KL45AJ7865',
-      'date': '2024-11-01',
-      'amount': '1000 Rs',
-      'status': 'Paid'
-    },
-    {
-      'registrationNumber': 'KL45AJ7866',
-      'date': '2024-11-05',
-      'amount': '1500 Rs',
-      'status': 'Pending'
-    },
-    {
-      'registrationNumber': 'KL45AJ7867',
-      'date': '2024-11-10',
-      'amount': '1500 Rs',
-      'status': 'Failed'
-    },
-  ];
+  // Fetch the current user ID
+  Future<String?> getCurrentUserId() async {
+    final user = _auth.currentUser;
+    return user?.uid;
+  }
+
+  // Fetch username by user ID
+  Future<String> fetchUsername(String userId) async {
+    final userDoc = await FirebaseFirestore.instance
+        .collection(
+            'user') // Ensure this matches your Firestore collection name
+        .doc(userId)
+        .get();
+
+    if (userDoc.exists) {
+      return userDoc.data()?['username'] ?? 'Unknown User';
+    }
+    return 'Unknown User';
+  }
+
+  // Fetch payment data and include username
+  Future<List<Map<String, dynamic>>> fetchPaymentData() async {
+    final userId = await getCurrentUserId();
+    if (userId == null) {
+      throw Exception('User not logged in');
+    }
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('repair')
+        .doc(userId) // Use the current user's ID as the document ID
+        .collection('request')
+        .where('isPayment', isEqualTo: true)
+        .get();
+
+    // Fetch payment data with username
+    List<Map<String, dynamic>> paymentData = [];
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      final username = await fetchUsername(data['userId']);
+      paymentData.add({
+        'paymentId': data['paymentId'],
+        'status': data['status'] == true ? 'Successful' : 'Failed',
+        'timestamp': data['timestamp'],
+        'username': username,
+      });
+    }
+    return paymentData;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          title: Text('Repair Service Payments & Earnings'),
-          backgroundColor: Colors.teal),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            _buildSummary(
-                'Total Earnings from Repair Service:', '$totalEarnings Rs'),
-            SizedBox(height: 20),
-            _buildSummary(
-                'Pending Payments for Repair Services:', '$pendingPayments Rs'),
-            SizedBox(height: 20),
-            Text('Repair Service Payment History:',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ...paymentHistory.map((payment) => _buildPaymentCard(payment)),
-          ],
-        ),
+        title: Text('Payments & Earnings'),
+        backgroundColor: const Color.fromARGB(255, 111, 150, 146),
+      ),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: fetchPaymentData(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Center(child: Text('No payment data found.'));
+          }
+
+          final paymentData = snapshot.data!;
+
+          return ListView.builder(
+            padding: EdgeInsets.all(16),
+            itemCount: paymentData.length,
+            itemBuilder: (context, index) {
+              final payment = paymentData[index];
+              return _buildPaymentCard(payment);
+            },
+          );
+        },
       ),
     );
   }
 
-  Widget _buildSummary(String title, String amount) {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-          color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          SizedBox(height: 10),
-          Text(amount, style: TextStyle(fontSize: 16)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPaymentCard(Map<String, String> payment) {
+  // Payment card widget
+  Widget _buildPaymentCard(Map<String, dynamic> payment) {
     return Card(
       margin: EdgeInsets.symmetric(vertical: 8),
       elevation: 5,
@@ -84,20 +107,20 @@ class _PaymentsAndEarningsPageState extends State<RPaymentsAndEarningsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Registration Number: ${payment['registrationNumber']}',
+            Text('Payment ID: ${payment['paymentId']}',
                 style: TextStyle(fontSize: 14, color: Colors.blue)),
-            Text('Date: ${payment['date']}',
-                style: TextStyle(fontSize: 14, color: Colors.black45)),
-            Text('Amount: ${payment['amount']}',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             Text('Status: ${payment['status']}',
                 style: TextStyle(
                     fontSize: 14,
-                    color: payment['status'] == 'Paid'
+                    color: payment['status'] == 'Successful'
                         ? Colors.green
-                        : payment['status'] == 'Pending'
-                            ? Colors.orange
-                            : Colors.red)),
+                        : Colors.red)),
+            Text(
+              'Timestamp: ${payment['timestamp'].toDate()}',
+              style: TextStyle(fontSize: 14, color: Colors.black45),
+            ),
+            Text('Username: ${payment['username']}',
+                style: TextStyle(fontSize: 14, color: Colors.black45)),
           ],
         ),
       ),

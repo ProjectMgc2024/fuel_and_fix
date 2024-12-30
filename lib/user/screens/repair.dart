@@ -2,10 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/user/screens/feedback.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:geocoding/geocoding.dart'; // Import geocoding package
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart'; // Import geocoding
 
 class WorkshopScreen extends StatefulWidget {
   @override
@@ -15,7 +14,9 @@ class WorkshopScreen extends StatefulWidget {
 class _WorkshopScreenState extends State<WorkshopScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late Razorpay _razorpay;
-  String _locationName = "Use Current Location"; // Initial placeholder text
+  Map<String, dynamic>? _currentWorkshop;
+  Position? _currentPosition;
+  String? _currentLocationName;
 
   @override
   void initState() {
@@ -41,8 +42,6 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
     List<Map<String, dynamic>> workshops = [];
     for (var doc in querySnapshot.docs) {
       var data = doc.data() as Map<String, dynamic>;
-      print('Document data: $data'); // Debug statement
-
       workshops.add({
         'id': doc.id,
         ...data,
@@ -51,34 +50,30 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
     return workshops;
   }
 
-  Future<void> _openGoogleMaps(
-      {required double latitude, required double longitude}) async {
-    final Uri googleMapsUri = Uri.parse(
-        "https://www.google.com/maps/search/?api=1&query=$latitude,$longitude");
-
-    if (await canLaunch(googleMapsUri.toString())) {
-      await launch(googleMapsUri.toString());
-    } else {
-      throw "Could not launch Google Maps";
-    }
-  }
-
-  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+  Future<void> _handlePaymentSuccess(PaymentSuccessResponse response) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (user == null || _currentWorkshop == null) return;
 
-    await _firestore.collection('user').doc(user.uid).collection('orders').add({
-      'ownerId': user.uid,
-      'paymentAmount': 500,
+    await _firestore
+        .collection('repair')
+        .doc(_currentWorkshop!['id'])
+        .collection('request')
+        .add({
+      'userId': user.uid,
       'paymentId': response.paymentId,
-      'service': 'repair',
-      'time': DateTime.now(),
-      'description': 'Repair service payment',
+      'status': true,
+      'isPayment': true,
+      'timestamp': DateTime.now(),
+      'userLocation': _currentLocationName, // Store the location name
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Payment Successful!")),
+      SnackBar(content: Text("Payment Successful and Request Sent!")),
     );
+
+    setState(() {
+      _currentWorkshop = null;
+    });
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
@@ -94,10 +89,10 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
     );
   }
 
-  void _payWithRazorpay(String userId) {
+  void _payWithRazorpay(Map<String, dynamic> workshop) {
     var options = {
       'key': 'rzp_test_D5Vh3hyi1gRBV0',
-      'amount': 250, // Amount in paise (500.00 INR)
+      'amount': 50000, // Amount in paise (500.00 INR)
       'name': 'Repair Service',
       'description': 'Repair service payment',
       'prefill': {
@@ -107,131 +102,84 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
     };
 
     try {
+      _currentWorkshop = workshop;
       _razorpay.open(options);
     } catch (e) {
       debugPrint(e.toString());
     }
   }
 
-  Future<void> _getLocationAndSendRequest() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Fetching location...'),
-            CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          ],
-        ),
-        duration: Duration(minutes: 1),
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(20.0),
-        backgroundColor: Colors.deepPurple,
-      ),
-    );
-
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    // Check if location services are enabled
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Location services are disabled.')),
-      );
-      return;
-    }
-
-    // Check location permission
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Location permission is denied.')),
-        );
-        return;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Location permission is permanently denied.')),
-      );
-      return;
-    }
-
-    // Get current position
+  // Function to get current location and location name
+  Future<void> _getCurrentLocation() async {
+    // Get the current position
     Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high);
-
-    // Use geocoding to get the place name from the coordinates
-    List<Placemark> placemarks =
-        await placemarkFromCoordinates(position.latitude, position.longitude);
-
-    Placemark place = placemarks.first;
-
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    // Store the location data in Firebase
-    await _firestore.collection('user').doc(user.uid).set({
-      'additionalData': {
-        'latitude': position.latitude,
-        'longitude': position.longitude,
-        'location_name':
-            '${place.locality}, ${place.country}', // Dynamically fetched location
-      },
-    }, SetOptions(merge: true));
-
-    // Fetch and update location name
-    DocumentSnapshot userDoc =
-        await _firestore.collection('user').doc(user.uid).get();
     setState(() {
-      _locationName = (userDoc.data() as Map<String, dynamic>)['additionalData']
-              ['location_name'] ??
-          "Use Current Location";
+      _currentPosition = position;
     });
 
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Location saved successfully!'),
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(20.0),
-        backgroundColor: Colors.deepPurple,
-      ),
-    );
+    // Reverse geocode to get the location name
+    List<Placemark> placemarks = await GeocodingPlatform.instance!
+        .placemarkFromCoordinates(position.latitude, position.longitude);
+
+    if (placemarks.isNotEmpty) {
+      Placemark place = placemarks.first;
+      setState(() {
+        _currentLocationName =
+            "${place.locality}, ${place.administrativeArea}, ${place.country}";
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Current Location: $_currentLocationName')),
+      );
+
+      // Update user collection with current location
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        _firestore.collection('user').doc(user.uid).update({
+          'additionalData.latitude': position.latitude,
+          'additionalData.longitude': position.longitude,
+          'additionalData.location_name': _currentLocationName,
+        }).then((_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Location updated successfully!')),
+          );
+        }).catchError((error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to update location: $error')),
+          );
+        });
+      }
+    }
   }
 
-  void _showLocationMenu() {
+  // Show the dialog for current location and pay now
+  void _showLocationAndPaymentDialog(Map<String, dynamic> workshop) {
     showDialog(
       context: context,
-      builder: (context) {
+      barrierDismissible:
+          false, // Prevents closing the dialog by tapping outside
+      builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Choose an Option'),
+          title: Text('Select Action'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ListTile(
-                title: Text(_locationName),
-                onTap: () {
+              ElevatedButton.icon(
+                onPressed: () {
+                  _getCurrentLocation();
                   Navigator.pop(context);
-                  _getLocationAndSendRequest();
                 },
+                icon: Icon(Icons.my_location),
+                label: Text('Use Current Location'),
               ),
-              ListTile(
-                title: Text('Pay Now'),
-                onTap: () {
+              SizedBox(height: 10),
+              ElevatedButton.icon(
+                onPressed: () {
+                  _payWithRazorpay(workshop);
                   Navigator.pop(context);
-                  _payWithRazorpay(
-                      FirebaseAuth.instance.currentUser?.uid ?? '');
                 },
+                icon: Icon(Icons.payments),
+                label: Text('Pay Now'),
               ),
             ],
           ),
@@ -263,14 +211,14 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
           icon: Icon(Icons.arrow_back),
           color: Colors.white,
           onPressed: () {
-            Navigator.pop(
-                context); // This will pop the current screen from the stack and navigate back.
+            Navigator.pop(context);
           },
         ),
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
         child: FutureBuilder<List<Map<String, dynamic>>>(
+          // Get workshops from Firebase
           future: _getWorkshops(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -285,7 +233,6 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
               return Center(child: Text('No active workshops available.'));
             } else {
               List<Map<String, dynamic>> workshops = snapshot.data!;
-
               return ListView.builder(
                 itemCount: workshops.length,
                 itemBuilder: (context, index) {
@@ -300,13 +247,12 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                       shadowColor: Colors.deepPurple.withOpacity(0.2),
                       child: Stack(
                         children: [
-                          // Card content (company details, etc.)
                           Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  const Color.fromARGB(255, 33, 93, 128)!,
-                                  const Color.fromARGB(255, 116, 29, 29)!
+                                  const Color.fromARGB(255, 33, 93, 128),
+                                  const Color.fromARGB(255, 116, 29, 29)
                                 ],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
@@ -318,7 +264,6 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Row for company logo and details
                                   Row(
                                     children: [
                                       ClipRRect(
@@ -346,7 +291,6 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                                               ),
                                             ),
                                             SizedBox(height: 8),
-                                            // Location text placed back under company details
                                             Row(
                                               children: [
                                                 Icon(Icons.location_on,
@@ -356,17 +300,9 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                                                 SizedBox(width: 8),
                                                 Expanded(
                                                   child: Text(
-                                                    // Access location_name from additionalData map
-                                                    workshop['additionalData'] !=
-                                                                null &&
-                                                            workshop['additionalData']
-                                                                    [
-                                                                    'location_name'] !=
-                                                                null
-                                                        ? workshop[
-                                                                'additionalData']
-                                                            ['location_name']
-                                                        : 'Not Available',
+                                                    workshop['additionalData']?[
+                                                            'location_name'] ??
+                                                        'Not Available',
                                                     style: TextStyle(
                                                       fontSize: 14,
                                                       color: Colors.white,
@@ -379,7 +315,8 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                                             Row(
                                               children: [
                                                 Icon(Icons.phone,
-                                                    color: Colors.white,
+                                                    color: const Color.fromARGB(
+                                                        255, 58, 202, 56),
                                                     size: 18),
                                                 SizedBox(width: 8),
                                                 Text(
@@ -396,7 +333,8 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                                             Row(
                                               children: [
                                                 Icon(Icons.build,
-                                                    color: Colors.white,
+                                                    color: const Color.fromARGB(
+                                                        255, 0, 0, 0),
                                                     size: 18),
                                                 SizedBox(width: 8),
                                                 Text(
@@ -419,96 +357,36 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
                                     children: [
-                                      // Send Request Button
-                                      Flexible(
-                                        child: ElevatedButton.icon(
-                                          style: ElevatedButton.styleFrom(
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal: 8, vertical: 6),
-                                            minimumSize:
-                                                Size(0, 30), // Smaller size
-                                          ),
-                                          onPressed: _showLocationMenu,
-                                          icon: Icon(Icons.send),
-                                          label: Text('Send Request'),
-                                        ),
+                                      ElevatedButton.icon(
+                                        onPressed: () =>
+                                            _showLocationAndPaymentDialog(
+                                                workshop),
+                                        icon: Icon(Icons.send),
+                                        label: Text('Send Request'),
                                       ),
-                                      SizedBox(width: 8),
-                                      // Feedback Button
-                                      Flexible(
-                                        child: ElevatedButton.icon(
-                                          style: ElevatedButton.styleFrom(
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal: 8, vertical: 6),
-                                            minimumSize:
-                                                Size(0, 30), // Smaller size
-                                          ),
-                                          onPressed: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    FeedbackScreen(
-                                                  stationId: workshop['id'],
-                                                  stationName:
-                                                      workshop['companyName'],
-                                                  service: 'repair',
-                                                  userId: FirebaseAuth.instance
-                                                      .currentUser?.uid,
-                                                ),
+                                      ElevatedButton.icon(
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  FeedbackScreen(
+                                                stationId: workshop['id'],
+                                                stationName:
+                                                    workshop['companyName'],
+                                                service: 'repair',
+                                                userId: FirebaseAuth
+                                                    .instance.currentUser?.uid,
                                               ),
-                                            );
-                                          },
-                                          icon: Icon(Icons.feedback),
-                                          label: Text('Feedback'),
-                                        ),
+                                            ),
+                                          );
+                                        },
+                                        icon: Icon(Icons.feedback),
+                                        label: Text('Feedback'),
                                       ),
                                     ],
                                   ),
                                 ],
-                              ),
-                            ),
-                          ),
-                          // Location Button positioned at top-right of the card
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                if (workshop['additionalData']['latitude'] ==
-                                        null ||
-                                    workshop['additionalData']['longitude'] ==
-                                        null) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                        content: Text(
-                                            'Location data is not available for this workshop.')),
-                                  );
-                                  return;
-                                }
-                                await _openGoogleMaps(
-                                  latitude: workshop['additionalData']
-                                      ['latitude'],
-                                  longitude: workshop['additionalData']
-                                      ['longitude'],
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                shape: CircleBorder(),
-                                padding: EdgeInsets.all(8),
-                                backgroundColor: Colors.white,
-                              ),
-                              child: Icon(
-                                Icons.location_on,
-                                color: Colors.deepPurple,
                               ),
                             ),
                           ),

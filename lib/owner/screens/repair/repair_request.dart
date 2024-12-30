@@ -1,199 +1,193 @@
 import 'package:flutter/material.dart';
-
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class EmergencyRepairRequest extends StatefulWidget {
   @override
-  _EmergencyRepairRequestsPageState createState() =>
-      _EmergencyRepairRequestsPageState();
+  EmergencyRepairRequestState createState() => EmergencyRepairRequestState();
 }
 
-class _EmergencyRepairRequestsPageState extends State<EmergencyRepairRequest> {
-  List<Map<String, dynamic>> requests = [];
+class EmergencyRepairRequestState extends State<EmergencyRepairRequest> {
+  String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? "";
 
-  // Fetch requests from Firestore and user details
-  Future<void> fetchRequests() async {
-    final userUid = FirebaseAuth.instance.currentUser?.uid;
-    if (userUid == null) {
-      return;
-    }
-
-    try {
-      // Fetch requests where ownerId matches the current user's UID
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('request')
-          .where('ownerId', isEqualTo: userUid)
-          .get();
-
-      List<Map<String, dynamic>> tempRequests = [];
-
-      for (var doc in querySnapshot.docs) {
-        final request = {
-          'description': doc['description'] ?? 'N/A',
-          'timestamp': doc['timestamp']?.toDate().toString() ?? 'N/A',
-          'userId': doc['userId'] ?? 'Unknown',
-          'ownerId': doc['ownerId'] ?? 'Unknown',
-          'docId': doc.id, // Document ID for updating status
-        };
-
-        // Fetch user details from the user collection
-        final userSnapshot = await FirebaseFirestore.instance
-            .collection('user')
-            .doc(request['userId'])
-            .get();
-
-        if (userSnapshot.exists) {
-          request.addAll({
-            'email': userSnapshot['email'] ?? 'N/A',
-            'license': userSnapshot['license'] ?? 'N/A',
-            'phoneno': userSnapshot['phoneno'] ?? 'N/A',
-            'registrationNo': userSnapshot['registrationNo'] ?? 'N/A',
-            'userImage': userSnapshot['userImage'] ??
-                'https://via.placeholder.com/150', // Default image
-            'username': userSnapshot['username'] ?? 'N/A',
-            'vehicleType': userSnapshot['vehicleType'] ?? 'N/A',
-          });
-        }
-
-        tempRequests.add(request);
-      }
-
-      setState(() {
-        requests = tempRequests;
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load requests: $e')),
-      );
-    }
-  }
-
-  // Update the request's status in Firestore
-  Future<void> updateRequestStatus(String docId, bool status) async {
+  Future<void> updateRequestStatus(String requestId, bool newStatus) async {
     try {
       await FirebaseFirestore.instance
+          .collection('repair')
+          .doc(currentUserId)
           .collection('request')
-          .doc(docId)
-          .update({'status': status});
-
+          .doc(requestId)
+          .update({'status': newStatus});
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Request ${status ? 'accepted' : 'rejected'}')),
+        SnackBar(content: Text('Status updated successfully.')),
       );
-
-      // Refresh the list
-      fetchRequests();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update request: $e')),
+        SnackBar(content: Text('Failed to update status: $e')),
       );
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    fetchRequests(); // Fetch the requests when the widget is initialized
+  Future<Map<String, dynamic>?> fetchUserDetails(String userId) async {
+    try {
+      DocumentSnapshot userDoc =
+          await FirebaseFirestore.instance.collection('user').doc(userId).get();
+      return userDoc.data() as Map<String, dynamic>?;
+    } catch (e) {
+      print('Error fetching user details: $e');
+      return null;
+    }
+  }
+
+  Future<void> openGoogleMaps(double latitude, double longitude) async {
+    final String googleMapsUrl =
+        "https://www.google.com/maps/search/?api=1&query=$latitude,$longitude";
+
+    if (await canLaunch(googleMapsUrl)) {
+      await launch(googleMapsUrl);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open Google Maps.')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Emergency Repair Requests'),
-        backgroundColor: Colors.teal,
-        centerTitle: true,
+        title: Text('Repair Requests'),
+        backgroundColor: const Color.fromARGB(255, 123, 173, 168),
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                if (requests.isEmpty)
-                  Center(child: Text('No requests found for this workshop.'))
-                else
-                  for (int index = 0; index < requests.length; index++)
-                    Card(
-                      elevation: 6,
-                      margin: EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Description: ${requests[index]['description']}',
-                              style: TextStyle(
-                                  fontSize: 14, color: Colors.grey[600]),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Requested At: ${requests[index]['timestamp']}',
-                              style: TextStyle(
-                                  fontSize: 12, color: Colors.grey[600]),
-                            ),
-                            SizedBox(height: 10),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('repair')
+            .doc(currentUserId)
+            .collection('request')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
 
-                            // User details
-                            Text(
-                              'User Details:',
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold),
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(child: Text('No requests found.'));
+          }
+
+          final requests = snapshot.data!.docs;
+
+          return ListView.builder(
+            itemCount: requests.length,
+            itemBuilder: (context, index) {
+              var request = requests[index].data() as Map<String, dynamic>;
+              String requestId = requests[index].id;
+
+              return FutureBuilder<Map<String, dynamic>?>(
+                future: fetchUserDetails(request['userId']),
+                builder: (context, userSnapshot) {
+                  if (userSnapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+
+                  if (!userSnapshot.hasData || userSnapshot.data == null) {
+                    return ListTile(
+                      title: Text(request['companyName'] ?? 'No Company Name'),
+                      subtitle: Text('Error fetching user details'),
+                    );
+                  }
+
+                  var userDetails = userSnapshot.data!;
+                  var additionalData = userDetails['additionalData'] ?? {};
+                  double latitude = additionalData['latitude'] ?? 0.0;
+                  double longitude = additionalData['longitude'] ?? 0.0;
+                  String locationName =
+                      additionalData['location_name'] ?? 'Unknown Location';
+
+                  return Card(
+                    elevation: 5,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // User Image
+                          Center(
+                            child: CircleAvatar(
+                              radius: 40,
+                              backgroundImage:
+                                  NetworkImage(userDetails['userImage'] ?? ''),
+                              onBackgroundImageError: (_, __) =>
+                                  Icon(Icons.person, size: 40),
                             ),
-                            SizedBox(height: 8),
-                            Text('Username: ${requests[index]['username']}'),
-                            Text('Email: ${requests[index]['email']}'),
-                            Text('Phone: ${requests[index]['phoneno']}'),
-                            Text(
-                                'Vehicle Type: ${requests[index]['vehicleType']}'),
-                            Text(
-                                'Registration No: ${requests[index]['registrationNo']}'),
-                            SizedBox(height: 8),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                requests[index]['userImage'],
-                                height: 100,
-                                width: 100,
-                                fit: BoxFit.cover,
+                          ),
+                          SizedBox(height: 16),
+
+                          // User Details
+                          Text(
+                            userDetails['username'] ?? 'Unknown User',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.teal,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text('Email: ${userDetails['email'] ?? 'N/A'}'),
+                          Text('Phone: ${userDetails['phoneno'] ?? 'N/A'}'),
+                          Text('License: ${userDetails['license'] ?? 'N/A'}'),
+                          Text(
+                              'Vehicle Type: ${userDetails['vehicleType'] ?? 'N/A'}'),
+                          Text(
+                              'Registration No: ${userDetails['registrationNo'] ?? 'N/A'}'),
+                          Text('Location: $locationName'),
+
+                          SizedBox(height: 16),
+
+                          // Buttons
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              ElevatedButton(
+                                onPressed: () {
+                                  updateRequestStatus(requestId, true);
+                                },
+                                child: Text('Accept'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                ),
                               ),
-                            ),
-                            SizedBox(height: 10),
-
-                            // Action buttons
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                ElevatedButton(
-                                  onPressed: () => updateRequestStatus(
-                                      requests[index]['docId'], true),
-                                  child: Text('Accept'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green,
-                                  ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  updateRequestStatus(requestId, false);
+                                },
+                                child: Text('Reject'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
                                 ),
-                                ElevatedButton(
-                                  onPressed: () => updateRequestStatus(
-                                      requests[index]['docId'], false),
-                                  child: Text('Reject'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                              ),
+                              IconButton(
+                                icon:
+                                    Icon(Icons.location_on, color: Colors.blue),
+                                onPressed: () {
+                                  openGoogleMaps(latitude, longitude);
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-              ],
-            ),
-          ),
-        ),
+                  );
+                },
+              );
+            },
+          );
+        },
       ),
     );
   }

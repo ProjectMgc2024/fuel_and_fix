@@ -12,7 +12,7 @@ class AdminPage extends StatelessWidget {
       appBar: AppBar(
         title: Text('Admin Dashboard'),
         centerTitle: true,
-        backgroundColor: const Color.fromARGB(255, 88, 90, 82),
+        backgroundColor: const Color.fromARGB(255, 145, 155, 118),
         elevation: 4.0,
       ),
       body: Padding(
@@ -74,8 +74,7 @@ class AdminPage extends StatelessWidget {
                 () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                        builder: (context) => adminfeedback()),
+                    MaterialPageRoute(builder: (context) => adminfeedback()),
                   );
                 },
               ),

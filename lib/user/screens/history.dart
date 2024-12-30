@@ -80,6 +80,8 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                 return buildFuelCard(order, time);
               } else if (service == 'repair') {
                 return buildRepairCard(order, time);
+              } else if (service == 'tow') {
+                return buildTowCard(order, time);
               } else {
                 return SizedBox.shrink();
               }
@@ -178,4 +180,50 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
       ),
     );
   }
+}
+
+Widget buildTowCard(QueryDocumentSnapshot order, Timestamp? time) {
+  // Get current time
+  String currentTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+
+  return Card(
+    elevation: 8,
+    margin: EdgeInsets.symmetric(vertical: 12),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+    child: Padding(
+      padding: EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.car_repair,
+                color: const Color.fromARGB(255, 255, 68, 68),
+                size: 32,
+              ),
+              SizedBox(width: 12),
+              Text(
+                'TOW',
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: const Color.fromARGB(255, 192, 106, 1)),
+              ),
+            ],
+          ),
+          SizedBox(height: 18),
+          Text('Description: ${order['description']}',
+              style: TextStyle(fontSize: 16)),
+          Text('Payment: ₹${order['paymentAmount']}',
+              style: TextStyle(fontSize: 16)),
+          Text('PaymentId: ${order['paymentId']}',
+              style: TextStyle(fontSize: 16)),
+          Text('Time: $currentTime', // Display current time
+              style: TextStyle(fontSize: 16)),
+          Text('OwnerId : ${order['ownerId']}', style: TextStyle(fontSize: 16)),
+        ],
+      ),
+    ),
+  );
 }

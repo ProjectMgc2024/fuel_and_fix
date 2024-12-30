@@ -42,7 +42,7 @@ class _TowProfilePageState extends State<TowProfilePage> {
     File? newLogoFile;
     ownerNameController.text = managerData['ownerName'];
     companyNameController.text = managerData['companyName'];
-    companyLicenseController.text = managerData['CompanyLicense'] ?? '';
+    companyLicenseController.text = managerData['companyLicense'] ?? '';
     phoneNoController.text = managerData['phoneNo'];
 
     showDialog(
@@ -127,7 +127,7 @@ class _TowProfilePageState extends State<TowProfilePage> {
       'ownerName': ownerNameController.text,
       'phoneNo': phoneNoController.text,
       'companyName': companyNameController.text,
-      'CompanyLicense': companyLicenseController.text,
+      'companyLicense': companyLicenseController.text,
     };
     if (newLogoUrl != null) updateData['companyLogo'] = newLogoUrl;
     await _firestore.collection('tow').doc(documentId).update(updateData);
@@ -312,7 +312,7 @@ class _TowProfilePageState extends State<TowProfilePage> {
             'email': data['email'],
             'phoneNo': data['phoneNo'],
             'companyName': data['companyName'],
-            'CompanyLicense': data['CompanyLicense'],
+            'companyLicense': data['companyLicense'],
             'companyLogo': data['companyLogo']
           };
           final employees =
@@ -360,7 +360,7 @@ class _TowProfilePageState extends State<TowProfilePage> {
                           Text('Owner: ${managerDetails['ownerName']}',
                               style: TextStyle(
                                   color: const Color.fromARGB(179, 0, 0, 0))),
-                          Text('License: ${managerDetails['CompanyLicense']}',
+                          Text('License: ${managerDetails['companyLicense']}',
                               style: TextStyle(
                                   color: const Color.fromARGB(179, 0, 0, 0))),
                           Text('Email: ${managerDetails['email']}',

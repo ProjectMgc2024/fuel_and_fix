@@ -1,12 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/user/screens/about.dart';
 import 'package:fuel_and_fix/user/screens/fuel.dart';
 import 'package:fuel_and_fix/user/screens/history.dart';
 import 'package:fuel_and_fix/user/screens/profile.dart';
-import 'package:fuel_and_fix/user/screens/register_1.dart';
 import 'package:fuel_and_fix/user/screens/repair.dart';
-import 'package:fuel_and_fix/user/screens/setting.dart';
 import 'package:fuel_and_fix/user/screens/tow.dart';
 import 'package:fuel_and_fix/user/screens/viewfeedback.dart';
 
