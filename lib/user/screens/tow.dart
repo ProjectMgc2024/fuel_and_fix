@@ -252,7 +252,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  const Color.fromARGB(255, 33, 93, 128),
+                                  const Color.fromARGB(255, 86, 73, 135),
                                   const Color.fromARGB(255, 116, 29, 29)
                                 ],
                                 begin: Alignment.topLeft,
@@ -333,9 +333,9 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                             SizedBox(height: 4),
                                             Row(
                                               children: [
-                                                Icon(Icons.build,
+                                                Icon(Icons.car_repair,
                                                     color: const Color.fromARGB(
-                                                        255, 0, 0, 0),
+                                                        255, 252, 235, 235),
                                                     size: 18),
                                                 SizedBox(width: 8),
                                                 Text(
@@ -362,7 +362,11 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                         onPressed: () =>
                                             _showLocationAndPaymentDialog(
                                                 workshop),
-                                        icon: Icon(Icons.send),
+                                        icon: Icon(
+                                          Icons.send,
+                                          color: const Color.fromARGB(
+                                              255, 145, 137, 55),
+                                        ),
                                         label: Text('Send Request'),
                                       ),
                                       ElevatedButton.icon(
@@ -382,7 +386,11 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                             ),
                                           );
                                         },
-                                        icon: Icon(Icons.feedback),
+                                        icon: Icon(
+                                          Icons.feedback,
+                                          color: const Color.fromARGB(
+                                              255, 95, 60, 12),
+                                        ),
                                         label: Text('Feedback'),
                                       ),
                                     ],

@@ -192,7 +192,7 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 95, 73, 133),
+        backgroundColor: const Color.fromARGB(255, 50, 78, 104),
         title: Text(
           'Available Workshops',
           style: TextStyle(
@@ -334,7 +334,7 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                                               children: [
                                                 Icon(Icons.build,
                                                     color: const Color.fromARGB(
-                                                        255, 0, 0, 0),
+                                                        255, 192, 24, 131),
                                                     size: 18),
                                                 SizedBox(width: 8),
                                                 Text(
@@ -361,7 +361,9 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                                         onPressed: () =>
                                             _showLocationAndPaymentDialog(
                                                 workshop),
-                                        icon: Icon(Icons.send),
+                                        icon: Icon(Icons.send,
+                                            color: const Color.fromARGB(
+                                                255, 150, 142, 67)),
                                         label: Text('Send Request'),
                                       ),
                                       ElevatedButton.icon(
@@ -381,7 +383,9 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                                             ),
                                           );
                                         },
-                                        icon: Icon(Icons.feedback),
+                                        icon: Icon(Icons.feedback,
+                                            color: const Color.fromARGB(
+                                                255, 83, 56, 46)),
                                         label: Text('Feedback'),
                                       ),
                                     ],
