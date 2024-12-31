@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -365,8 +364,12 @@ class _FuelStationListState extends State<FuelStationList> {
               fontWeight: FontWeight.bold, fontSize: 24, color: Colors.white),
         ),
         centerTitle: true,
-        backgroundColor: Color.fromARGB(255, 24, 85, 123), // Solid Blue
+        backgroundColor: Color.fromARGB(
+            255, 149, 96, 39), // Updated fuel color similar to cfuel
         elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+        ),
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
@@ -435,8 +438,9 @@ class _FuelStationListState extends State<FuelStationList> {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            const Color.fromARGB(255, 27, 47, 109),
-                            const Color.fromARGB(255, 141, 169, 210)
+                            const Color.fromARGB(255, 35, 41, 55),
+                            Color.fromARGB(255, 149, 96,
+                                39), // Updated fuel color similar to cfuel
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -479,8 +483,8 @@ class _FuelStationListState extends State<FuelStationList> {
                                     );
                                   },
                                   icon: Icon(Icons.location_on,
-                                      color:
-                                          const Color.fromARGB(255, 170, 0, 0)),
+                                      color: const Color.fromARGB(
+                                          255, 66, 128, 175)),
                                 ),
                               ],
                             ),
@@ -511,8 +515,10 @@ class _FuelStationListState extends State<FuelStationList> {
                                     label: Text(
                                         '$fuelType ₹${price.toStringAsFixed(2)}'),
                                     backgroundColor:
-                                        const Color.fromARGB(255, 169, 144, 31),
-                                    labelStyle: TextStyle(color: Colors.white),
+                                        const Color.fromARGB(255, 170, 123, 30),
+                                    labelStyle: TextStyle(
+                                        color: const Color.fromARGB(
+                                            255, 255, 255, 255)),
                                   ),
                                 );
                               }).toList(),
@@ -535,7 +541,7 @@ class _FuelStationListState extends State<FuelStationList> {
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color.fromARGB(
-                                      255, 200, 136, 96), // Solid Green
+                                      255, 120, 135, 67), // Solid Green
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(30),
                                   ),

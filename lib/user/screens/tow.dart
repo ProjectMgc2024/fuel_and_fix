@@ -18,6 +18,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
   Map<String, dynamic>? _currentWorkshop;
   Position? _currentPosition;
   String? _currentLocationName;
+  bool _isUpdatingLocation = false; // To show loading indicator
 
   @override
   void initState() {
@@ -94,8 +95,8 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
     var options = {
       'key': 'rzp_test_D5Vh3hyi1gRBV0',
       'amount': 50000, // Amount in paise (500.00 INR)
-      'name': 'Repair Service',
-      'description': 'Repair service payment',
+      'name': 'Tow Service',
+      'description': 'Tow service payment',
       'prefill': {
         'contact': '1234567890',
         'email': 'user@example.com',
@@ -112,6 +113,10 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
 
   // Function to get current location and location name
   Future<void> _getCurrentLocation() async {
+    setState(() {
+      _isUpdatingLocation = true; // Start loading
+    });
+
     // Get the current position
     Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high);
@@ -151,6 +156,10 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
         });
       }
     }
+
+    setState(() {
+      _isUpdatingLocation = false; // Stop loading
+    });
   }
 
   // Show the dialog for current location and pay now
@@ -171,7 +180,8 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                   Navigator.pop(context);
                 },
                 icon: Icon(Icons.my_location),
-                label: Text('Use Current Location'),
+                label: Text(_currentLocationName ??
+                    'Fetching Location...'), // Show the current location name or loading text
               ),
               SizedBox(height: 10),
               ElevatedButton.icon(
@@ -193,9 +203,9 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 95, 73, 133),
+        backgroundColor: const Color.fromARGB(255, 105, 66, 125),
         title: Text(
-          'Available Tow Stations',
+          'Available Workshops',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w700,
@@ -252,7 +262,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  const Color.fromARGB(255, 86, 73, 135),
+                                  const Color.fromARGB(255, 118, 72, 141),
                                   const Color.fromARGB(255, 116, 29, 29)
                                 ],
                                 begin: Alignment.topLeft,
@@ -288,7 +298,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                                 fontSize: 20,
                                                 fontWeight: FontWeight.bold,
                                                 color: const Color.fromARGB(
-                                                    255, 251, 159, 120),
+                                                    255, 244, 172, 113),
                                               ),
                                             ),
                                             SizedBox(height: 8),
@@ -296,7 +306,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                               children: [
                                                 Icon(Icons.location_on,
                                                     color: const Color.fromARGB(
-                                                        255, 216, 214, 255),
+                                                        255, 122, 118, 207),
                                                     size: 18),
                                                 SizedBox(width: 8),
                                                 Expanded(
@@ -335,7 +345,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                               children: [
                                                 Icon(Icons.car_repair,
                                                     color: const Color.fromARGB(
-                                                        255, 252, 235, 235),
+                                                        255, 255, 255, 255),
                                                     size: 18),
                                                 SizedBox(width: 8),
                                                 Text(
@@ -362,11 +372,9 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                         onPressed: () =>
                                             _showLocationAndPaymentDialog(
                                                 workshop),
-                                        icon: Icon(
-                                          Icons.send,
-                                          color: const Color.fromARGB(
-                                              255, 145, 137, 55),
-                                        ),
+                                        icon: Icon(Icons.send,
+                                            color: const Color.fromARGB(
+                                                255, 150, 142, 67)),
                                         label: Text('Send Request'),
                                       ),
                                       ElevatedButton.icon(
@@ -379,18 +387,16 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                                 stationId: workshop['id'],
                                                 stationName:
                                                     workshop['companyName'],
-                                                service: 'repair',
+                                                service: 'tow',
                                                 userId: FirebaseAuth
                                                     .instance.currentUser?.uid,
                                               ),
                                             ),
                                           );
                                         },
-                                        icon: Icon(
-                                          Icons.feedback,
-                                          color: const Color.fromARGB(
-                                              255, 95, 60, 12),
-                                        ),
+                                        icon: Icon(Icons.feedback,
+                                            color: const Color.fromARGB(
+                                                255, 83, 56, 46)),
                                         label: Text('Feedback'),
                                       ),
                                     ],
@@ -409,6 +415,17 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
           },
         ),
       ),
+      // CircularProgressIndicator placed at the bottom of the screen
+      bottomNavigationBar: _isUpdatingLocation
+          ? Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation(Colors.deepPurple),
+                ),
+              ),
+            )
+          : null,
     );
   }
 }

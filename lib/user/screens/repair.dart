@@ -17,6 +17,7 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
   Map<String, dynamic>? _currentWorkshop;
   Position? _currentPosition;
   String? _currentLocationName;
+  bool _isUpdatingLocation = false; // To show loading indicator
 
   @override
   void initState() {
@@ -111,6 +112,10 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
 
   // Function to get current location and location name
   Future<void> _getCurrentLocation() async {
+    setState(() {
+      _isUpdatingLocation = true; // Start loading
+    });
+
     // Get the current position
     Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high);
@@ -150,6 +155,10 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
         });
       }
     }
+
+    setState(() {
+      _isUpdatingLocation = false; // Stop loading
+    });
   }
 
   // Show the dialog for current location and pay now
@@ -170,7 +179,8 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                   Navigator.pop(context);
                 },
                 icon: Icon(Icons.my_location),
-                label: Text('Use Current Location'),
+                label: Text(_currentLocationName ??
+                    'Fetching Location...'), // Show the current location name or loading text
               ),
               SizedBox(height: 10),
               ElevatedButton.icon(
@@ -404,6 +414,17 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
           },
         ),
       ),
+      // CircularProgressIndicator placed at the bottom of the screen
+      bottomNavigationBar: _isUpdatingLocation
+          ? Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation(Colors.deepPurple),
+                ),
+              ),
+            )
+          : null,
     );
   }
 }
