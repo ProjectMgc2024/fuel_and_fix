@@ -181,7 +181,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                 },
                 icon: Icon(Icons.my_location),
                 label: Text(_currentLocationName ??
-                    'Fetching Location...'), // Show the current location name or loading text
+                    'Fetch Current Location...'), // Show the current location name or loading text
               ),
               SizedBox(height: 10),
               ElevatedButton.icon(

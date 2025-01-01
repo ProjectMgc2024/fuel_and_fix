@@ -1,4 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:fuel_and_fix/admin/screens/admin_home.dart';
 import 'package:fuel_and_fix/user/screens/home_screen.dart';
 import 'package:fuel_and_fix/user/screens/register_1.dart';
 import 'package:fuel_and_fix/user/services/firebase_user_auth.dart';
@@ -16,29 +19,104 @@ class _LoginScreenState extends State<LoginScreen> {
   // Variables to manage password visibility and loading state
   bool isPasswordVisible = false;
   bool _isLoading = false;
-
   void login() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true; // Start loading
       });
 
-      String email = emailController.text.trim();
+      String email = emailController.text.trim().toLowerCase();
       String password = passwordController.text.trim();
+      bool isAdmin = false;
 
-      bool loginSuccess = await UserAuthServices()
-          .userLogin(context: context, email: email, password: password);
+      try {
+        QuerySnapshot? userSnapshot;
 
-      setState(() {
-        _isLoading = false; // Stop loading
-      });
+        // Check if the user is in the admin collection
+        final adminQuery = await FirebaseFirestore.instance
+            .collection('admin')
+            .where('email', isEqualTo: email)
+            .get();
 
-      if (loginSuccess) {
-        Navigator.push(
+        if (adminQuery.docs.isNotEmpty) {
+          print('User found in admin collection: $email');
+          isAdmin = true; // User is an admin
+        } else {
+          print(
+              'User not found in admin collection. Checking user collection.');
+
+          // Check if the user is in the user collection
+          final userQuery = await FirebaseFirestore.instance
+              .collection('user')
+              .where('email', isEqualTo: email)
+              .get();
+
+          if (userQuery.docs.isNotEmpty) {
+            print('User found in user collection: $email');
+            userSnapshot = userQuery;
+          } else {
+            // User not found in both admin and user collections
+            setState(() {
+              _isLoading = false;
+            });
+            print('User not found in both admin and user collections.');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                    'User not found in the database . Please recheck or sign up.'),
+              ),
+            );
+            return;
+          }
+        }
+
+        // Authenticate user
+        print('Authenticating user with Firebase Authentication...');
+        final userCredential = await FirebaseAuth.instance
+            .signInWithEmailAndPassword(email: email, password: password);
+
+        if (userCredential.user == null) {
+          setState(() {
+            _isLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Authentication failed. Please try again.')),
+          );
+          return;
+        }
+
+        print('Login successful. Redirecting user...');
+        setState(() {
+          _isLoading = false; // Stop loading
+        });
+
+        // Navigate based on the user role
+        Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => HomeScreen(),
+            builder: (context) => isAdmin ? AdminPage() : HomeScreen(),
           ),
+        );
+      } on FirebaseAuthException catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+        // Handle Firebase authentication errors
+        print('FirebaseAuthException: ${e.code}');
+        final errorMessage = e.code == 'user-not-found'
+            ? 'User not found. Please recheck or sign up.'
+            : e.message ?? 'An error occurred.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+        // Handle other errors
+        print('Error during login: ${e.toString()}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('An error occurred: ${e.toString()}')),
         );
       }
     }
