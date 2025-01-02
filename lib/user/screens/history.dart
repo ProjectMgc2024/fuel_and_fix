@@ -46,7 +46,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
         title: Text('Order History',
             style: TextStyle(fontSize: 24, color: Colors.white)),
         centerTitle: true,
-        backgroundColor: const Color.fromARGB(255, 205, 118, 4),
+        backgroundColor: const Color.fromARGB(255, 141, 94, 32),
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, size: 30),

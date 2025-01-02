@@ -153,7 +153,7 @@ class _ViewFeedbackPageState extends State<ViewFeedbackPage> {
                             Text(
                               feedbackData['feedback'] ??
                                   'No feedback provided.',
-                              style: TextStyle(fontSize: 14),
+                              style: TextStyle(fontSize: 18),
                             ),
                             SizedBox(height: 12),
                             if (timestamp != null)
@@ -164,7 +164,7 @@ class _ViewFeedbackPageState extends State<ViewFeedbackPage> {
                                     color:
                                         const Color.fromARGB(255, 46, 6, 95)),
                               ),
-                            SizedBox(height: 12),
+                            SizedBox(height: 15),
                             FutureBuilder(
                               future: _getCompanyDetails(service, ownerId),
                               builder: (context, _) {
@@ -181,15 +181,16 @@ class _ViewFeedbackPageState extends State<ViewFeedbackPage> {
                                           SizedBox(width: 8),
                                           Text(
                                             'Company: ${companyDetails?['companyName']}',
-                                            style: TextStyle(fontSize: 16),
+                                            style: TextStyle(fontSize: 14),
                                           ),
                                         ],
                                       ),
+                                      SizedBox(height: 10),
                                       Row(
                                         children: [
                                           Icon(Icons.person,
                                               color: const Color.fromARGB(
-                                                  255, 74, 65, 50)),
+                                                  255, 70, 114, 123)),
                                           SizedBox(width: 8),
                                           Text(
                                             'Owner: ${companyDetails?['ownerName']}',

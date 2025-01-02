@@ -9,7 +9,7 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.teal[700],
+        backgroundColor: const Color.fromARGB(255, 16, 122, 127),
         actions: [
           // Log out Icon Button in the AppBar
           IconButton(

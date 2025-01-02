@@ -171,7 +171,7 @@ class _ProfileScreenState extends State<EditProfile> {
           },
         ),
         title: Text('Edit Profile'),
-        backgroundColor: const Color.fromARGB(255, 131, 208, 195),
+        backgroundColor: const Color.fromARGB(255, 71, 175, 207),
       ),
       body: Container(
         decoration: BoxDecoration(
