@@ -8,7 +8,6 @@ import 'package:fuel_and_fix/user/screens/home_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:geocoding/geocoding.dart'; // For reverse geocoding
 
-
 class FuelStationList extends StatefulWidget {
   @override
   _FuelStationListState createState() => _FuelStationListState();
@@ -95,6 +94,20 @@ class _FuelStationListState extends State<FuelStationList> {
             .toLowerCase()
             .contains(enteredLocation.toLowerCase()))
         .toList();
+  }
+
+  final Map<String, dynamic> station = {
+    'contactNumber': '1234567890'
+  }; // Example data
+
+  // Function to launch the phone dialer
+  Future<void> _launchPhone(String phoneNumber) async {
+    final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+    if (await canLaunch(phoneUri.toString())) {
+      await launch(phoneUri.toString());
+    } else {
+      throw 'Could not launch phone number';
+    }
   }
 
   void calculatePrice(String fuel, double pricePerLiter, double qty) {
@@ -490,18 +503,51 @@ class _FuelStationListState extends State<FuelStationList> {
                               ],
                             ),
                             Divider(height: 20, color: Colors.white60),
-                            Text(
-                              'Address: ${station['address']}',
-                              style: TextStyle(
-                                  fontSize: 14, color: Colors.white70),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.local_gas_station,
+                                  color:
+                                      const Color.fromARGB(255, 217, 227, 217),
+                                  size: 18,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Address: ${station['address']}',
+                                  style: TextStyle(
+                                      fontSize: 14, color: Colors.white70),
+                                ),
+                              ],
                             ),
                             SizedBox(height: 5),
-                            Text(
-                              'Contact: ${station['contactNumber']}',
-                              style: TextStyle(
-                                  fontSize: 14, color: Colors.white70),
+                            Column(
+                              children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    _launchPhone(station['contactNumber'] ??
+                                        'Not Available');
+                                  },
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.phone,
+                                        color: const Color.fromARGB(
+                                            255, 58, 202, 56),
+                                        size: 18,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Contact: ${station['contactNumber']}',
+                                        style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.white70),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(height: 15),
+                              ],
                             ),
-                            SizedBox(height: 15),
                             Wrap(
                               spacing: 10,
                               children:

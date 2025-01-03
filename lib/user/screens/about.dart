@@ -210,7 +210,7 @@ class ContactSection extends StatelessWidget {
                   Icon(
                     Icons.phone, // Icon representing the phone symbol
                     color: const Color.fromARGB(255, 17, 124, 18),
-                    size: 20,
+                    size: 18,
                   ),
                   const SizedBox(width: 8), // Space between icon and text
                   Text(

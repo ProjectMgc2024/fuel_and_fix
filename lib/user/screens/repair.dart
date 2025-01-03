@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/user/screens/feedback.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart'; // Import geocoding
+import 'package:geocoding/geocoding.dart';
+import 'package:url_launcher/url_launcher.dart'; // Import geocoding
 
 class WorkshopScreen extends StatefulWidget {
   @override
@@ -15,7 +16,6 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late Razorpay _razorpay;
   Map<String, dynamic>? _currentWorkshop;
-  Position? _currentPosition;
   String? _currentLocationName;
   bool _isUpdatingLocation = false; // To show loading indicator
   String enteredLocation = ''; // Variable to store search text
@@ -50,6 +50,20 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
       });
     }
     return workshops;
+  }
+
+  final Map<String, dynamic> workshop = {
+    'phoneNo': '1234567890'
+  }; // Example data
+
+  // Function to launch the phone dialer
+  _launchPhone(String phoneNumber) async {
+    final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+    if (await canLaunch(phoneUri.toString())) {
+      await launch(phoneUri.toString());
+    } else {
+      throw 'Could not launch phone number';
+    }
   }
 
   // Filter workshops based on entered location
@@ -135,9 +149,7 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
     // Get the current position
     Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high);
-    setState(() {
-      _currentPosition = position;
-    });
+    setState(() {});
 
     // Reverse geocode to get the location name
     List<Placemark> placemarks = await GeocodingPlatform.instance!
@@ -391,14 +403,23 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                                                         SizedBox(height: 4),
                                                         Row(
                                                           children: [
-                                                            Icon(Icons.phone,
+                                                            GestureDetector(
+                                                              onTap: () {
+                                                                _launchPhone(workshop[
+                                                                        'phoneNo'] ??
+                                                                    'Not Available');
+                                                              },
+                                                              child: Icon(
+                                                                Icons.phone,
                                                                 color: const Color
                                                                     .fromARGB(
                                                                     255,
                                                                     58,
                                                                     202,
                                                                     56),
-                                                                size: 18),
+                                                                size: 18,
+                                                              ),
+                                                            ),
                                                             SizedBox(width: 8),
                                                             Text(
                                                               workshop[

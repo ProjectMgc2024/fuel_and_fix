@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/user/screens/feedback.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart'; // Import geocoding
+import 'package:geocoding/geocoding.dart';
+import 'package:url_launcher/url_launcher.dart'; // Import geocoding
 
 class TowingServiceCategories extends StatefulWidget {
   @override
@@ -52,6 +53,20 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
       });
     }
     return workshops;
+  }
+
+  final Map<String, dynamic> workshop = {
+    'phoneNo': '1234567890'
+  }; // Example data
+
+  // Function to launch the phone dialer
+  Future<void> _launchPhone(String phoneNumber) async {
+    final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+    if (await canLaunch(phoneUri.toString())) {
+      await launch(phoneUri.toString());
+    } else {
+      throw 'Could not launch phone number';
+    }
   }
 
   // Filter workshops based on entered location
@@ -397,14 +412,23 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                                         SizedBox(height: 4),
                                                         Row(
                                                           children: [
-                                                            Icon(Icons.phone,
+                                                            GestureDetector(
+                                                              onTap: () {
+                                                                _launchPhone(workshop[
+                                                                        'phoneNo'] ??
+                                                                    'Not Available');
+                                                              },
+                                                              child: Icon(
+                                                                Icons.phone,
                                                                 color: const Color
                                                                     .fromARGB(
                                                                     255,
                                                                     58,
                                                                     202,
                                                                     56),
-                                                                size: 18),
+                                                                size: 18,
+                                                              ),
+                                                            ),
                                                             SizedBox(width: 8),
                                                             Text(
                                                               workshop[

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/user/screens/about.dart';
+import 'package:fuel_and_fix/user/screens/chatbot.dart';
 import 'package:fuel_and_fix/user/screens/fuel.dart';
 import 'package:fuel_and_fix/user/screens/history.dart';
 import 'package:fuel_and_fix/user/screens/profile.dart';
@@ -42,7 +43,6 @@ class HomeScreen extends StatelessWidget {
             bottom: 0, // Positioning at the bottom of the screen
             left: 0,
             right: 0,
-
             child: Padding(
               padding: const EdgeInsets.all(16.0), // Padding around the icons
               child: Row(
@@ -86,12 +86,12 @@ class HomeScreen extends StatelessWidget {
                       );
                     },
                   ),
-                  // Settings Icon
+                  // Feedback Icon
                   IconButton(
                     iconSize: 25,
                     icon: Icon(Icons.feedback, color: Colors.white),
                     onPressed: () {
-                      // Navigate to SettingsPage
+                      // Navigate to ViewFeedbackPage
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -115,6 +115,21 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ),
+          // Chat Button positioned above the bottom navigation bar
+          Positioned(
+            bottom: 80, // Position above the bottom navigation bar
+            right: 20,
+            child: FloatingActionButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AiChatPage()),
+                );
+              },
+              backgroundColor: const Color.fromARGB(255, 108, 66, 66),
+              child: Icon(Icons.chat, color: Colors.white),
+            ),
+          ),
         ],
       ),
     );
@@ -124,24 +139,21 @@ class HomeScreen extends StatelessWidget {
   PreferredSize appBarSection() {
     return PreferredSize(
       preferredSize: Size.fromHeight(kToolbarHeight),
-      child: Container(
-        child: AppBar(
-          automaticallyImplyLeading: false, // This will remove the back button
-          title: Text(
-            'Welcome to Fuel & Fix Assist System',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: const Color.fromARGB(
-                  255, 255, 255, 255), // Set text color to white
-              fontSize: 25,
-              letterSpacing: 1,
-            ),
+      child: AppBar(
+        automaticallyImplyLeading: false, // This will remove the back button
+        title: Text(
+          'Welcome to Fuel & Fix Assist System',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: const Color.fromARGB(
+                255, 255, 255, 255), // Set text color to white
+            fontSize: 25,
+            letterSpacing: 1,
           ),
-          centerTitle: true,
-          backgroundColor: const Color.fromARGB(
-              184, 28, 8, 8), // Make AppBar background transparent
-          elevation: 10, // Add slight shadow to AppBar
         ),
+        centerTitle: true,
+        backgroundColor: const Color.fromARGB(184, 28, 8, 8),
+        elevation: 10, // Add slight shadow to AppBar
       ),
     );
   }
