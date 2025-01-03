@@ -114,7 +114,9 @@ vehicles, including personal cars and commercial fleets, ensuring scalability an
         margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
         padding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 18.0),
         decoration: BoxDecoration(
-          color: isUser ? Colors.blue : Colors.grey.shade300,
+          color: isUser
+              ? const Color.fromARGB(255, 48, 77, 159)
+              : Colors.grey.shade300,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(20.0),
             topRight: const Radius.circular(20.0),
@@ -162,6 +164,18 @@ vehicles, including personal cars and commercial fleets, ensuring scalability an
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color.fromARGB(255, 137, 157, 165),
+                Color.fromARGB(255, 191, 160, 158),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         titleSpacing: 0,
         title: const Padding(
           padding: EdgeInsets.only(left: 0.0),
@@ -170,91 +184,105 @@ vehicles, including personal cars and commercial fleets, ensuring scalability an
               CircleAvatar(
                 backgroundImage: AssetImage('asset/pic01.jpg'),
                 backgroundColor: Colors.blue,
-                radius: 20,
+                radius: 25,
               ),
               SizedBox(width: 10),
               Text(
-                'Fix Ai',
+                'Fix AI',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
                 ),
               ),
             ],
           ),
         ),
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: _chatHistory.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'Start a conversation with Explore Ai',
-                        style: TextStyle(
-                            fontSize: 16,
-                            color: Color.fromARGB(255, 43, 40, 40)),
-                      ),
-                    )
-                  : _buildChatList(),
-            ),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: TextField(
-                        controller: _controller,
-                        decoration: InputDecoration(
-                          hintText: 'Type your message...',
-                          hintStyle: TextStyle(color: Colors.grey[600]),
-                          filled: true,
-                          fillColor: Colors.grey[200],
-                          contentPadding: const EdgeInsets.symmetric(
-                              vertical: 16, horizontal: 16),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            borderSide: BorderSide.none,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            borderSide:
-                                const BorderSide(color: Colors.blueAccent),
-                          ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color.fromARGB(255, 131, 167, 182),
+              Color.fromARGB(255, 198, 152, 152)
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: _chatHistory.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'Start a conversation with Fix Ai',
+                          style: TextStyle(
+                              fontSize: 16,
+                              color: Color.fromARGB(255, 43, 40, 40)),
                         ),
-                        minLines: 1,
-                        maxLines: 5,
-                        onSubmitted: (_) {
+                      )
+                    : _buildChatList(),
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: TextField(
+                          controller: _controller,
+                          decoration: InputDecoration(
+                            hintText: 'Type your message...',
+                            hintStyle: TextStyle(
+                                color: const Color.fromARGB(255, 0, 0, 0)),
+                            filled: true,
+                            fillColor: const Color.fromARGB(255, 152, 144, 144),
+                            contentPadding: const EdgeInsets.symmetric(
+                                vertical: 16, horizontal: 16),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              borderSide: const BorderSide(
+                                  color: Color.fromARGB(255, 0, 0, 0)),
+                            ),
+                          ),
+                          minLines: 1,
+                          maxLines: 5,
+                          onSubmitted: (_) {
+                            final message = _controller.text;
+                            _controller.clear();
+                            _sendMessage(message);
+                          },
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4),
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.send,
+                          color: Color.fromARGB(255, 9, 36, 82),
+                        ),
+                        onPressed: () {
                           final message = _controller.text;
                           _controller.clear();
                           _sendMessage(message);
                         },
+                        splashColor: Colors.blueAccent.withOpacity(0.3),
+                        splashRadius: 25,
                       ),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4),
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.send,
-                        color: Colors.blueAccent,
-                      ),
-                      onPressed: () {
-                        final message = _controller.text;
-                        _controller.clear();
-                        _sendMessage(message);
-                      },
-                      splashColor: Colors.blueAccent.withOpacity(0.3),
-                      splashRadius: 25,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

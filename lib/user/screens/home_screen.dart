@@ -117,17 +117,20 @@ class HomeScreen extends StatelessWidget {
           ),
           // Chat Button positioned above the bottom navigation bar
           Positioned(
-            bottom: 80, // Position above the bottom navigation bar
-            right: 20,
-            child: FloatingActionButton(
+            bottom: 60, // Position above the bottom navigation bar
+            right: 140,
+            child: TextButton(
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => AiChatPage()),
                 );
               },
-              backgroundColor: const Color.fromARGB(255, 108, 66, 66),
-              child: Icon(Icons.chat, color: Colors.white),
+              child: Image.asset(
+                'asset/ar.jpg',
+                width: 70,
+                height: 90,
+              ),
             ),
           ),
         ],

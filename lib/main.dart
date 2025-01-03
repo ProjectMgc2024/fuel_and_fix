@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_gemini/flutter_gemini.dart';
+import 'package:fuel_and_fix/user/screens/home_screen.dart';
 import 'package:fuel_and_fix/user/screens/introduction.dart';
 
 import 'firebase_options.dart';
@@ -14,6 +15,6 @@ Future<void> main() async {
   Gemini.init(apiKey: apikey);
 
   runApp(
-    MaterialApp(debugShowCheckedModeBanner: false, home: IntroductionPage()),
+    MaterialApp(debugShowCheckedModeBanner: false, home: HomeScreen()),
   );
 }

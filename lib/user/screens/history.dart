@@ -35,7 +35,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
       return Scaffold(
         appBar: AppBar(
           title: Text('Order History'),
-          backgroundColor: const Color.fromARGB(255, 0, 36, 99),
+          backgroundColor: const Color.fromARGB(255, 150, 102, 68),
         ),
         body: Center(child: Text('Please log in to view your orders.')),
       );
