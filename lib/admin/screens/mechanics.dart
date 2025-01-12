@@ -12,25 +12,30 @@ class _RepairPageState extends State<RepairPage> {
   @override
   void initState() {
     super.initState();
-    _fetchRepairShops(); // Fetch the repair shops when the page is loaded
+    _fetchRepairShops();
   }
 
-  // Fetch repair shops data from Firestore
   Future<void> _fetchRepairShops() async {
     try {
       QuerySnapshot querySnapshot =
           await FirebaseFirestore.instance.collection('repair').get();
-      List<Map<String, dynamic>> repairList = querySnapshot.docs.map((doc) {
-        return {
-          'id': doc.id,
-          ...doc.data() as Map<String, dynamic>,
-        };
-      }).toList();
-      setState(() {
-        repairShops = repairList;
-      });
+      repairShops = querySnapshot.docs
+          .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
+          .toList();
+      setState(() {});
     } catch (e) {
       print('Error fetching repair shops: $e');
+    }
+  }
+
+  Future<void> _deleteRepairShop(String id) async {
+    try {
+      await FirebaseFirestore.instance.collection('repair').doc(id).delete();
+      setState(() {
+        repairShops.removeWhere((shop) => shop['id'] == id);
+      });
+    } catch (e) {
+      print('Error deleting repair shop: $e');
     }
   }
 
@@ -38,8 +43,8 @@ class _RepairPageState extends State<RepairPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Manage Repair Shops'),
-        backgroundColor: const Color.fromARGB(255, 110, 92, 140),
+        title: Text('Manage Repair stations'),
+        backgroundColor: const Color.fromARGB(255, 127, 107, 159),
         centerTitle: true,
         elevation: 5.0,
         shape: RoundedRectangleBorder(
@@ -52,19 +57,9 @@ class _RepairPageState extends State<RepairPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Repair Shops List Header
-              Text(
-                'List of Repair Shops',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                  fontFamily: 'Roboto',
-                ),
-              ),
+              Text('List of Repair Shops',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
               SizedBox(height: 15),
-
-              // Repair Shops List
               Expanded(
                 child: repairShops.isEmpty
                     ? Center(child: CircularProgressIndicator())
@@ -78,7 +73,7 @@ class _RepairPageState extends State<RepairPage> {
                             repairShops[index]['phoneNo'] ?? 'Unknown',
                             repairShops[index]['status'] ?? false,
                             repairShops[index]['employees'] ?? [],
-                            index,
+                            repairShops[index]['id'],
                           );
                         },
                       ),
@@ -90,59 +85,197 @@ class _RepairPageState extends State<RepairPage> {
     );
   }
 
-  // Repair Shop Card Widget
   Widget _repairShopCard(BuildContext context, String companyName, String email,
-      String phoneNo, bool status, List employees, int index) {
+      String phoneNo, bool status, List employees, String id) {
     return Card(
       elevation: 8,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       margin: EdgeInsets.symmetric(vertical: 10),
       child: ListTile(
         leading: CircleAvatar(
-          radius: 30,
-          backgroundColor: Colors.deepPurple,
-          backgroundImage:
-              NetworkImage(repairShops[index]['companyLogo'] ?? ''),
-        ),
-        title: Text(
-          companyName,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-            color: Colors.deepPurpleAccent,
-          ),
-        ),
+            radius: 30,
+            backgroundColor: Colors.deepPurple,
+            backgroundImage: NetworkImage('')),
+        title: Text(companyName,
+            style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Colors.deepPurpleAccent)),
         subtitle: Text(
-          'Email: $email\nPhone: $phoneNo\nStatus: ${status ? 'Active' : 'Inactive'}',
-          style: TextStyle(color: Colors.black54),
-        ),
-        trailing: Icon(Icons.arrow_forward_ios, color: Colors.deepPurple),
-        onTap: () {
-          // Navigate to RepairShopDetailPage
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => RepairShopDetailPage(
-                companyName: companyName,
-                email: email,
-                phoneNo: phoneNo,
-                status: status,
-                employees: employees,
-              ),
+            'Email: $email\nPhone: $phoneNo\nStatus: ${status ? 'Active' : 'Inactive'}',
+            style: TextStyle(color: Colors.black54)),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Icon(Icons.edit, color: Colors.deepPurple),
+              onPressed: () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => EditRepairShopPage(
+                        repairShopId: id,
+                        companyName: companyName,
+                        email: email,
+                        phoneNo: phoneNo,
+                        status: status,
+                        employees: employees,
+                      ),
+                    ));
+              },
             ),
-          );
+            IconButton(
+              icon: Icon(Icons.delete, color: Colors.red),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: Text('Delete Repair Shop'),
+                      content: Text(
+                          'Are you sure you want to delete this repair shop?'),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: Text('Cancel')),
+                        TextButton(
+                            onPressed: () {
+                              _deleteRepairShop(id);
+                              Navigator.of(context).pop();
+                            },
+                            child: Text('Delete')),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
+          ],
+        ),
+        onTap: () {
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => RepairShopDetailPage(
+                    companyName: companyName,
+                    email: email,
+                    phoneNo: phoneNo,
+                    status: status,
+                    employees: employees),
+              ));
         },
       ),
     );
   }
 }
 
+class EditRepairShopPage extends StatefulWidget {
+  final String repairShopId, companyName, email, phoneNo;
+  final bool status;
+  final List employees;
+
+  const EditRepairShopPage({
+    required this.repairShopId,
+    required this.companyName,
+    required this.email,
+    required this.phoneNo,
+    required this.status,
+    required this.employees,
+  });
+
+  @override
+  _EditRepairShopPageState createState() => _EditRepairShopPageState();
+}
+
+class _EditRepairShopPageState extends State<EditRepairShopPage> {
+  late TextEditingController _companyNameController,
+      _emailController,
+      _phoneNoController;
+  bool _status = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _companyNameController = TextEditingController(text: widget.companyName);
+    _emailController = TextEditingController(text: widget.email);
+    _phoneNoController = TextEditingController(text: widget.phoneNo);
+    _status = widget.status;
+  }
+
+  Future<void> _updateRepairShop() async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('repair')
+          .doc(widget.repairShopId)
+          .update({
+        'companyName': _companyNameController.text,
+        'email': _emailController.text,
+        'phoneNo': _phoneNoController.text,
+        'status': _status,
+      });
+      Navigator.pop(context, {
+        'id': widget.repairShopId,
+        'companyName': _companyNameController.text,
+        'email': _emailController.text,
+        'phoneNo': _phoneNoController.text,
+        'status': _status,
+        'employees': widget.employees,
+      });
+    } catch (e) {
+      print('Error updating repair shop: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _companyNameController.dispose();
+    _emailController.dispose();
+    _phoneNoController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+          title: Text('Edit Repair Shop'), backgroundColor: Colors.deepPurple),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+                controller: _companyNameController,
+                decoration: InputDecoration(labelText: 'Company Name')),
+            SizedBox(height: 15),
+            TextField(
+                controller: _emailController,
+                decoration: InputDecoration(labelText: 'Email')),
+            SizedBox(height: 15),
+            TextField(
+                controller: _phoneNoController,
+                decoration: InputDecoration(labelText: 'Phone Number')),
+            SizedBox(height: 15),
+            Row(
+              children: [
+                Text('Status:'),
+                Switch(
+                    value: _status,
+                    onChanged: (value) => setState(() => _status = value)),
+              ],
+            ),
+            SizedBox(height: 15),
+            ElevatedButton(
+                onPressed: _updateRepairShop, child: Text('Save Changes')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class RepairShopDetailPage extends StatelessWidget {
-  final String companyName;
-  final String email;
-  final String phoneNo;
+  final String companyName, email, phoneNo;
   final bool status;
   final List employees;
 
@@ -157,43 +290,25 @@ class RepairShopDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(companyName),
-        backgroundColor: Colors.deepPurple,
-      ),
+      appBar:
+          AppBar(title: Text(companyName), backgroundColor: Colors.deepPurple),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Repair Shop Details',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.deepPurpleAccent,
-              ),
-            ),
+            Text('Repair Shop Details',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             SizedBox(height: 15),
-            Text(
-              'Email: $email',
-              style: TextStyle(fontSize: 18, color: Colors.black87),
-            ),
+            Text('Email: $email', style: TextStyle(fontSize: 18)),
             SizedBox(height: 10),
-            Text(
-              'Phone: $phoneNo',
-              style: TextStyle(fontSize: 18, color: Colors.black87),
-            ),
+            Text('Phone: $phoneNo', style: TextStyle(fontSize: 18)),
             SizedBox(height: 10),
-            Text(
-              'Status: ${status ? 'Active' : 'Inactive'}',
-              style: TextStyle(fontSize: 18, color: Colors.black87),
-            ),
+            Text('Status: ${status ? 'Active' : 'Inactive'}',
+                style: TextStyle(fontSize: 18)),
             SizedBox(height: 15),
-            Text(
-              'Employees:',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-            ),
+            Text('Employees:',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
             SizedBox(height: 10),
             employees.isEmpty
                 ? Text('No employees available')
@@ -205,8 +320,7 @@ class RepairShopDetailPage extends StatelessWidget {
                       return ListTile(
                         title: Text(employee['employeeName'] ?? 'Unknown'),
                         subtitle: Text(
-                          'Role: ${employee['employeeRole'] ?? 'Unknown'}\nPhone: ${employee['employeePhoneNo'] ?? 'Unknown'}',
-                        ),
+                            'Role: ${employee['employeeRole'] ?? 'Unknown'}\nPhone: ${employee['employeePhoneNo'] ?? 'Unknown'}'),
                       );
                     },
                   ),

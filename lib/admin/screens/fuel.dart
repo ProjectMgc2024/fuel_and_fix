@@ -46,9 +46,13 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Manage Fuel Stations'),
+        title: Text('Manage Fuel stations'),
         backgroundColor: const Color.fromARGB(255, 101, 186, 139),
-        elevation: 6,
+        centerTitle: true,
+        elevation: 5.0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

@@ -50,7 +50,7 @@ class _ManageTowStationState extends State<ManageTowStation> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Manage Tow stations'),
-        backgroundColor: const Color.fromARGB(255, 110, 92, 140),
+        backgroundColor: const Color.fromARGB(255, 131, 119, 149),
         centerTitle: true,
         elevation: 5.0,
         shape: RoundedRectangleBorder(

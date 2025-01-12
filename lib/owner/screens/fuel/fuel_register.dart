@@ -152,7 +152,7 @@ class _FuelRegisterState extends State<FuelRegister> {
           style: TextStyle(color: Colors.white),
         ),
         centerTitle: true,
-        backgroundColor: Color.fromARGB(255, 210, 111, 30),
+        backgroundColor: const Color.fromARGB(255, 96, 123, 149),
         elevation: 0,
         leading: IconButton(
           icon:
@@ -168,10 +168,8 @@ class _FuelRegisterState extends State<FuelRegister> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(
-                  0xFFFFA500), // Fuel-inspired Orange color (similar to gasoline)
-              Color(0xFFD14D0E), // Darker red-orange for the fuel look
-              Color(0xFF7F4C2E), // Deep brown color (reflecting oil)
+              const Color.fromARGB(255, 162, 235, 218),
+              const Color.fromARGB(255, 137, 116, 220),
             ],
           ),
         ),
@@ -369,7 +367,7 @@ class _FuelRegisterState extends State<FuelRegister> {
         prefixIcon: Icon(icon,
             color: const Color.fromARGB(255, 52, 42, 42)), // Grey icon color
         filled: true,
-        fillColor: const Color.fromARGB(255, 205, 202, 110),
+        fillColor: const Color.fromARGB(255, 194, 193, 155),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
           borderSide: BorderSide(color: const Color.fromARGB(255, 0, 0, 0)),

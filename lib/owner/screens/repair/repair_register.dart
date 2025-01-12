@@ -150,7 +150,7 @@ class _RepairRegisterState extends State<RepairRegister> {
             title: const Text('Repair Register',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             centerTitle: true,
-            backgroundColor: const Color.fromARGB(255, 178, 198, 143),
+            backgroundColor: const Color.fromARGB(255, 124, 143, 91),
             elevation: 0,
             // Adding the back button in the app bar
             leading: IconButton(

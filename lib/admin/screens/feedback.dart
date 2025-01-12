@@ -194,6 +194,9 @@ class _adminfeedbackState extends State<adminfeedback> {
       appBar: AppBar(
         title: Text('Feedback Collection'),
         backgroundColor: const Color.fromARGB(255, 149, 139, 87),
+        centerTitle: true,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(30))),
       ),
       body: categorizedFeedback.isEmpty
           ? Center(

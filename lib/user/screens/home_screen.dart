@@ -118,7 +118,7 @@ class HomeScreen extends StatelessWidget {
           // Chat Button positioned above the bottom navigation bar
           Positioned(
             bottom: 60, // Position above the bottom navigation bar
-            right: 140,
+            right: 10,
             child: TextButton(
               onPressed: () {
                 Navigator.push(
@@ -128,7 +128,7 @@ class HomeScreen extends StatelessWidget {
               },
               child: Image.asset(
                 'asset/ar.jpg',
-                width: 70,
+                width: 60,
                 height: 90,
               ),
             ),
@@ -145,7 +145,7 @@ class HomeScreen extends StatelessWidget {
       child: AppBar(
         automaticallyImplyLeading: false, // This will remove the back button
         title: Text(
-          'Welcome to Fuel & Fix Assist System',
+          'Fuel & Fix Assist System',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: const Color.fromARGB(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:fuel_and_fix/user/screens/intro.dart';
 import 'package:fuel_and_fix/user/screens/login_screen.dart';
 
 import '../services/firebase_user_auth.dart';
@@ -58,7 +59,7 @@ class _RegisterState extends State<Register> {
 
     // Basic email format validation
     final emailRegExp =
-        RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\$');
+        RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
     if (!emailRegExp.hasMatch(value)) {
       return 'Enter a valid email address';
     }
@@ -113,7 +114,7 @@ class _RegisterState extends State<Register> {
 
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => LoginScreen()),
+        MaterialPageRoute(builder: (context) => Introscreen()),
       );
     } else {
       print('Form is not valid');
@@ -394,7 +395,7 @@ class _RegisterState extends State<Register> {
                         SizedBox(height: 30),
                         // Submit Button
                         SizedBox(
-                          width: 300,
+                          width: 200,
                           child: ElevatedButton(
                             onPressed: loading ? null : submitForm,
                             style: ElevatedButton.styleFrom(

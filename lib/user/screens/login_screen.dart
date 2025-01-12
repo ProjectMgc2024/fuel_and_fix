@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/admin/screens/admin_home.dart';
 import 'package:fuel_and_fix/user/screens/home_screen.dart';
 import 'package:fuel_and_fix/user/screens/register_1.dart';
-import 'package:fuel_and_fix/user/services/firebase_user_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   @override

@@ -91,8 +91,8 @@ class _ProfileScreenState extends State<EditProfile> {
 
         if (user != null) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Updating profile...'),
-            backgroundColor: Colors.blue,
+            content: Text('Profile updated successfully!'),
+            backgroundColor: Colors.green,
           ));
 
           // Upload image if selected
@@ -116,11 +116,6 @@ class _ProfileScreenState extends State<EditProfile> {
             'userImage':
                 imageUrl ?? _imageUrl, // Save image URL (either new or old)
           }, SetOptions(merge: true));
-
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Profile updated successfully!'),
-            backgroundColor: Colors.green,
-          ));
         } else {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text('No user signed in. Please log in.'),
@@ -242,7 +237,11 @@ class _ProfileScreenState extends State<EditProfile> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         ElevatedButton(
-                          onPressed: _handleSave,
+                          onPressed: () {
+                            _handleSave();
+                            Navigator.pop(
+                                context); // This will pop the current screen and return to the previous one (profile page)
+                          },
                           child: Text('Save'),
                         ),
                         SizedBox(width: 20),
