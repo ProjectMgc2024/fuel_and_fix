@@ -43,7 +43,8 @@ class OwnerAuthServices {
         'additionalData': additionalData,
         'companyLogo':
             'https://res.cloudinary.com/dnywnuawz/image/upload/v1734347001/public/fuel/hhalljykskzcxxhxomhi.png', // default logo
-        'status': true, // Default status
+        'status': true,
+        'isApproved': false, // Default status
       };
 
       // Check the collection and add data accordingly

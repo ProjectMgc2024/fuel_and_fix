@@ -93,11 +93,14 @@ class FeedbackScreen extends StatelessWidget {
                     return; // Don't submit if feedback is empty
                   }
 
+                  // Log the service value to check it
+                  print("Submitting feedback for service: $service");
+
                   // Add feedback to Firebase
                   await FirebaseFirestore.instance.collection('feedback').add({
                     'feedback': feedbackController.text,
                     'timestamp': Timestamp.now(),
-                    'service': service,
+                    'service': service, // Ensure this is the correct service
                     'ownerId': stationId,
                     'userId': userId,
                   });
@@ -106,7 +109,7 @@ class FeedbackScreen extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text('Feedback submitted successfully!'),
                   ));
-                  Navigator.pop(context);
+                  Navigator.pop(context); // Navigate back after submission
                 },
                 child: Text(
                   'Submit Feedback',

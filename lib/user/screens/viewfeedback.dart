@@ -13,7 +13,6 @@ class _ViewFeedbackPageState extends State<ViewFeedbackPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   User? _user;
   bool _isLoading = true;
-  Map<String, Map<String, String?>> _companyDetails = {};
 
   @override
   void initState() {
@@ -35,45 +34,34 @@ class _ViewFeedbackPageState extends State<ViewFeedbackPage> {
         .get();
   }
 
-  Future<void> _getCompanyDetails(String service, String ownerId) async {
-    if (_companyDetails.containsKey(service)) {
-      return;
-    }
-
+  Future<Map<String, String>> _getCompanyDetails(
+      String service, String ownerId) async {
     try {
       DocumentSnapshot companyDoc =
           await _firestore.collection(service).doc(ownerId).get();
 
       if (companyDoc.exists) {
-        setState(() {
-          _companyDetails[service] = {
-            'companyName': companyDoc['companyName'],
-            'ownerName': companyDoc['ownerName']
-          };
-        });
+        return {
+          'companyName': companyDoc['companyName'] ?? 'Unknown Company',
+          'ownerName': companyDoc['ownerName'] ?? 'Unknown Owner',
+        };
       } else {
-        setState(() {
-          _companyDetails[service] = {
-            'companyName': 'Unknown Company',
-            'ownerName': 'Unknown Owner'
-          };
-        });
+        return {
+          'companyName': 'Unknown Company',
+          'ownerName': 'Unknown Owner',
+        };
       }
     } catch (e) {
-      setState(() {
-        _companyDetails[service] = {
-          'companyName': 'Error fetching company',
-          'ownerName': 'Error fetching owner'
-        };
-      });
+      return {
+        'companyName': 'Error fetching company',
+        'ownerName': 'Error fetching owner',
+      };
     }
   }
 
   String _formatTimestamp(Timestamp timestamp) {
-    // Convert Firestore Timestamp to DateTime
     DateTime dateTime = timestamp.toDate();
-    // Format the DateTime into the desired format
-    return DateFormat('d MMMM yyyy at HH:mm:ss z').format(dateTime);
+    return DateFormat('d MMMM yyyy HH:mm:ss').format(dateTime);
   }
 
   @override
@@ -122,8 +110,6 @@ class _ViewFeedbackPageState extends State<ViewFeedbackPage> {
                     var ownerId = feedbackData['ownerId'] ?? '';
                     var timestamp = feedbackData['timestamp'] as Timestamp?;
 
-                    _getCompanyDetails(service, ownerId);
-
                     return Card(
                       margin: EdgeInsets.symmetric(vertical: 8),
                       elevation: 3,
@@ -161,50 +147,58 @@ class _ViewFeedbackPageState extends State<ViewFeedbackPage> {
                                 'Submitted on: ${_formatTimestamp(timestamp)}',
                                 style: TextStyle(
                                     fontSize: 13,
-                                    color:
-                                        const Color.fromARGB(255, 46, 6, 95)),
+                                    color: Color.fromARGB(255, 46, 6, 95)),
                               ),
                             SizedBox(height: 15),
-                            FutureBuilder(
+
+                            // Use FutureBuilder to fetch company details
+                            FutureBuilder<Map<String, String>>(
                               future: _getCompanyDetails(service, ownerId),
-                              builder: (context, _) {
-                                if (_companyDetails.containsKey(service)) {
-                                  var companyDetails = _companyDetails[service];
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Icon(Icons.business,
-                                              color: Colors.green),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'Company: ${companyDetails?['companyName']}',
-                                            style: TextStyle(fontSize: 14),
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 10),
-                                      Row(
-                                        children: [
-                                          Icon(Icons.person,
-                                              color: const Color.fromARGB(
-                                                  255, 70, 114, 123)),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'Owner: ${companyDetails?['ownerName']}',
-                                            style: TextStyle(fontSize: 14),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  );
-                                } else {
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
                                   return Center(
-                                    child: CircularProgressIndicator(),
-                                  );
+                                      child: CircularProgressIndicator());
                                 }
+                                if (snapshot.hasError) {
+                                  return Text('Error loading company details',
+                                      style: TextStyle(color: Colors.red));
+                                }
+                                var companyDetails = snapshot.data ??
+                                    {
+                                      'companyName': 'Unknown Company',
+                                      'ownerName': 'Unknown Owner',
+                                    };
+
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(Icons.business,
+                                            color: Colors.green),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Company: ${companyDetails['companyName']}',
+                                          style: TextStyle(fontSize: 14),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        Icon(Icons.person,
+                                            color: Color.fromARGB(
+                                                255, 70, 114, 123)),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Owner: ${companyDetails['ownerName']}',
+                                          style: TextStyle(fontSize: 14),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                );
                               },
                             ),
                           ],

@@ -6,36 +6,47 @@ class RepairPage extends StatefulWidget {
   _RepairPageState createState() => _RepairPageState();
 }
 
-class _RepairPageState extends State<RepairPage> {
-  List<Map<String, dynamic>> repairShops = [];
+class _RepairPageState extends State<RepairPage>
+    with SingleTickerProviderStateMixin {
+  final FirebaseFirestore _firebaseFirestore = FirebaseFirestore.instance;
+  String searchQuery = '';
+  late Future<List<Map<String, dynamic>>> repairShops;
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    _fetchRepairShops();
+    repairShops = fetchRepairShops();
+    _tabController = TabController(length: 2, vsync: this);
   }
 
-  Future<void> _fetchRepairShops() async {
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  // Fetch repair shops from Firestore
+  Future<List<Map<String, dynamic>>> fetchRepairShops() async {
     try {
       QuerySnapshot querySnapshot =
-          await FirebaseFirestore.instance.collection('repair').get();
-      repairShops = querySnapshot.docs
-          .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
-          .toList();
-      setState(() {});
+          await _firebaseFirestore.collection('repair').get();
+      return querySnapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return {
+          'id': doc.id,
+          'companyName': data['companyName'] ?? 'Unknown',
+          'email': data['email'] ?? 'Unknown',
+          'phoneNo': data['phoneNo'] ?? 'Unknown',
+          'status': data['status'] ?? false,
+          'isApproved': data['isApproved'] ?? false,
+          'employees': List<Map<String, dynamic>>.from(data['employees'] ?? []),
+          'companyLogo': data['companyLogo'] ?? '',
+        };
+      }).toList();
     } catch (e) {
       print('Error fetching repair shops: $e');
-    }
-  }
-
-  Future<void> _deleteRepairShop(String id) async {
-    try {
-      await FirebaseFirestore.instance.collection('repair').doc(id).delete();
-      setState(() {
-        repairShops.removeWhere((shop) => shop['id'] == id);
-      });
-    } catch (e) {
-      print('Error deleting repair shop: $e');
+      return [];
     }
   }
 
@@ -43,290 +54,254 @@ class _RepairPageState extends State<RepairPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Manage Repair stations'),
+        title: Text('Manage Repair Stations'),
         backgroundColor: const Color.fromARGB(255, 127, 107, 159),
         centerTitle: true,
         elevation: 5.0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
         ),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('List of Repair Shops',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
-              SizedBox(height: 15),
-              Expanded(
-                child: repairShops.isEmpty
-                    ? Center(child: CircularProgressIndicator())
-                    : ListView.builder(
-                        itemCount: repairShops.length,
-                        itemBuilder: (context, index) {
-                          return _repairShopCard(
-                            context,
-                            repairShops[index]['companyName'] ?? 'Unknown',
-                            repairShops[index]['email'] ?? 'Unknown',
-                            repairShops[index]['phoneNo'] ?? 'Unknown',
-                            repairShops[index]['status'] ?? false,
-                            repairShops[index]['employees'] ?? [],
-                            repairShops[index]['id'],
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _repairShopCard(BuildContext context, String companyName, String email,
-      String phoneNo, bool status, List employees, String id) {
-    return Card(
-      elevation: 8,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      margin: EdgeInsets.symmetric(vertical: 10),
-      child: ListTile(
-        leading: CircleAvatar(
-            radius: 30,
-            backgroundColor: Colors.deepPurple,
-            backgroundImage: NetworkImage('')),
-        title: Text(companyName,
-            style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: Colors.deepPurpleAccent)),
-        subtitle: Text(
-            'Email: $email\nPhone: $phoneNo\nStatus: ${status ? 'Active' : 'Inactive'}',
-            style: TextStyle(color: Colors.black54)),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: Icon(Icons.edit, color: Colors.deepPurple),
-              onPressed: () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => EditRepairShopPage(
-                        repairShopId: id,
-                        companyName: companyName,
-                        email: email,
-                        phoneNo: phoneNo,
-                        status: status,
-                        employees: employees,
-                      ),
-                    ));
-              },
-            ),
-            IconButton(
-              icon: Icon(Icons.delete, color: Colors.red),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      title: Text('Delete Repair Shop'),
-                      content: Text(
-                          'Are you sure you want to delete this repair shop?'),
-                      actions: [
-                        TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: Text('Cancel')),
-                        TextButton(
-                            onPressed: () {
-                              _deleteRepairShop(id);
-                              Navigator.of(context).pop();
-                            },
-                            child: Text('Delete')),
-                      ],
-                    );
-                  },
-                );
-              },
-            ),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: [
+            Tab(text: 'Pending'),
+            Tab(text: 'Accepted'),
           ],
         ),
-        onTap: () {
-          Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => RepairShopDetailPage(
-                    companyName: companyName,
-                    email: email,
-                    phoneNo: phoneNo,
-                    status: status,
-                    employees: employees),
-              ));
-        },
       ),
-    );
-  }
-}
-
-class EditRepairShopPage extends StatefulWidget {
-  final String repairShopId, companyName, email, phoneNo;
-  final bool status;
-  final List employees;
-
-  const EditRepairShopPage({
-    required this.repairShopId,
-    required this.companyName,
-    required this.email,
-    required this.phoneNo,
-    required this.status,
-    required this.employees,
-  });
-
-  @override
-  _EditRepairShopPageState createState() => _EditRepairShopPageState();
-}
-
-class _EditRepairShopPageState extends State<EditRepairShopPage> {
-  late TextEditingController _companyNameController,
-      _emailController,
-      _phoneNoController;
-  bool _status = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _companyNameController = TextEditingController(text: widget.companyName);
-    _emailController = TextEditingController(text: widget.email);
-    _phoneNoController = TextEditingController(text: widget.phoneNo);
-    _status = widget.status;
-  }
-
-  Future<void> _updateRepairShop() async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('repair')
-          .doc(widget.repairShopId)
-          .update({
-        'companyName': _companyNameController.text,
-        'email': _emailController.text,
-        'phoneNo': _phoneNoController.text,
-        'status': _status,
-      });
-      Navigator.pop(context, {
-        'id': widget.repairShopId,
-        'companyName': _companyNameController.text,
-        'email': _emailController.text,
-        'phoneNo': _phoneNoController.text,
-        'status': _status,
-        'employees': widget.employees,
-      });
-    } catch (e) {
-      print('Error updating repair shop: $e');
-    }
-  }
-
-  @override
-  void dispose() {
-    _companyNameController.dispose();
-    _emailController.dispose();
-    _phoneNoController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-          title: Text('Edit Repair Shop'), backgroundColor: Colors.deepPurple),
       body: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-                controller: _companyNameController,
-                decoration: InputDecoration(labelText: 'Company Name')),
-            SizedBox(height: 15),
-            TextField(
-                controller: _emailController,
-                decoration: InputDecoration(labelText: 'Email')),
-            SizedBox(height: 15),
-            TextField(
-                controller: _phoneNoController,
-                decoration: InputDecoration(labelText: 'Phone Number')),
-            SizedBox(height: 15),
-            Row(
+            _buildSearchBar(),
+            SizedBox(height: 20),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildRepairShopsList('Pending'),
+                  _buildRepairShopsList('Accepted'),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Search bar widget
+  Widget _buildSearchBar() {
+    return TextField(
+      onChanged: (value) {
+        setState(() {
+          searchQuery = value;
+        });
+      },
+      decoration: InputDecoration(
+        labelText: 'Search by company name',
+        prefixIcon: Icon(Icons.search, color: Colors.deepPurple),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(30),
+          borderSide: BorderSide(color: Colors.deepPurple),
+        ),
+      ),
+    );
+  }
+
+  // Build repair shops list based on approval status
+  Widget _buildRepairShopsList(String status) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: repairShops,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(child: Text('Error loading data'));
+        }
+
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Center(child: Text('No repair shops available'));
+        }
+
+        List<Map<String, dynamic>> filteredShops =
+            _getFilteredShops(snapshot.data!, status);
+
+        return ListView.builder(
+          itemCount: filteredShops.length,
+          itemBuilder: (context, index) {
+            return _repairShopCard(context, filteredShops[index], status);
+          },
+        );
+      },
+    );
+  }
+
+  // Filter repair shops based on search query and approval status
+  List<Map<String, dynamic>> _getFilteredShops(
+      List<Map<String, dynamic>> shops, String status) {
+    return shops.where((shop) {
+      bool matchesQuery = shop['companyName']!
+          .toLowerCase()
+          .contains(searchQuery.toLowerCase());
+      bool matchesStatus = status == 'Pending'
+          ? shop['isApproved'] == false
+          : shop['isApproved'] == true;
+      return matchesQuery && matchesStatus;
+    }).toList();
+  }
+
+  // Repair shop card widget
+  Widget _repairShopCard(
+      BuildContext context, Map<String, dynamic> shop, String status) {
+    return Card(
+      elevation: 5,
+      margin: EdgeInsets.symmetric(vertical: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: ExpansionTile(
+        leading: shop['companyLogo'] != null
+            ? CircleAvatar(backgroundImage: NetworkImage(shop['companyLogo']))
+            : Icon(Icons.business, color: Colors.deepPurple),
+        title: Text(
+          shop['companyName'],
+          style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: Colors.deepPurple),
+        ),
+        subtitle: Text(
+          'Email: ${shop['email']}',
+          style: TextStyle(fontSize: 14, color: Colors.grey),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Status:'),
-                Switch(
-                    value: _status,
-                    onChanged: (value) => setState(() => _status = value)),
+                Text(
+                  'Phone: ${shop['phoneNo']}',
+                  style: TextStyle(fontSize: 16),
+                ),
+                Text(
+                  'Status: ${shop['status'] ? 'Active' : 'Inactive'}',
+                  style: TextStyle(fontSize: 16),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Employees: ${shop['employees'].length}',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, color: Colors.deepPurple),
+                ),
+                SizedBox(height: 8),
+                ...shop['employees'].map<Widget>((employee) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: ListTile(
+                      title: Text(employee['employeeName'] ?? 'Unknown'),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                              'Role: ${employee['employeeRole'] ?? 'Unknown'}'),
+                          Text(
+                              'Phone: ${employee['employeePhoneNo'] ?? 'Unknown'}'),
+                        ],
+                      ),
+                      leading: Icon(Icons.person, color: Colors.deepPurple),
+                    ),
+                  );
+                }).toList(),
+                SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (status == 'Pending')
+                      ElevatedButton(
+                        onPressed: () => _acceptRepairShop(shop['id']),
+                        child: Text('Accept'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          padding: EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 20),
+                          textStyle: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    if (status == 'Accepted')
+                      ElevatedButton(
+                        onPressed: () =>
+                            _confirmDeleteRepairShop(context, shop['id']),
+                        child: Text('Delete'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          padding: EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 20),
+                          textStyle: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ],
             ),
-            SizedBox(height: 15),
-            ElevatedButton(
-                onPressed: _updateRepairShop, child: Text('Save Changes')),
-          ],
-        ),
+          )
+        ],
       ),
     );
   }
-}
 
-class RepairShopDetailPage extends StatelessWidget {
-  final String companyName, email, phoneNo;
-  final bool status;
-  final List employees;
+  // Accept repair shop
+  void _acceptRepairShop(String shopId) {
+    _firebaseFirestore
+        .collection('repair')
+        .doc(shopId)
+        .update({'isApproved': true}).then((_) {
+      setState(() {
+        repairShops = fetchRepairShops();
+      });
+    });
+  }
 
-  const RepairShopDetailPage({
-    required this.companyName,
-    required this.email,
-    required this.phoneNo,
-    required this.status,
-    required this.employees,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar:
-          AppBar(title: Text(companyName), backgroundColor: Colors.deepPurple),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Repair Shop Details',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            SizedBox(height: 15),
-            Text('Email: $email', style: TextStyle(fontSize: 18)),
-            SizedBox(height: 10),
-            Text('Phone: $phoneNo', style: TextStyle(fontSize: 18)),
-            SizedBox(height: 10),
-            Text('Status: ${status ? 'Active' : 'Inactive'}',
-                style: TextStyle(fontSize: 18)),
-            SizedBox(height: 15),
-            Text('Employees:',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
-            SizedBox(height: 10),
-            employees.isEmpty
-                ? Text('No employees available')
-                : ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: employees.length,
-                    itemBuilder: (context, index) {
-                      final employee = employees[index];
-                      return ListTile(
-                        title: Text(employee['employeeName'] ?? 'Unknown'),
-                        subtitle: Text(
-                            'Role: ${employee['employeeRole'] ?? 'Unknown'}\nPhone: ${employee['employeePhoneNo'] ?? 'Unknown'}'),
-                      );
-                    },
-                  ),
+  // Confirmation dialog for repair shop deletion
+  void _confirmDeleteRepairShop(BuildContext context, String shopId) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Delete Repair Shop'),
+          content: Text('Are you sure you want to delete this repair shop?'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context), child: Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _firebaseFirestore.collection('repair').doc(shopId).delete();
+                  repairShops = fetchRepairShops();
+                });
+                Navigator.pop(context);
+              },
+              child: Text('Delete'),
+            ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }

@@ -82,7 +82,7 @@ class _FuelLoginScreenState extends State<FuelLoginScreen> {
                     ),
                     SizedBox(height: 20.0),
                     Text(
-                      'Log In',
+                      ' Fuel Log In',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 30,

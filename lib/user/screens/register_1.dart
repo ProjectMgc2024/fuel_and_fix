@@ -14,10 +14,12 @@ class VehicleRegistrationPage extends StatefulWidget {
 
 class _VehicleRegistrationPageState extends State<VehicleRegistrationPage> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _vehicleTypeController = TextEditingController();
   final TextEditingController _registrationController = TextEditingController();
   final TextEditingController _licenceNumberController =
       TextEditingController();
+
+  String?
+      selectedVehicleType; // String variable to hold the selected vehicle type
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +45,6 @@ class _VehicleRegistrationPageState extends State<VehicleRegistrationPage> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: <Widget>[
                     const SizedBox(height: 20),
-
                     // Title placed just above the form fields
                     const Text(
                       'Please Register Your Vehicle',
@@ -52,14 +53,18 @@ class _VehicleRegistrationPageState extends State<VehicleRegistrationPage> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-
                     const SizedBox(height: 60),
 
-                    // Vehicle Type Input
+                    // Vehicle Type Dropdown
                     SizedBox(
                       width: 400,
-                      child: TextFormField(
-                        controller: _vehicleTypeController,
+                      child: DropdownButtonFormField<String>(
+                        value: selectedVehicleType,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            selectedVehicleType = newValue;
+                          });
+                        },
                         decoration: const InputDecoration(
                           labelText: 'Vehicle Type',
                           border: OutlineInputBorder(),
@@ -68,10 +73,17 @@ class _VehicleRegistrationPageState extends State<VehicleRegistrationPage> {
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter a vehicle type';
+                            return 'Please select a vehicle type';
                           }
                           return null;
                         },
+                        items: <String>['Car', 'Truck', 'Bike', 'Bus']
+                            .map<DropdownMenuItem<String>>((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -91,8 +103,8 @@ class _VehicleRegistrationPageState extends State<VehicleRegistrationPage> {
                             .text, // Allows both letters and numbers
                         inputFormatters: [
                           // Custom input formatter to allow alphanumeric characters
-                          FilteringTextInputFormatter.allow(RegExp(
-                              '[a-zA-Z0-9]*')), // Fixed regex to allow alphanumeric characters
+                          FilteringTextInputFormatter.allow(
+                              RegExp('[a-zA-Z0-9]*')),
                         ],
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -108,6 +120,7 @@ class _VehicleRegistrationPageState extends State<VehicleRegistrationPage> {
                       ),
                     ),
                     const SizedBox(height: 20),
+
                     // License Number Input (Alphanumeric allowed)
                     SizedBox(
                       width: 400,
@@ -122,8 +135,8 @@ class _VehicleRegistrationPageState extends State<VehicleRegistrationPage> {
                             .text, // Allows both letters and numbers
                         inputFormatters: [
                           // Custom input formatter to allow alphanumeric characters
-                          FilteringTextInputFormatter.allow(RegExp(
-                              '[a-zA-Z0-9]*')), // Fixed regex to allow alphanumeric characters
+                          FilteringTextInputFormatter.allow(
+                              RegExp('[a-zA-Z0-9]*')),
                         ],
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -153,12 +166,12 @@ class _VehicleRegistrationPageState extends State<VehicleRegistrationPage> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (context) => Register(
-                                      license: _licenceNumberController.text,
-                                      registration:
-                                          _registrationController.text,
-                                      vehicleType: _vehicleTypeController.text,
-                                    )),
+                              builder: (context) => Register(
+                                license: _licenceNumberController.text,
+                                registration: _registrationController.text,
+                                vehicleType: selectedVehicleType ?? '',
+                              ),
+                            ),
                           );
                         }
                       },
@@ -173,6 +186,7 @@ class _VehicleRegistrationPageState extends State<VehicleRegistrationPage> {
                       ),
                     ),
                     SizedBox(height: 20),
+
                     // Add a TextButton to navigate to the login screen
                     TextButton(
                       onPressed: () {

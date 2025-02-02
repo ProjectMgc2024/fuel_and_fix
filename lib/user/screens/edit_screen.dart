@@ -41,7 +41,6 @@ class _ProfileScreenState extends State<EditProfile> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController licenseController = TextEditingController();
   final TextEditingController registrationController = TextEditingController();
-  final TextEditingController vehicleTypeController = TextEditingController();
 
   final _formKey = GlobalKey<FormState>();
   final CloudinaryService cloudinaryService =
@@ -49,6 +48,7 @@ class _ProfileScreenState extends State<EditProfile> {
 
   File? _selectedImage; // For storing the selected image
   String? _imageUrl; // Store the image URL from Cloudinary
+  String? selectedVehicleType; // Store the selected vehicle type
 
   // Fetch user data including the profile image URL
   Future<void> _fetchUserData() async {
@@ -70,7 +70,8 @@ class _ProfileScreenState extends State<EditProfile> {
             emailController.text = profileData['email'] ?? '';
             registrationController.text = profileData['registrationNo'] ?? '';
             licenseController.text = profileData['license'] ?? '';
-            vehicleTypeController.text = profileData['vehicleType'] ?? '';
+            selectedVehicleType =
+                profileData['vehicleType'] ?? ''; // Fetch the vehicleType
             _imageUrl = profileData['userImage']; // Load image URL
           });
         }
@@ -112,7 +113,8 @@ class _ProfileScreenState extends State<EditProfile> {
             'email': emailController.text.trim(),
             'license': licenseController.text.trim(),
             'registrationNo': registrationController.text.trim(),
-            'vehicleType': vehicleTypeController.text.trim(),
+            'vehicleType':
+                selectedVehicleType ?? '', // Save the selected vehicle type
             'userImage':
                 imageUrl ?? _imageUrl, // Save image URL (either new or old)
           }, SetOptions(merge: true));
@@ -221,16 +223,42 @@ class _ProfileScreenState extends State<EditProfile> {
                         usernameController, 'Username', Icons.person),
                     _buildTextFormField(
                         phoneNumberController, 'Phone Number', Icons.phone),
-                    _buildTextFormField(emailController, 'Email', Icons.email),
                     _buildTextFormField(
                         licenseController, 'License', Icons.card_membership),
                     _buildTextFormField(registrationController,
                         'Registration Number', Icons.details),
 
-                    _buildTextFormField(vehicleTypeController, 'Vehicle Type',
-                        Icons.car_repair),
-
-                    SizedBox(height: 20),
+                    // Vehicle Type Dropdown
+                    SizedBox(
+                      width: 300,
+                      child: DropdownButtonFormField<String>(
+                        value: selectedVehicleType,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            selectedVehicleType = newValue;
+                          });
+                        },
+                        decoration: const InputDecoration(
+                          labelText: 'Vehicle Type',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.directions_car),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please select a vehicle type';
+                          }
+                          return null;
+                        },
+                        items: <String>['Car', 'Truck', 'Bike', 'Bus']
+                            .map<DropdownMenuItem<String>>((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
 
                     // Save and Cancel buttons
                     Row(
@@ -290,8 +318,8 @@ class _ProfileScreenState extends State<EditProfile> {
       emailController.clear();
       registrationController.clear();
       licenseController.clear();
-      vehicleTypeController.clear();
       _selectedImage = null;
+      selectedVehicleType = null; // Clear selected vehicle type
     });
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('Changes canceled.'),

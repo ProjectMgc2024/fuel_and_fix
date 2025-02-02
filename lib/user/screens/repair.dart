@@ -5,7 +5,7 @@ import 'package:fuel_and_fix/user/screens/feedback.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:url_launcher/url_launcher.dart'; // Import geocoding
+import 'package:url_launcher/url_launcher.dart';
 
 class WorkshopScreen extends StatefulWidget {
   @override
@@ -20,6 +20,18 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
   bool _isUpdatingLocation = false; // To show loading indicator
   String enteredLocation = ''; // Variable to store search text
 
+  // Define a map to hold common vehicle problems and their checkbox state.
+  Map<String, bool> vehicleProblems = {
+    'Engine Trouble': false,
+    'Brake Issues': false,
+    'Overheating': false,
+    'Flat Tire': false,
+    'Light Issue': false
+  };
+
+  // TextEditingController for the vehicle situation input.
+  TextEditingController _vehicleSituationController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -31,6 +43,7 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
 
   @override
   void dispose() {
+    _vehicleSituationController.dispose();
     _razorpay.clear();
     super.dispose();
   }
@@ -38,7 +51,8 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
   Future<List<Map<String, dynamic>>> _getWorkshops() async {
     QuerySnapshot querySnapshot = await _firestore
         .collection('repair')
-        .where('status', isEqualTo: true)
+        .where('status', isEqualTo: true) // Ensure status is true
+        .where('isApproved', isEqualTo: true) // Filter for approved companies
         .get();
 
     List<Map<String, dynamic>> workshops = [];
@@ -52,11 +66,7 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
     return workshops;
   }
 
-  final Map<String, dynamic> workshop = {
-    'phoneNo': '1234567890'
-  }; // Example data
-
-  // Function to launch the phone dialer
+  // Function to launch the phone dialer.
   _launchPhone(String phoneNumber) async {
     final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
     if (await canLaunch(phoneUri.toString())) {
@@ -66,11 +76,11 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
     }
   }
 
-  // Filter workshops based on entered location
+  // Filter workshops based on the entered location.
   List<Map<String, dynamic>> getFilteredWorkshops(
       List<Map<String, dynamic>> workshops) {
     if (enteredLocation.isEmpty) {
-      return workshops; // No filter applied if search text is empty
+      return workshops;
     }
     return workshops
         .where((workshop) =>
@@ -83,28 +93,52 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
 
   Future<void> _handlePaymentSuccess(PaymentSuccessResponse response) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null || _currentWorkshop == null) return;
+    if (user != null) {
+      // Get the current timestamp.
+      DateTime timestamp = DateTime.now();
 
-    await _firestore
-        .collection('repair')
-        .doc(_currentWorkshop!['id'])
-        .collection('request')
-        .add({
-      'userId': user.uid,
-      'paymentId': response.paymentId,
-      'status': true,
-      'isPayment': true,
-      'timestamp': DateTime.now(),
-      'userLocation': _currentLocationName, // Store the location name
-    });
+      // Fetch the user's location name from the user collection.
+      DocumentSnapshot userDoc =
+          await _firestore.collection('user').doc(user.uid).get();
+      String userLocation =
+          userDoc['additionalData']['location_name'] ?? 'Unknown Location';
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Payment Successful and Request Sent!")),
-    );
+      // Collect selected vehicle problems.
+      List<String> selectedProblems = vehicleProblems.entries
+          .where((entry) => entry.value)
+          .map((entry) => entry.key)
+          .toList();
 
-    setState(() {
-      _currentWorkshop = null;
-    });
+      // Prepare the data to be saved in Firestore.
+      Map<String, dynamic> requestData = {
+        'isPayment': true,
+        'paymentId': response.paymentId,
+        'status': true,
+        'timestamp': timestamp,
+        'userId': user.uid,
+        'userLocation': userLocation,
+        'vehicleSituation': _vehicleSituationController.text,
+        'vehicleProblems': selectedProblems,
+      };
+
+      // Save the data to the Firestore request subcollection.
+      try {
+        await _firestore
+            .collection('repair')
+            .doc(_currentWorkshop!['id'])
+            .collection('request')
+            .add(requestData);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Payment and request submitted successfully!')),
+        );
+      } catch (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to submit request: $error')),
+        );
+      }
+    }
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
@@ -140,18 +174,19 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
     }
   }
 
-  // Function to get current location and location name
+  // Define a flag to track location fetching status.
+  bool _locationFetched = false;
+
   Future<void> _getCurrentLocation() async {
     setState(() {
-      _isUpdatingLocation = true; // Start loading
+      _isUpdatingLocation = true;
     });
 
-    // Get the current position
+    // Get the current position.
     Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high);
-    setState(() {});
 
-    // Reverse geocode to get the location name
+    // Reverse geocode to get the location name.
     List<Placemark> placemarks = await GeocodingPlatform.instance!
         .placemarkFromCoordinates(position.latitude, position.longitude);
 
@@ -160,12 +195,14 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
       setState(() {
         _currentLocationName =
             "${place.locality}, ${place.administrativeArea}, ${place.country}";
+        _locationFetched = true;
       });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Current Location: $_currentLocationName')),
       );
 
-      // Update user collection with current location
+      // Update the user collection with the current location.
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         _firestore.collection('user').doc(user.uid).update({
@@ -185,42 +222,64 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
     }
 
     setState(() {
-      _isUpdatingLocation = false; // Stop loading
+      _isUpdatingLocation = false;
     });
   }
 
-  // Show the dialog for current location and pay now
+  // Dialog to input vehicle situation and select vehicle problems.
   void _showLocationAndPaymentDialog(Map<String, dynamic> workshop) {
     showDialog(
       context: context,
-      barrierDismissible:
-          false, // Prevents closing the dialog by tapping outside
+      barrierDismissible: false, // Prevent closing by tapping outside.
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Select Action'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () {
-                  _getCurrentLocation();
-                  Navigator.pop(context);
-                },
-                icon: Icon(Icons.my_location),
-                label: Text(_currentLocationName ??
-                    'Fetch Current Location...'), // Show the current location name or loading text
+        // Use StatefulBuilder for local state management in the dialog.
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Select Action'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // TextField for vehicle situation.
+                    TextField(
+                      controller: _vehicleSituationController,
+                      decoration: InputDecoration(
+                        labelText: 'Current Vehicle Situation',
+                        hintText: 'Describe the situation of your vehicle',
+                      ),
+                      maxLines: 3,
+                    ),
+                    SizedBox(height: 10),
+                    // Display checkboxes for common vehicle problems.
+                    Column(
+                      children: vehicleProblems.keys.map((problem) {
+                        return CheckboxListTile(
+                          title: Text(problem),
+                          value: vehicleProblems[problem],
+                          onChanged: (bool? value) {
+                            setState(() {
+                              vehicleProblems[problem] = value!;
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    SizedBox(height: 10),
+                    // "Advance pay" button.
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        _payWithRazorpay(workshop);
+                        Navigator.pop(context);
+                      },
+                      icon: Icon(Icons.payments),
+                      label: Text('Pay Advance'),
+                    ),
+                  ],
+                ),
               ),
-              SizedBox(height: 10),
-              ElevatedButton.icon(
-                onPressed: () {
-                  _payWithRazorpay(workshop);
-                  Navigator.pop(context);
-                },
-                icon: Icon(Icons.payments),
-                label: Text('Pay Now'),
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -262,7 +321,7 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
               child: TextField(
                 onChanged: (text) {
                   setState(() {
-                    enteredLocation = text; // Update the entered location
+                    enteredLocation = text;
                   });
                 },
                 decoration: InputDecoration(
@@ -293,15 +352,13 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                   return Center(child: Text('No active workshops available.'));
                 } else {
                   List<Map<String, dynamic>> workshops = snapshot.data!;
-                  final filteredWorkshops = getFilteredWorkshops(
-                      workshops); // Filter workshops based on the search
+                  final filteredWorkshops = getFilteredWorkshops(workshops);
 
                   return filteredWorkshops.isEmpty
                       ? Center(
                           child: Text(
                               'No workshops found for the entered location.'))
                       : Expanded(
-                          // Added to ensure the list takes up available space
                           child: ListView.builder(
                             itemCount: filteredWorkshops.length,
                             itemBuilder: (context, index) {
@@ -375,15 +432,15 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                                                         Row(
                                                           children: [
                                                             Icon(
-                                                                Icons
-                                                                    .location_on,
-                                                                color: const Color
-                                                                    .fromARGB(
-                                                                    255,
-                                                                    122,
-                                                                    118,
-                                                                    207),
-                                                                size: 18),
+                                                              Icons.location_on,
+                                                              color: const Color
+                                                                  .fromARGB(
+                                                                  255,
+                                                                  122,
+                                                                  118,
+                                                                  207),
+                                                              size: 18,
+                                                            ),
                                                             SizedBox(width: 8),
                                                             Expanded(
                                                               child: Text(
@@ -436,15 +493,11 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                                                         Row(
                                                           children: [
                                                             Icon(
-                                                                Icons
-                                                                    .car_repair,
-                                                                color: const Color
-                                                                    .fromARGB(
-                                                                    255,
-                                                                    255,
-                                                                    255,
-                                                                    255),
-                                                                size: 18),
+                                                              Icons.car_repair,
+                                                              color:
+                                                                  Colors.white,
+                                                              size: 18,
+                                                            ),
                                                             SizedBox(width: 8),
                                                             Text(
                                                               workshop[
@@ -489,7 +542,7 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                                                                 workshop['id'],
                                                             stationName: workshop[
                                                                 'companyName'],
-                                                            service: 'tow',
+                                                            service: 'repair',
                                                             userId: FirebaseAuth
                                                                 .instance
                                                                 .currentUser
@@ -523,16 +576,6 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _isUpdatingLocation
-          ? Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation(Colors.deepPurple),
-                ),
-              ),
-            )
-          : null,
     );
   }
 }

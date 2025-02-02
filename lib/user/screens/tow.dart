@@ -3,9 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/user/screens/feedback.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
-import 'package:url_launcher/url_launcher.dart'; // Import geocoding
+import 'package:url_launcher/url_launcher.dart';
 
 class TowingServiceCategories extends StatefulWidget {
   @override
@@ -17,10 +15,9 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late Razorpay _razorpay;
   Map<String, dynamic>? _currentWorkshop;
-  Position? _currentPosition;
-  String? _currentLocationName;
-  bool _isUpdatingLocation = false; // To show loading indicator
   String enteredLocation = ''; // Variable to store search text
+  String _selectedSituation =
+      ''; // Variable to store selected vehicle situation
 
   @override
   void initState() {
@@ -42,6 +39,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
     QuerySnapshot querySnapshot = await _firestore
         .collection('tow')
         .where('status', isEqualTo: true)
+        .where('isApproved', isEqualTo: true)
         .get();
 
     List<Map<String, dynamic>> workshops = [];
@@ -54,10 +52,6 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
     }
     return workshops;
   }
-
-  final Map<String, dynamic> workshop = {
-    'phoneNo': '1234567890'
-  }; // Example data
 
   // Function to launch the phone dialer
   Future<void> _launchPhone(String phoneNumber) async {
@@ -88,6 +82,10 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
   Future<void> _handlePaymentSuccess(PaymentSuccessResponse response) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || _currentWorkshop == null) return;
+    DocumentSnapshot userDoc =
+        await _firestore.collection('user').doc(user.uid).get();
+    String userLocation =
+        userDoc['additionalData']['location_name'] ?? 'Unknown Location';
 
     await _firestore
         .collection('tow')
@@ -99,7 +97,8 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
       'status': true,
       'isPayment': true,
       'timestamp': DateTime.now(),
-      'userLocation': _currentLocationName, // Store the location name
+      'vehicleSituation': _selectedSituation, // Add selected vehicle situation
+      'userLocation': userLocation,
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -147,59 +146,8 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
     }
   }
 
-  // Function to get current location and location name
-  Future<void> _getCurrentLocation() async {
-    setState(() {
-      _isUpdatingLocation = true; // Start loading
-    });
-
-    // Get the current position
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
-    setState(() {
-      _currentPosition = position;
-    });
-
-    // Reverse geocode to get the location name
-    List<Placemark> placemarks = await GeocodingPlatform.instance!
-        .placemarkFromCoordinates(position.latitude, position.longitude);
-
-    if (placemarks.isNotEmpty) {
-      Placemark place = placemarks.first;
-      setState(() {
-        _currentLocationName =
-            "${place.locality}, ${place.administrativeArea}, ${place.country}";
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Current Location: $_currentLocationName')),
-      );
-
-      // Update user collection with current location
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        _firestore.collection('user').doc(user.uid).update({
-          'additionalData.latitude': position.latitude,
-          'additionalData.longitude': position.longitude,
-          'additionalData.location_name': _currentLocationName,
-        }).then((_) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Location updated successfully!')),
-          );
-        }).catchError((error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to update location: $error')),
-          );
-        });
-      }
-    }
-
-    setState(() {
-      _isUpdatingLocation = false; // Stop loading
-    });
-  }
-
-  // Show the dialog for current location and pay now
-  void _showLocationAndPaymentDialog(Map<String, dynamic> workshop) {
+  // Show the dialog for Advance Payment (location functionality removed)
+  void _showPaymentDialog(Map<String, dynamic> workshop) {
     showDialog(
       context: context,
       barrierDismissible:
@@ -212,21 +160,11 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
             children: [
               ElevatedButton.icon(
                 onPressed: () {
-                  _getCurrentLocation();
-                  Navigator.pop(context);
-                },
-                icon: Icon(Icons.my_location),
-                label: Text(_currentLocationName ??
-                    'Fetch Current Location...'), // Show the current location name or loading text
-              ),
-              SizedBox(height: 10),
-              ElevatedButton.icon(
-                onPressed: () {
                   _payWithRazorpay(workshop);
                   Navigator.pop(context);
                 },
                 icon: Icon(Icons.payments),
-                label: Text('Pay Now'),
+                label: Text('Pay Advance'),
               ),
             ],
           ),
@@ -282,10 +220,31 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                     borderRadius: BorderRadius.circular(50.0),
                   ),
                   filled: true,
-                  fillColor: Color.fromARGB(255, 255, 255, 255),
+                  fillColor: Colors.white,
                   contentPadding: EdgeInsets.symmetric(vertical: 15.0),
                 ),
               ),
+            ),
+            DropdownButton<String>(
+              value: _selectedSituation.isEmpty ? null : _selectedSituation,
+              hint: Text('Select Vehicle Situation'),
+              onChanged: (String? newValue) {
+                setState(() {
+                  _selectedSituation = newValue!;
+                });
+              },
+              items: <String>[
+                'Other',
+                'Vehicle Stuck',
+                'Accident Recovery',
+                'Vehicle Breakdown',
+                'Accident',
+              ].map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
             ),
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _getWorkshops(),
@@ -302,15 +261,13 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                   return Center(child: Text('No active workshops available.'));
                 } else {
                   List<Map<String, dynamic>> workshops = snapshot.data!;
-                  final filteredWorkshops = getFilteredWorkshops(
-                      workshops); // Filter workshops based on the search
+                  final filteredWorkshops = getFilteredWorkshops(workshops);
 
                   return filteredWorkshops.isEmpty
                       ? Center(
                           child: Text(
                               'No workshops found for the entered location.'))
                       : Expanded(
-                          // Added to ensure the list takes up available space
                           child: ListView.builder(
                             itemCount: filteredWorkshops.length,
                             itemBuilder: (context, index) {
@@ -384,15 +341,15 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                                         Row(
                                                           children: [
                                                             Icon(
-                                                                Icons
-                                                                    .location_on,
-                                                                color: const Color
-                                                                    .fromARGB(
-                                                                    255,
-                                                                    122,
-                                                                    118,
-                                                                    207),
-                                                                size: 18),
+                                                              Icons.location_on,
+                                                              color: const Color
+                                                                  .fromARGB(
+                                                                  255,
+                                                                  122,
+                                                                  118,
+                                                                  207),
+                                                              size: 18,
+                                                            ),
                                                             SizedBox(width: 8),
                                                             Expanded(
                                                               child: Text(
@@ -445,15 +402,11 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                                         Row(
                                                           children: [
                                                             Icon(
-                                                                Icons
-                                                                    .car_repair,
-                                                                color: const Color
-                                                                    .fromARGB(
-                                                                    255,
-                                                                    255,
-                                                                    255,
-                                                                    255),
-                                                                size: 18),
+                                                              Icons.car_repair,
+                                                              color:
+                                                                  Colors.white,
+                                                              size: 18,
+                                                            ),
                                                             SizedBox(width: 8),
                                                             Text(
                                                               workshop[
@@ -479,7 +432,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                                 children: [
                                                   ElevatedButton.icon(
                                                     onPressed: () =>
-                                                        _showLocationAndPaymentDialog(
+                                                        _showPaymentDialog(
                                                             workshop),
                                                     icon: Icon(Icons.send,
                                                         color: const Color
@@ -532,16 +485,6 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
           ],
         ),
       ),
-      bottomNavigationBar: _isUpdatingLocation
-          ? Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation(Colors.deepPurple),
-                ),
-              ),
-            )
-          : null,
     );
   }
 }

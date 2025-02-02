@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/owner/screens/feedbackview.dart';
 import 'package:fuel_and_fix/owner/screens/fuel/fuel_request.dart';
 import 'package:fuel_and_fix/owner/screens/fuel/f_payment.dart';
-import 'package:fuel_and_fix/owner/screens/owner.dart';
 import 'package:fuel_and_fix/owner/screens/fuel/fuel_profile.dart';
+import 'package:fuel_and_fix/user/screens/introduction.dart';
 
 class FuelManagement extends StatelessWidget {
   @override
@@ -32,7 +32,7 @@ class FuelManagement extends StatelessWidget {
               );
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => OwnerIntro()),
+                MaterialPageRoute(builder: (context) =>IntroductionPage()),
               );
             },
           ),

@@ -6,12 +6,15 @@ class ManageTowStation extends StatefulWidget {
   _ManageTowStationState createState() => _ManageTowStationState();
 }
 
-class _ManageTowStationState extends State<ManageTowStation> {
+class _ManageTowStationState extends State<ManageTowStation>
+    with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> towShops = [];
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _fetchtowShops(); // Fetch the tow shops when the page is loaded
   }
 
@@ -45,16 +48,40 @@ class _ManageTowStationState extends State<ManageTowStation> {
     }
   }
 
+  // Accept the tow shop by updating the isApproved field
+  Future<void> _acceptTowShop(String id) async {
+    try {
+      await FirebaseFirestore.instance.collection('tow').doc(id).update({
+        'isApproved': true,
+      });
+      setState(() {
+        int index = towShops.indexWhere((shop) => shop['id'] == id);
+        if (index != -1) {
+          towShops[index]['isApproved'] = true;
+        }
+      });
+    } catch (e) {
+      print('Error accepting tow shop: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Manage Tow stations'),
+        title: Text('Manage Tow Stations'),
         backgroundColor: const Color.fromARGB(255, 131, 119, 149),
         centerTitle: true,
         elevation: 5.0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
+        ),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: [
+            Tab(text: 'Pending'),
+            Tab(text: 'Accepted'),
+          ],
         ),
       ),
       body: SafeArea(
@@ -63,7 +90,6 @@ class _ManageTowStationState extends State<ManageTowStation> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Tow Shops List Header
               Text(
                 'List of Tow Stations',
                 style: TextStyle(
@@ -74,25 +100,14 @@ class _ManageTowStationState extends State<ManageTowStation> {
                 ),
               ),
               SizedBox(height: 15),
-
-              // Tow Shops List
               Expanded(
-                child: towShops.isEmpty
-                    ? Center(child: CircularProgressIndicator())
-                    : ListView.builder(
-                        itemCount: towShops.length,
-                        itemBuilder: (context, index) {
-                          return towShopCard(
-                            context,
-                            towShops[index]['companyName'] ?? 'Unknown',
-                            towShops[index]['email'] ?? 'Unknown',
-                            towShops[index]['phoneNo'] ?? 'Unknown',
-                            towShops[index]['status'] ?? false,
-                            towShops[index]['employees'] ?? [],
-                            towShops[index]['id'], // Passing the id
-                          );
-                        },
-                      ),
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildTowShopList(context, false), // Pending tow shops
+                    _buildTowShopList(context, true), // Accepted tow shops
+                  ],
+                ),
               ),
             ],
           ),
@@ -101,254 +116,169 @@ class _ManageTowStationState extends State<ManageTowStation> {
     );
   }
 
+  Widget _buildTowShopList(BuildContext context, bool isApproved) {
+    List<Map<String, dynamic>> filteredShops =
+        towShops.where((shop) => shop['isApproved'] == isApproved).toList();
+
+    return filteredShops.isEmpty
+        ? Center(child: Text('No tow shops available'))
+        : ListView.builder(
+            itemCount: filteredShops.length,
+            itemBuilder: (context, index) {
+              return _towShopCard(
+                context,
+                filteredShops[index],
+                isApproved,
+              );
+            },
+          );
+  }
+
   // Tow Shop Card Widget
-  Widget towShopCard(BuildContext context, String companyName, String email,
-      String phoneNo, bool status, List employees, String id) {
+  Widget _towShopCard(
+      BuildContext context, Map<String, dynamic> shop, bool isApproved) {
     return Card(
-      elevation: 8,
+      elevation: 5,
+      margin: EdgeInsets.symmetric(vertical: 12),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
       ),
-      margin: EdgeInsets.symmetric(vertical: 10),
-      child: ListTile(
-        leading: CircleAvatar(
-          radius: 30,
-          backgroundColor: Colors.deepPurple,
-          backgroundImage: NetworkImage(
-              towShops.isNotEmpty ? towShops[0]['companyLogo'] ?? '' : ''),
-        ),
+      child: ExpansionTile(
+        leading: shop['companyLogo'] != null && shop['companyLogo'] != ''
+            ? Image.network(
+                shop['companyLogo'],
+                width: 50,
+                height: 50,
+                fit: BoxFit.cover,
+              )
+            : Icon(Icons.local_car_wash, color: Colors.deepPurple),
         title: Text(
-          companyName,
+          shop['companyName'],
           style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-            color: Colors.deepPurpleAccent,
-          ),
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: Colors.deepPurpleAccent),
         ),
         subtitle: Text(
-          'Email: $email\nPhone: $phoneNo\nStatus: ${status ? 'Active' : 'Inactive'}',
-          style: TextStyle(color: Colors.black54),
+          'Email: ${shop['email']}',
+          style: TextStyle(fontSize: 14, color: Colors.grey),
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: Icon(Icons.edit, color: Colors.deepPurple),
-              onPressed: () {
-                // Navigate to the Edit Page
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => EdittowShopPage(
-                      towShopId: id,
-                      companyName: companyName,
-                      email: email,
-                      phoneNo: phoneNo,
-                      status: status,
-                      employees: employees,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Display Phone Number and Company License
+                Text(
+                  'Phone No: ${shop['phoneNo']}',
+                  style: TextStyle(
+                    fontSize: 15,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Company License: ${shop['companyLicense']}',
+                  style: TextStyle(
+                    fontSize: 15,
+                  ),
+                ),
+                SizedBox(height: 15),
+
+                Text(
+                  'Employees:',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.deepPurpleAccent),
+                ),
+                SizedBox(height: 8),
+                shop['employees'] != null && shop['employees'].isNotEmpty
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ...shop['employees'].map<Widget>((employee) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8.0),
+                              child: ListTile(
+                                title:
+                                    Text(employee['employeeName'] ?? 'Unknown'),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                        'Email: ${employee['employeeEmail'] ?? 'N/A'}'),
+                                    Text(
+                                        'Phone: ${employee['employeePhoneNo'] ?? 'N/A'}'),
+                                    Text(
+                                        'Role: ${employee['employeeRole'] ?? 'N/A'}'),
+                                  ],
+                                ),
+                                leading: Icon(Icons.person,
+                                    color: Colors.deepPurple),
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      )
+                    : Text('No employees available'),
+
+                if (!isApproved)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: ElevatedButton(
+                      onPressed: () => _acceptTowShop(shop['id']),
+                      child: Text('Accept'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
                     ),
                   ),
-                ).then((updatedShop) {
-                  if (updatedShop != null) {
-                    setState(() {
-                      // Update the list with the new data
-                      int index =
-                          towShops.indexWhere((shop) => shop['id'] == id);
-                      if (index != -1) {
-                        towShops[index] = updatedShop;
-                      }
-                    });
-                  }
-                });
-              },
+              ],
             ),
-            IconButton(
-              icon: Icon(Icons.delete, color: Colors.red),
-              onPressed: () {
-                // Confirm deletion
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      title: Text('Delete Tow Shop'),
-                      content: Text(
-                          'Are you sure you want to delete this tow shop?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () {
-                            Navigator.of(context).pop(); // Close the dialog
-                          },
-                          child: Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            _deletetowShop(id); // Delete the tow shop
-                            Navigator.of(context).pop(); // Close the dialog
-                          },
-                          child: Text('Delete'),
-                        ),
-                      ],
-                    );
-                  },
-                );
-              },
-            ),
-          ],
+          )
+        ],
+        trailing: PopupMenuButton<String>(
+          onSelected: (value) {
+            if (value == 'Delete') {
+              _confirmDeleteTowShop(context, shop['id']);
+            }
+          },
+          itemBuilder: (BuildContext context) {
+            return [
+              PopupMenuItem(value: 'Delete', child: Text('Delete')),
+            ];
+          },
         ),
-        onTap: () {
-          // Navigate to Tow Shop Detail Page
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => EdittowShopPage(
-                companyName: companyName,
-                email: email,
-                phoneNo: phoneNo,
-                status: status,
-                employees: employees,
-                towShopId: '',
-              ),
-            ),
-          );
-        },
       ),
     );
   }
-}
 
-class EdittowShopPage extends StatefulWidget {
-  final String towShopId;
-  final String companyName;
-  final String email;
-  final String phoneNo;
-  final bool status;
-  final List employees;
-
-  const EdittowShopPage({
-    required this.towShopId,
-    required this.companyName,
-    required this.email,
-    required this.phoneNo,
-    required this.status,
-    required this.employees,
-  });
-
-  @override
-  _EdittowShopPageState createState() => _EdittowShopPageState();
-}
-
-class _EdittowShopPageState extends State<EdittowShopPage> {
-  late TextEditingController _companyNameController;
-  late TextEditingController _emailController;
-  late TextEditingController _phoneNoController;
-
-  bool _status = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _companyNameController = TextEditingController(text: widget.companyName);
-    _emailController = TextEditingController(text: widget.email);
-    _phoneNoController = TextEditingController(text: widget.phoneNo);
-    _status = widget.status;
-  }
-
-  // Update tow shop details in Firestore
-  Future<void> _updateTowShop() async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('tow')
-          .doc(widget.towShopId)
-          .update({
-        'companyName': _companyNameController.text,
-        'email': _emailController.text,
-        'phoneNo': _phoneNoController.text,
-        'status': _status,
-      });
-
-      // After updating, pass the updated data back to the previous screen
-      Navigator.pop(context, {
-        'id': widget.towShopId,
-        'companyName': _companyNameController.text,
-        'email': _emailController.text,
-        'phoneNo': _phoneNoController.text,
-        'status': _status,
-        'employees': widget.employees,
-      });
-    } catch (e) {
-      print('Error updating tow shop: $e');
-    }
-  }
-
-  @override
-  void dispose() {
-    _companyNameController.dispose();
-    _emailController.dispose();
-    _phoneNoController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Edit Tow Shop'),
-        backgroundColor: Colors.deepPurple,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Text field for Company Name
-            TextField(
-              controller: _companyNameController,
-              decoration: InputDecoration(labelText: 'Company Name'),
+  // Confirmation dialog for tow shop deletion
+  void _confirmDeleteTowShop(BuildContext context, String shopId) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Delete Tow Shop'),
+          content: Text('Are you sure you want to delete this tow shop?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel'),
             ),
-            SizedBox(height: 15),
-
-            // Text field for Email
-            TextField(
-              controller: _emailController,
-              decoration: InputDecoration(labelText: 'Email'),
-            ),
-            SizedBox(height: 15),
-
-            // Text field for Phone Number
-            TextField(
-              controller: _phoneNoController,
-              decoration: InputDecoration(labelText: 'Phone Number'),
-            ),
-            SizedBox(height: 15),
-
-            // Toggle Switch for Status
-            Row(
-              children: [
-                Text('Status:'),
-                Switch(
-                  value: _status,
-                  onChanged: (value) {
-                    setState(() {
-                      _status = value;
-                    });
-                  },
-                ),
-              ],
-            ),
-            SizedBox(height: 15),
-
-            // Save Button to update data in Firestore
             ElevatedButton(
-              onPressed: _updateTowShop,
-              child: Text('Save Changes'),
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                textStyle: TextStyle(fontSize: 16),
-              ),
+              onPressed: () {
+                _deletetowShop(shopId);
+                Navigator.pop(context);
+              },
+              child: Text('Delete'),
             ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }

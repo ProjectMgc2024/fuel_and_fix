@@ -60,11 +60,6 @@ class FuelProfilePageState extends State<FuelProfilePage> {
                 controller: fuelTypeController,
                 decoration: InputDecoration(labelText: 'Fuel Type'),
               ),
-              TextField(
-                controller: fuelPriceController,
-                decoration: InputDecoration(labelText: 'Price'),
-                keyboardType: TextInputType.number,
-              ),
             ],
           ),
           actions: [
@@ -89,7 +84,9 @@ class FuelProfilePageState extends State<FuelProfilePage> {
     final documentSnapshot =
         await _firestore.collection('fuel').doc(documentId).get();
     List fuels = documentSnapshot.data()?['fuels'] ?? [];
-    fuels.add({'type': type, 'price': double.parse(price)});
+    fuels.add({
+      'type': type,
+    });
 
     await _firestore.collection('fuel').doc(documentId).update({
       'fuels': fuels,
@@ -100,8 +97,6 @@ class FuelProfilePageState extends State<FuelProfilePage> {
   void _showEditFuelDialog(int index, Map<String, dynamic> fuelData) {
     final TextEditingController fuelTypeController =
         TextEditingController(text: fuelData['type']);
-    final TextEditingController fuelPriceController =
-        TextEditingController(text: fuelData['price'].toString());
 
     showDialog(
       context: context,
@@ -115,11 +110,6 @@ class FuelProfilePageState extends State<FuelProfilePage> {
                 controller: fuelTypeController,
                 decoration: InputDecoration(labelText: 'Fuel Type'),
               ),
-              TextField(
-                controller: fuelPriceController,
-                decoration: InputDecoration(labelText: 'Price'),
-                keyboardType: TextInputType.number,
-              ),
             ],
           ),
           actions: [
@@ -131,7 +121,6 @@ class FuelProfilePageState extends State<FuelProfilePage> {
               onPressed: () {
                 _updateFuel(index, {
                   'type': fuelTypeController.text,
-                  'price': double.parse(fuelPriceController.text),
                 });
                 Navigator.pop(context);
               },

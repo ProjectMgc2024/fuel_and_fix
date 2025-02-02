@@ -47,42 +47,16 @@ class _ManageUsersPageState extends State<ManageUser> {
     });
   }
 
-  // ❌ Show confirmation dialog before deleting a user
-  void _showDeleteConfirmation(int index) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Confirm Deletion'),
-          content: Text('Are you sure you want to delete this user?'),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                _deleteUser(index); // Proceed to delete
-                Navigator.of(context).pop(); // Close the dialog
-              },
-              child: Text('Delete', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // ❌ Delete a user from Firestore and update the local list
-  void _deleteUser(int index) async {
+  // 🔄 Toggle user status between enabled and disabled
+  void _toggleUserStatus(int index) async {
     String userId = filteredUsers[index]['id']; // Get the Firestore document ID
+    bool isDisabled = filteredUsers[index]['disabled'] ?? false;
     try {
-      await adminAuthServices.deleteUser(userId);
+      await adminAuthServices.updateUserStatus(
+          userId, !isDisabled); // Toggle status
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('User deleted successfully'),
+          content: Text('User status updated successfully'),
           backgroundColor: Colors.greenAccent,
           duration: Duration(seconds: 2),
         ),
@@ -91,12 +65,45 @@ class _ManageUsersPageState extends State<ManageUser> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to delete user: $e'),
+          content: Text('Failed to update user status: $e'),
           backgroundColor: Colors.redAccent,
           duration: Duration(seconds: 2),
         ),
       );
     }
+  }
+
+  // 📑 View user details in a new screen (Updated: Removed location and image)
+  void _viewUserDetails(Map<String, dynamic> user) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('User Details'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Username: ${user['username']}'),
+                Text('Email: ${user['email']}'),
+                Text('Phone: ${user['phoneno']}'),
+                Text('License: ${user['license']}'),
+                Text('Registration No: ${user['registrationNo']}'),
+                Text('Vehicle Type: ${user['vehicleType']}'),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -147,6 +154,12 @@ class _ManageUsersPageState extends State<ManageUser> {
                           child: ListTile(
                             contentPadding: EdgeInsets.symmetric(
                                 horizontal: 20, vertical: 15),
+                            leading: CircleAvatar(
+                              radius:
+                                  30, // Adjust the radius as per your design
+                              backgroundImage: NetworkImage(user['userImage']),
+                              backgroundColor: Colors.transparent,
+                            ),
                             title: Text(
                               user['username'],
                               style: TextStyle(
@@ -158,10 +171,16 @@ class _ManageUsersPageState extends State<ManageUser> {
                                   TextStyle(fontSize: 14, color: Colors.grey),
                             ),
                             trailing: IconButton(
-                              icon:
-                                  Icon(Icons.delete_forever, color: Colors.red),
-                              onPressed: () => _showDeleteConfirmation(index),
+                              icon: Icon(
+                                user['disabled'] == true
+                                    ? Icons.lock
+                                    : Icons.lock_open,
+                                color: Colors.orange,
+                              ),
+                              onPressed: () => _toggleUserStatus(index),
                             ),
+                            onTap: () =>
+                                _viewUserDetails(user), // View details on tap
                           ),
                         );
                       },

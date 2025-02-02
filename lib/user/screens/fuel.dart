@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fuel_and_fix/user/screens/feedback.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:fuel_and_fix/user/screens/home_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:geocoding/geocoding.dart'; // For reverse geocoding
+import 'package:geocoding/geocoding.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 class FuelStationList extends StatefulWidget {
   @override
@@ -16,23 +16,23 @@ class FuelStationList extends StatefulWidget {
 class _FuelStationListState extends State<FuelStationList> {
   List<Map<String, dynamic>> fuelStations = [];
   String enteredLocation = '';
-  String? selectedFuel;
-  double quantity = 0.0;
-  double totalPrice = 0.0;
   String? currentUserId;
-  late Razorpay _razorpay;
-  String? oId;
-  String? selectedService;
   Position? currentPosition;
   String? _locationName;
   double? _latitude;
   double? _longitude;
+  Map<String, double> fuelPrices = {};
+
+  late Razorpay _razorpay;
+  // Holds details of the current fuel purchase for later use upon payment success.
+  Map<String, dynamic>? _currentFuelPurchase;
 
   @override
   void initState() {
     super.initState();
     fetchCurrentUserId();
     fetchFuelStations();
+    // Initialize Razorpay and set up event listeners.
     _razorpay = Razorpay();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
@@ -58,8 +58,10 @@ class _FuelStationListState extends State<FuelStationList> {
 
   Future<void> fetchFuelStations() async {
     try {
-      QuerySnapshot querySnapshot =
-          await FirebaseFirestore.instance.collection('fuel').get();
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('fuel')
+          .where('isApproved', isEqualTo: true)
+          .get();
 
       setState(() {
         fuelStations = querySnapshot.docs.map((doc) {
@@ -71,17 +73,37 @@ class _FuelStationListState extends State<FuelStationList> {
             'longitude': doc['additionalData']['longitude'] ?? '',
             'address': doc['email'] ?? '',
             'contactNumber': doc['phoneNo'] ?? '',
-            'fuels': Map.fromIterable(
-              doc['fuels'] ?? [],
-              key: (fuel) => fuel['type'],
-              value: (fuel) => fuel['price'],
-            ),
+            'fuels': List<String>.from(
+                doc['fuels']?.map((fuel) => fuel['type'] ?? '') ?? []),
             'service': doc['service'] ?? '',
           };
         }).toList();
       });
+
+      await fetchFuelPrices();
     } catch (e) {
       print('Error fetching fuel stations: $e');
+    }
+  }
+
+  Future<void> fetchFuelPrices() async {
+    try {
+      DocumentSnapshot priceDoc = await FirebaseFirestore.instance
+          .collection('price')
+          .doc('fuelPrices')
+          .get();
+
+      if (priceDoc.exists) {
+        setState(() {
+          fuelPrices = {
+            'cng': priceDoc['cng']?.toDouble() ?? 0.0,
+            'diesel': priceDoc['diesel']?.toDouble() ?? 0.0,
+            'petrol': priceDoc['petrol']?.toDouble() ?? 0.0,
+          };
+        });
+      }
+    } catch (e) {
+      print('Error fetching fuel prices: $e');
     }
   }
 
@@ -96,11 +118,6 @@ class _FuelStationListState extends State<FuelStationList> {
         .toList();
   }
 
-  final Map<String, dynamic> station = {
-    'contactNumber': '1234567890'
-  }; // Example data
-
-  // Function to launch the phone dialer
   Future<void> _launchPhone(String phoneNumber) async {
     final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
     if (await canLaunch(phoneUri.toString())) {
@@ -110,20 +127,17 @@ class _FuelStationListState extends State<FuelStationList> {
     }
   }
 
-  void calculatePrice(String fuel, double pricePerLiter, double qty) {
-    setState(() {
-      selectedFuel = fuel;
-      quantity = qty;
-      totalPrice = pricePerLiter * qty;
-    });
-  }
-
   Future<void> fetchCurrentLocation() async {
     bool serviceEnabled;
     LocationPermission permission;
 
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                'Location services are disabled. Please enable them to proceed.')),
+      );
       return Future.error('Location services are disabled.');
     }
 
@@ -131,19 +145,28 @@ class _FuelStationListState extends State<FuelStationList> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Location permissions are denied.')),
+        );
         return Future.error('Location permissions are denied.');
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                'Location permissions are permanently denied. Please update your settings.')),
+      );
       return Future.error(
           'Location permissions are permanently denied, we cannot request permissions.');
     }
 
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
-
     try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
@@ -156,7 +179,6 @@ class _FuelStationListState extends State<FuelStationList> {
         _locationName = '${place.locality}, ${place.country}';
       });
 
-      // Save location details
       if (currentUserId != null) {
         FirebaseFirestore.instance
             .collection('user')
@@ -176,99 +198,6 @@ class _FuelStationListState extends State<FuelStationList> {
     }
   }
 
-  Future<void> initiatePayment(String ownerId, String service) async {
-    setState(() {
-      oId = ownerId;
-      selectedService = service;
-    });
-
-    var options = {
-      'key': 'rzp_test_D5Vh3hyi1gRBV0',
-      'amount': (totalPrice * 100).toInt(),
-      'name': 'Fuel & Fix',
-      'description': 'Fuel purchase',
-      'prefill': {
-        'contact': '1234567890',
-        'email': 'test@example.com',
-      },
-      'external': {
-        'wallets': ['paytm']
-      }
-    };
-
-    try {
-      _razorpay.open(options);
-    } catch (e) {
-      print('Error initiating payment: $e');
-    }
-  }
-
-  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
-    print('Payment successful: ${response.paymentId}');
-    await createRequest(response.paymentId!, true);
-    await saveOrderDetails(response.paymentId!);
-    _showSuccessDialog();
-  }
-
-  void _handlePaymentError(PaymentFailureResponse response) {
-    print('Payment failed: ${response.code} | ${response.message}');
-    _showErrorDialog('Payment failed. Please try again.');
-  }
-
-  void _handleExternalWallet(ExternalWalletResponse response) {
-    print('External wallet selected: ${response.walletName}');
-  }
-
-  Future<void> createRequest(String paymentId, bool isPayment) async {
-    if (currentUserId == null) {
-      print('User ID not available');
-      return;
-    }
-
-    try {
-      await FirebaseFirestore.instance
-          .collection('fuel')
-          .doc(oId)
-          .collection('request')
-          .add({
-        'status': false,
-        'timestamp': Timestamp.now(),
-        'userId': currentUserId,
-        'litres': quantity,
-        'fuelType': selectedFuel,
-        'paymentId': paymentId,
-        'isPayment': isPayment,
-      });
-    } catch (e) {
-      print('Error creating request: $e');
-    }
-  }
-
-  Future<void> saveOrderDetails(String paymentId) async {
-    if (currentUserId == null) {
-      print('User ID not available');
-      return;
-    }
-
-    try {
-      await FirebaseFirestore.instance
-          .collection('user')
-          .doc(currentUserId)
-          .collection('orders')
-          .add({
-        'ownerId': oId,
-        'time': Timestamp.now(),
-        'paymentAmount': totalPrice,
-        'fuelType': selectedFuel,
-        'litres': quantity,
-        'paymentId': paymentId,
-        'service': selectedService,
-      });
-    } catch (e) {
-      print('Error saving order details: $e');
-    }
-  }
-
   Future<void> _openGoogleMaps(
       {required double latitude, required double longitude}) async {
     final Uri googleMapsUri = Uri.parse(
@@ -281,92 +210,156 @@ class _FuelStationListState extends State<FuelStationList> {
     }
   }
 
-  void _showQuantityDialog(
-      String fuelType, dynamic price, String ownerId, String service) {
-    showDialog(
+  /// Displays a dialog to enter the quantity (in liters) for a selected fuel.
+  /// The total cost (in rupees) is calculated dynamically.
+  /// When " Pay Advance " is tapped, the Razorpay payment flow is initiated.
+  Future<void> showFuelPurchaseDialog(
+      Map<String, dynamic> station, String fuelType, double price) async {
+    await showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('Select Quantity'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                keyboardType: TextInputType.number,
-                decoration:
-                    InputDecoration(labelText: 'Enter Quantity in Liters'),
-                onChanged: (value) {
-                  final qty = double.tryParse(value);
-                  final pre = double.tryParse(price.toString());
-                  if (qty != null && qty > 0) {
-                    calculatePrice(fuelType, pre!, qty);
-                  }
-                },
+        double enteredQuantity = 0.0;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            double totalAmount = enteredQuantity * price;
+            bool isValid = enteredQuantity > 0 && enteredQuantity <= 10;
+            return AlertDialog(
+              title: Text("Buy $fuelType"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text("Enter quantity in liters (max 10L):"),
+                  SizedBox(height: 10),
+                  TextField(
+                    keyboardType:
+                        TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (value) {
+                      double? qty = double.tryParse(value);
+                      setState(() {
+                        enteredQuantity = qty ?? 0.0;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: "Quantity (L)",
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  Text("Total: ₹${totalAmount.toStringAsFixed(2)}"),
+                ],
               ),
-              SizedBox(height: 10),
-              ElevatedButton.icon(
-                icon: Icon(Icons.location_on),
-                label: Text('Fetch Current Location'),
-                onPressed: () async {
-                  await fetchCurrentLocation();
-                  Navigator.pop(context);
-                  _showQuantityDialog(fuelType, price, ownerId, service);
-                },
-              ),
-              if (_locationName != null) ...[
-                SizedBox(height: 10),
-                Text('Current Location: $_locationName',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: isValid
+                      ? () {
+                          Navigator.of(context).pop();
+                          _payWithRazorpayForFuel(
+                              station, fuelType, enteredQuantity, totalAmount);
+                        }
+                      : null,
+                  child: Text(" Pay Advance"),
+                )
               ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel', style: TextStyle(color: Colors.red)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                initiatePayment(ownerId, service);
-              },
-              child: Text('Proceed to Pay'),
-            ),
-          ],
+            );
+          },
         );
       },
     );
   }
 
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Order Confirmation'),
-        content: Text(
-            'You ordered $quantity liters of $selectedFuel for ₹${totalPrice.toStringAsFixed(2)}. Request has been placed successfully.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context), child: Text('OK')),
-        ],
-      ),
+  /// Initiates the Razorpay payment flow for a fuel purchase.
+  /// The amount is converted from rupees to paise.
+  void _payWithRazorpayForFuel(Map<String, dynamic> station, String fuelType,
+      double quantity, double totalAmount) {
+    var options = {
+      'key': 'rzp_test_D5Vh3hyi1gRBV0',
+      'amount': (totalAmount * 100).toInt(), // Convert rupees to paise
+      'name': station['name'],
+      'description':
+          'Purchase of ${quantity.toStringAsFixed(2)} L of $fuelType',
+      'prefill': {
+        'contact': station['contactNumber'] ?? '',
+        'email': 'user@example.com',
+      },
+    };
+
+    try {
+      // Save the current purchase details for later use after successful payment.
+      _currentFuelPurchase = {
+        'station': station,
+        'fuelType': fuelType,
+        'quantity': quantity,
+        'totalAmount': totalAmount,
+      };
+      _razorpay.open(options);
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
+
+  /// Handles successful payment by recording the fuel purchase details
+  /// in Firestore under the "request" subcollection of the respective fuel station.
+  /// The document is stored with the following structure:
+  /// - fuelType: (string)
+  /// - isPayment: true (boolean)
+  /// - litres: (number)
+  /// - paymentId: (string)
+  /// - status: false (boolean)
+  /// - timestamp: (timestamp)
+  /// - userId: (string)
+  Future<void> _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && _currentFuelPurchase != null) {
+      DateTime timestamp = DateTime.now();
+      Map<String, dynamic> requestData = {
+        'fuelType': _currentFuelPurchase!['fuelType'],
+        'isPayment': true,
+        'litres': _currentFuelPurchase!['quantity'],
+        'paymentId': response.paymentId,
+        'status': false,
+        'timestamp': timestamp,
+        'userId': user.uid,
+      };
+
+      try {
+        await FirebaseFirestore.instance
+            .collection('fuel')
+            .doc(_currentFuelPurchase!['station']['id'])
+            .collection('request')
+            .add(requestData);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Payment and fuel request recorded successfully!')),
+        );
+      } catch (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to record request: $error')),
+        );
+      }
+    }
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Payment Failed: ${response.message}")),
     );
   }
 
-  void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Error'),
-        content: Text(message),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context), child: Text('OK')),
-        ],
-      ),
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text("External Wallet Selected: ${response.walletName}")),
     );
   }
 
+  @override
   Widget build(BuildContext context) {
     final filteredStations = getFilteredStations();
 
@@ -378,8 +371,7 @@ class _FuelStationListState extends State<FuelStationList> {
               fontWeight: FontWeight.bold, fontSize: 24, color: Colors.white),
         ),
         centerTitle: true,
-        backgroundColor: Color.fromARGB(
-            255, 149, 96, 39), // Updated fuel color similar to cfuel
+        backgroundColor: Color.fromARGB(255, 149, 96, 39),
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
@@ -398,7 +390,7 @@ class _FuelStationListState extends State<FuelStationList> {
       body: Container(
         padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Color.fromARGB(255, 238, 238, 238), // Light Gray Background
+          color: Color.fromARGB(255, 238, 238, 238),
           borderRadius: BorderRadius.only(
               topLeft: Radius.circular(25), topRight: Radius.circular(25)),
         ),
@@ -419,7 +411,7 @@ class _FuelStationListState extends State<FuelStationList> {
                     borderRadius: BorderRadius.circular(50.0),
                   ),
                   filled: true,
-                  fillColor: Color.fromARGB(255, 255, 255, 255),
+                  fillColor: Colors.white,
                   contentPadding: EdgeInsets.symmetric(vertical: 15.0),
                 ),
               ),
@@ -448,13 +440,11 @@ class _FuelStationListState extends State<FuelStationList> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Container(
-                      // Applying the gradient effect
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            const Color.fromARGB(255, 35, 41, 55),
-                            Color.fromARGB(255, 149, 96,
-                                39), // Updated fuel color similar to cfuel
+                            Color.fromARGB(255, 35, 41, 55),
+                            Color.fromARGB(255, 149, 96, 39),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -484,21 +474,20 @@ class _FuelStationListState extends State<FuelStationList> {
                                   child: Text(
                                     station['location'],
                                     style: TextStyle(
-                                        fontSize: 16,
-                                        color: const Color.fromARGB(
-                                            255, 255, 255, 255)),
+                                        fontSize: 16, color: Colors.white),
                                   ),
                                 ),
                                 IconButton(
                                   onPressed: () {
                                     _openGoogleMaps(
-                                      latitude: station['latitude'],
-                                      longitude: station['longitude'],
+                                      latitude: double.parse(
+                                          station['latitude'].toString()),
+                                      longitude: double.parse(
+                                          station['longitude'].toString()),
                                     );
                                   },
                                   icon: Icon(Icons.location_on,
-                                      color: const Color.fromARGB(
-                                          255, 66, 128, 175)),
+                                      color: Color.fromARGB(255, 66, 128, 175)),
                                 ),
                               ],
                             ),
@@ -507,8 +496,7 @@ class _FuelStationListState extends State<FuelStationList> {
                               children: [
                                 Icon(
                                   Icons.local_gas_station,
-                                  color:
-                                      const Color.fromARGB(255, 217, 227, 217),
+                                  color: Color.fromARGB(255, 217, 227, 217),
                                   size: 18,
                                 ),
                                 SizedBox(width: 8),
@@ -529,12 +517,10 @@ class _FuelStationListState extends State<FuelStationList> {
                                   },
                                   child: Row(
                                     children: [
-                                      Icon(
-                                        Icons.phone,
-                                        color: const Color.fromARGB(
-                                            255, 58, 202, 56),
-                                        size: 18,
-                                      ),
+                                      Icon(Icons.phone,
+                                          color:
+                                              Color.fromARGB(255, 58, 202, 56),
+                                          size: 18),
                                       SizedBox(width: 8),
                                       Text(
                                         'Contact: ${station['contactNumber']}',
@@ -548,25 +534,35 @@ class _FuelStationListState extends State<FuelStationList> {
                                 SizedBox(height: 15),
                               ],
                             ),
+                            // Display fuel chips as ActionChips (clickable)
                             Wrap(
                               spacing: 10,
                               children:
-                                  station['fuels'].keys.map<Widget>((fuelType) {
-                                final price = station['fuels'][fuelType];
-                                return GestureDetector(
-                                  onTap: () {
-                                    _showQuantityDialog(fuelType, price,
-                                        station['id'], station['service']);
-                                  },
-                                  child: Chip(
-                                    label: Text(
-                                        '$fuelType ₹${price.toStringAsFixed(2)}'),
-                                    backgroundColor:
-                                        const Color.fromARGB(255, 170, 123, 30),
-                                    labelStyle: TextStyle(
-                                        color: const Color.fromARGB(
-                                            255, 255, 255, 255)),
+                                  station['fuels'].map<Widget>((fuelType) {
+                                double price =
+                                    fuelPrices[fuelType.toLowerCase()] ?? 0.0;
+                                return ActionChip(
+                                  backgroundColor:
+                                      Color.fromARGB(255, 170, 123, 30),
+                                  label: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(fuelType,
+                                          style:
+                                              TextStyle(color: Colors.white)),
+                                      SizedBox(width: 5),
+                                      Text(
+                                        '₹${price.toStringAsFixed(2)}',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white),
+                                      ),
+                                    ],
                                   ),
+                                  onPressed: () {
+                                    showFuelPurchaseDialog(
+                                        station, fuelType, price);
+                                  },
                                 );
                               }).toList(),
                             ),
@@ -587,8 +583,8 @@ class _FuelStationListState extends State<FuelStationList> {
                                   );
                                 },
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color.fromARGB(
-                                      255, 120, 135, 67), // Solid Green
+                                  backgroundColor:
+                                      Color.fromARGB(255, 120, 135, 67),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(30),
                                   ),

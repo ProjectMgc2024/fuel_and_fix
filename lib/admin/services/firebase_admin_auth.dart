@@ -11,15 +11,25 @@ class AdminAuthServices {
       QuerySnapshot querySnapshot =
           await firebaseFirestore.collection('user').get();
       List<Map<String, dynamic>> userList = querySnapshot.docs.map((doc) {
-        return {
-          'id': doc.id,
-          ...doc.data() as Map<String, dynamic>
-        };
+        return {'id': doc.id, ...doc.data() as Map<String, dynamic>};
       }).toList();
       return userList;
     } catch (e) {
       print('Error fetching users: $e');
       return [];
+    }
+  }
+
+  // Update user status (enabled/disabled)
+  Future<void> updateUserStatus(String userId, bool disabled) async {
+    try {
+      await firebaseFirestore.collection('user').doc(userId).update({
+        'disabled': disabled,
+      });
+      print('User status updated successfully.');
+    } catch (e) {
+      print('Error updating user status: $e');
+      throw e;
     }
   }
 

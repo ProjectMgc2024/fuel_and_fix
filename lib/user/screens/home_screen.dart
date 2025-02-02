@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/user/screens/about.dart';
 import 'package:fuel_and_fix/user/screens/chatbot.dart';
+import 'package:fuel_and_fix/user/screens/currentlocation.dart';
 import 'package:fuel_and_fix/user/screens/fuel.dart';
 import 'package:fuel_and_fix/user/screens/history.dart';
+import 'package:fuel_and_fix/user/screens/message.dart';
 import 'package:fuel_and_fix/user/screens/profile.dart';
 import 'package:fuel_and_fix/user/screens/repair.dart';
 import 'package:fuel_and_fix/user/screens/tow.dart';
@@ -63,7 +65,8 @@ class HomeScreen extends StatelessWidget {
                   // Profile Icon
                   IconButton(
                     iconSize: 25,
-                    icon: Icon(Icons.account_circle, color: Colors.white),
+                    icon: Icon(Icons.account_circle,
+                        color: const Color.fromARGB(255, 93, 180, 53)),
                     onPressed: () {
                       // Navigate to ProfilePage
                       Navigator.push(
@@ -76,7 +79,8 @@ class HomeScreen extends StatelessWidget {
                   // History Icon
                   IconButton(
                     iconSize: 25,
-                    icon: Icon(Icons.history, color: Colors.white),
+                    icon: Icon(Icons.history,
+                        color: const Color.fromARGB(255, 255, 136, 136)),
                     onPressed: () {
                       // Navigate to HistoryPage
                       Navigator.push(
@@ -89,7 +93,8 @@ class HomeScreen extends StatelessWidget {
                   // Feedback Icon
                   IconButton(
                     iconSize: 25,
-                    icon: Icon(Icons.feedback, color: Colors.white),
+                    icon: Icon(Icons.feedback,
+                        color: const Color.fromARGB(255, 165, 162, 97)),
                     onPressed: () {
                       // Navigate to ViewFeedbackPage
                       Navigator.push(
@@ -102,12 +107,28 @@ class HomeScreen extends StatelessWidget {
                   // About/Help Icon
                   IconButton(
                     iconSize: 25,
-                    icon: Icon(Icons.help, color: Colors.white),
+                    icon: Icon(Icons.help,
+                        color: const Color.fromARGB(255, 132, 146, 255)),
                     onPressed: () {
                       // Navigate to AboutPage
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => AboutHelp()),
+                      );
+                    },
+                  ),
+                  // Notification Icon (new icon)
+                  IconButton(
+                    iconSize: 25,
+                    icon: Icon(Icons.notifications,
+                        color: const Color.fromARGB(255, 217, 223, 33)),
+                    onPressed: () {
+                      // Navigate to NotificationPage
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                UserNotificationPage()), // Add your notification page here
                       );
                     },
                   ),
@@ -156,7 +177,8 @@ class HomeScreen extends StatelessWidget {
         ),
         centerTitle: true,
         backgroundColor: const Color.fromARGB(184, 28, 8, 8),
-        elevation: 10, // Add slight shadow to AppBar
+        elevation: 10,
+        // Add slight shadow to AppBar
       ),
     );
   }
@@ -180,10 +202,22 @@ class HomeScreen extends StatelessWidget {
                   Color.fromARGB(255, 39, 35, 36),
                 ],
                 onTap: () {
+                  // Navigate to FetchLocationPopup first
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => FuelStationList()),
-                  );
+                    MaterialPageRoute(
+                      builder: (context) => FetchLocationPopup(
+                        serviceType: '',
+                      ),
+                    ),
+                  ).then((value) {
+                    // After FetchLocationPopup, proceed to FuelScreen
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => FuelStationList()),
+                    );
+                  });
                 },
               ),
               buildOptionBox(
@@ -195,10 +229,20 @@ class HomeScreen extends StatelessWidget {
                   Color.fromARGB(255, 45, 39, 39),
                 ],
                 onTap: () {
+                  // Navigate to FetchLocationPopup first
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => WorkshopScreen()),
-                  );
+                    MaterialPageRoute(
+                        builder: (context) => FetchLocationPopup(
+                              serviceType: '',
+                            )),
+                  ).then((value) {
+                    // After FetchLocationPopup, proceed to WorkshopScreen
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => WorkshopScreen()),
+                    );
+                  });
                 },
               ),
             ],
@@ -217,11 +261,21 @@ class HomeScreen extends StatelessWidget {
                   Color.fromARGB(255, 39, 35, 36),
                 ],
                 onTap: () {
+                  // Navigate to FetchLocationPopup first
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => TowingServiceCategories()),
-                  );
+                        builder: (context) => FetchLocationPopup(
+                              serviceType: '',
+                            )),
+                  ).then((value) {
+                    // After FetchLocationPopup, proceed to TowingServiceCategories
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => TowingServiceCategories()),
+                    );
+                  });
                 },
               ),
             ],

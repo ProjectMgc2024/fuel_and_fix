@@ -53,6 +53,18 @@ class _LoginScreenState extends State<LoginScreen> {
           if (userQuery.docs.isNotEmpty) {
             print('User found in user collection: $email');
             userSnapshot = userQuery;
+
+            // Check if the user is disabled
+            bool isDisabled = userQuery.docs.first['disabled'] ?? false;
+            if (isDisabled) {
+              setState(() {
+                _isLoading = false;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Your account has been disabled.')),
+              );
+              return; // Exit the function if the user is disabled
+            }
           } else {
             // User not found in both admin and user collections
             setState(() {
@@ -62,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                    'User not found in the database . Please recheck or sign up.'),
+                    'User not found in the database. Please recheck or sign up.'),
               ),
             );
             return;
