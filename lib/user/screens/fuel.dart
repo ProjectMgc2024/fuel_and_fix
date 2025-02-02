@@ -1,12 +1,23 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fuel_and_fix/user/screens/feedback.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:fuel_and_fix/user/screens/home_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
+
+/// Calculates the great-circle distance between two points (in kilometers)
+/// using the Haversine formula.
+double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+  const double p = 0.017453292519943295; // pi/180
+  final double a = 0.5 -
+      cos((lat2 - lat1) * p) / 2 +
+      cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2;
+  return 12742 * asin(sqrt(a)); // 2 * Earth's radius (≈6371 km)
+}
 
 class FuelStationList extends StatefulWidget {
   @override
@@ -17,10 +28,11 @@ class _FuelStationListState extends State<FuelStationList> {
   List<Map<String, dynamic>> fuelStations = [];
   String enteredLocation = '';
   String? currentUserId;
-  Position? currentPosition;
-  String? _locationName;
+  // These will be updated by fetchCurrentLocation(), but here we also
+  // fetch from Firestore user doc.
   double? _latitude;
   double? _longitude;
+  String? _locationName;
   Map<String, double> fuelPrices = {};
 
   late Razorpay _razorpay;
@@ -31,6 +43,9 @@ class _FuelStationListState extends State<FuelStationList> {
   void initState() {
     super.initState();
     fetchCurrentUserId();
+    // Also update the user's current location using geolocation.
+    fetchCurrentLocation();
+    // Then fetch the fuel stations; this function now uses the user's location from Firestore.
     fetchFuelStations();
     // Initialize Razorpay and set up event listeners.
     _razorpay = Razorpay();
@@ -56,77 +71,7 @@ class _FuelStationListState extends State<FuelStationList> {
     }
   }
 
-  Future<void> fetchFuelStations() async {
-    try {
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-          .collection('fuel')
-          .where('isApproved', isEqualTo: true)
-          .get();
-
-      setState(() {
-        fuelStations = querySnapshot.docs.map((doc) {
-          return {
-            'id': doc.id,
-            'name': doc['companyName'] ?? 'Unknown Station',
-            'location': doc['additionalData']['location_name'] ?? '',
-            'latitude': doc['additionalData']['latitude'] ?? '',
-            'longitude': doc['additionalData']['longitude'] ?? '',
-            'address': doc['email'] ?? '',
-            'contactNumber': doc['phoneNo'] ?? '',
-            'fuels': List<String>.from(
-                doc['fuels']?.map((fuel) => fuel['type'] ?? '') ?? []),
-            'service': doc['service'] ?? '',
-          };
-        }).toList();
-      });
-
-      await fetchFuelPrices();
-    } catch (e) {
-      print('Error fetching fuel stations: $e');
-    }
-  }
-
-  Future<void> fetchFuelPrices() async {
-    try {
-      DocumentSnapshot priceDoc = await FirebaseFirestore.instance
-          .collection('price')
-          .doc('fuelPrices')
-          .get();
-
-      if (priceDoc.exists) {
-        setState(() {
-          fuelPrices = {
-            'cng': priceDoc['cng']?.toDouble() ?? 0.0,
-            'diesel': priceDoc['diesel']?.toDouble() ?? 0.0,
-            'petrol': priceDoc['petrol']?.toDouble() ?? 0.0,
-          };
-        });
-      }
-    } catch (e) {
-      print('Error fetching fuel prices: $e');
-    }
-  }
-
-  List<Map<String, dynamic>> getFilteredStations() {
-    if (enteredLocation.isEmpty) {
-      return fuelStations;
-    }
-    return fuelStations
-        .where((station) => station['location']!
-            .toLowerCase()
-            .contains(enteredLocation.toLowerCase()))
-        .toList();
-  }
-
-  Future<void> _launchPhone(String phoneNumber) async {
-    final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
-    if (await canLaunch(phoneUri.toString())) {
-      await launch(phoneUri.toString());
-    } else {
-      throw 'Could not launch phone number';
-    }
-  }
-
+  /// Fetch the current location using geolocator and update Firestore user doc.
   Future<void> fetchCurrentLocation() async {
     bool serviceEnabled;
     LocationPermission permission;
@@ -198,6 +143,110 @@ class _FuelStationListState extends State<FuelStationList> {
     }
   }
 
+  /// Fetches fuel stations from the "fuel" collection and computes their distance
+  /// from the user's current location (from Firestore user doc).
+  Future<void> fetchFuelStations() async {
+    try {
+      // Ensure currentUserId is available.
+      if (currentUserId == null) {
+        await fetchCurrentUserId();
+      }
+      // Fetch the user document to get the current location.
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('user')
+          .doc(currentUserId)
+          .get();
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+      double userLat = userData["additionalData"]['latitude'] ?? 0.0;
+      double userLon = userData["additionalData"]['longitude'] ?? 0.0;
+
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('fuel')
+          .where('isApproved', isEqualTo: true)
+          .get();
+
+      List<Map<String, dynamic>> tempStations = querySnapshot.docs.map((doc) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        return {
+          'id': doc.id,
+          'name': data['companyName'] ?? 'Unknown Station',
+          'location': data['additionalData']?['location_name'] ?? '',
+          'latitude': data['additionalData']?['latitude'] ?? 0.0,
+          'longitude': data['additionalData']?['longitude'] ?? 0.0,
+          'address': data['email'] ?? '',
+          'contactNumber': data['phoneNo'] ?? '',
+          'fuels': List<String>.from(
+              data['fuels']?.map((fuel) => fuel['type'] ?? '') ?? []),
+          'service': data['service'] ?? '',
+        };
+      }).toList();
+
+      // Calculate distance for each fuel station.
+      for (var station in tempStations) {
+        double stationLat = station['latitude'] is double
+            ? station['latitude']
+            : double.tryParse(station['latitude'].toString()) ?? 0.0;
+        double stationLon = station['longitude'] is double
+            ? station['longitude']
+            : double.tryParse(station['longitude'].toString()) ?? 0.0;
+        double distance =
+            calculateDistance(userLat, userLon, stationLat, stationLon);
+        station['distance'] = distance;
+      }
+
+      // Sort the stations by ascending order (shortest distance first).
+      tempStations.sort((a, b) => a['distance'].compareTo(b['distance']));
+
+      setState(() {
+        fuelStations = tempStations;
+      });
+
+      await fetchFuelPrices();
+    } catch (e) {
+      print('Error fetching fuel stations: $e');
+    }
+  }
+
+  Future<void> fetchFuelPrices() async {
+    try {
+      DocumentSnapshot priceDoc = await FirebaseFirestore.instance
+          .collection('price')
+          .doc('fuelPrices')
+          .get();
+
+      if (priceDoc.exists) {
+        setState(() {
+          fuelPrices = {
+            'cng': priceDoc['cng']?.toDouble() ?? 0.0,
+            'diesel': priceDoc['diesel']?.toDouble() ?? 0.0,
+            'petrol': priceDoc['petrol']?.toDouble() ?? 0.0,
+          };
+        });
+      }
+    } catch (e) {
+      print('Error fetching fuel prices: $e');
+    }
+  }
+
+  List<Map<String, dynamic>> getFilteredStations() {
+    if (enteredLocation.isEmpty) {
+      return fuelStations;
+    }
+    return fuelStations.where((station) {
+      final loc = station['location']?.toLowerCase() ?? '';
+      return loc.contains(enteredLocation.toLowerCase());
+    }).toList();
+  }
+
+  Future<void> _launchPhone(String phoneNumber) async {
+    final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+    if (await canLaunch(phoneUri.toString())) {
+      await launch(phoneUri.toString());
+    } else {
+      throw 'Could not launch phone number';
+    }
+  }
+
   Future<void> _openGoogleMaps(
       {required double latitude, required double longitude}) async {
     final Uri googleMapsUri = Uri.parse(
@@ -211,8 +260,6 @@ class _FuelStationListState extends State<FuelStationList> {
   }
 
   /// Displays a dialog to enter the quantity (in liters) for a selected fuel.
-  /// The total cost (in rupees) is calculated dynamically.
-  /// When " Pay Advance " is tapped, the Razorpay payment flow is initiated.
   Future<void> showFuelPurchaseDialog(
       Map<String, dynamic> station, String fuelType, double price) async {
     await showDialog(
@@ -274,12 +321,11 @@ class _FuelStationListState extends State<FuelStationList> {
   }
 
   /// Initiates the Razorpay payment flow for a fuel purchase.
-  /// The amount is converted from rupees to paise.
   void _payWithRazorpayForFuel(Map<String, dynamic> station, String fuelType,
       double quantity, double totalAmount) {
     var options = {
       'key': 'rzp_test_D5Vh3hyi1gRBV0',
-      'amount': (totalAmount * 100).toInt(), // Convert rupees to paise
+      'amount': (totalAmount * 100).toInt(), // Amount in paise.
       'name': station['name'],
       'description':
           'Purchase of ${quantity.toStringAsFixed(2)} L of $fuelType',
@@ -290,7 +336,7 @@ class _FuelStationListState extends State<FuelStationList> {
     };
 
     try {
-      // Save the current purchase details for later use after successful payment.
+      // Save current purchase details for use after payment.
       _currentFuelPurchase = {
         'station': station,
         'fuelType': fuelType,
@@ -303,16 +349,7 @@ class _FuelStationListState extends State<FuelStationList> {
     }
   }
 
-  /// Handles successful payment by recording the fuel purchase details
-  /// in Firestore under the "request" subcollection of the respective fuel station.
-  /// The document is stored with the following structure:
-  /// - fuelType: (string)
-  /// - isPayment: true (boolean)
-  /// - litres: (number)
-  /// - paymentId: (string)
-  /// - status: false (boolean)
-  /// - timestamp: (timestamp)
-  /// - userId: (string)
+  /// Handles successful payment and records the fuel purchase in Firestore.
   Future<void> _handlePaymentSuccess(PaymentSuccessResponse response) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null && _currentFuelPurchase != null) {
@@ -598,6 +635,14 @@ class _FuelStationListState extends State<FuelStationList> {
                                       fontWeight: FontWeight.bold,
                                       color: Colors.white),
                                 ),
+                              ),
+                            ),
+                            SizedBox(height: 10),
+                            Center(
+                              child: Text(
+                                "Distance: ${station['distance'].toStringAsFixed(2)} km",
+                                style: TextStyle(
+                                    color: Colors.white70, fontSize: 14),
                               ),
                             ),
                           ],

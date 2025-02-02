@@ -1,9 +1,22 @@
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/user/screens/feedback.dart';
+import 'package:fuel_and_fix/user/screens/uber.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+/// Helper function that uses the Haversine formula to calculate the distance (in kilometers)
+/// between two geographic coordinates.
+double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+  const double p =
+      0.017453292519943295; // pi / 180 (to convert degrees to radians)
+  final double a = 0.5 -
+      cos((lat2 - lat1) * p) / 2 +
+      cos(lat1 * p) * cos(lat2 * p) * (1 - cos((lon2 - lon1) * p)) / 2;
+  return 12742 * asin(sqrt(a)); // 2 * 6371 km (Earth's radius)
+}
 
 class TowingServiceCategories extends StatefulWidget {
   @override
@@ -34,8 +47,23 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
     super.dispose();
   }
 
-  // Function to get workshops from Firebase
+  /// Fetches the current user's location from Firestore (from the "user" collection)
+  /// and then retrieves all workshops from the "tow" collection. For each workshop, we
+  /// calculate the distance (using the Haversine formula) from the user's location, add that
+  /// as a new field, and then sort the list (shortest distance first).
   Future<List<Map<String, dynamic>>> _getWorkshops() async {
+    // Get current user
+    User? user = FirebaseAuth.instance.currentUser;
+    double userLat = 0.0;
+    double userLon = 0.0;
+    if (user != null) {
+      DocumentSnapshot userDoc =
+          await _firestore.collection('user').doc(user.uid).get();
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+      userLat = userData["additionalData"]['latitude'] ?? 0.0;
+      userLon = userData["additionalData"]['longitude'] ?? 0.0;
+    }
+
     QuerySnapshot querySnapshot = await _firestore
         .collection('tow')
         .where('status', isEqualTo: true)
@@ -45,11 +73,27 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
     List<Map<String, dynamic>> workshops = [];
     for (var doc in querySnapshot.docs) {
       var data = doc.data() as Map<String, dynamic>;
+      double workshopLat = 0.0;
+      double workshopLon = 0.0;
+      if (data.containsKey('additionalData')) {
+        Map<String, dynamic> addData = data['additionalData'];
+        workshopLat = addData['latitude'] is double
+            ? addData['latitude']
+            : double.tryParse(addData['latitude'].toString()) ?? 0.0;
+        workshopLon = addData['longitude'] is double
+            ? addData['longitude']
+            : double.tryParse(addData['longitude'].toString()) ?? 0.0;
+      }
+      double distance =
+          calculateDistance(userLat, userLon, workshopLat, workshopLon);
       workshops.add({
         'id': doc.id,
         ...data,
+        'distance': distance,
       });
     }
+    // Sort workshops by distance (ascending: shortest first)
+    workshops.sort((a, b) => a['distance'].compareTo(b['distance']));
     return workshops;
   }
 
@@ -63,11 +107,11 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
     }
   }
 
-  // Filter workshops based on entered location
+  // Filter workshops based on entered location text (case-insensitive)
   List<Map<String, dynamic>> getFilteredWorkshops(
       List<Map<String, dynamic>> workshops) {
     if (enteredLocation.isEmpty) {
-      return workshops; // No filter applied if search text is empty
+      return workshops;
     }
     return workshops
         .where((workshop) =>
@@ -97,7 +141,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
       'status': true,
       'isPayment': true,
       'timestamp': DateTime.now(),
-      'vehicleSituation': _selectedSituation, // Add selected vehicle situation
+      'vehicleSituation': _selectedSituation,
       'userLocation': userLocation,
     });
 
@@ -125,7 +169,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
     );
   }
 
-  // Function to start the payment process
+  // Initiates the payment process using Razorpay.
   void _payWithRazorpay(Map<String, dynamic> workshop) {
     var options = {
       'key': 'rzp_test_D5Vh3hyi1gRBV0',
@@ -146,12 +190,12 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
     }
   }
 
-  // Show the dialog for Advance Payment (location functionality removed)
+  // Shows the dialog to choose the advance payment action.
   void _showPaymentDialog(Map<String, dynamic> workshop) {
     showDialog(
       context: context,
       barrierDismissible:
-          false, // Prevents closing the dialog by tapping outside
+          false, // Prevent closing the dialog by tapping outside.
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Select Action'),
@@ -163,7 +207,8 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                   _payWithRazorpay(workshop);
                   Navigator.pop(context);
                 },
-                icon: Icon(Icons.payments),
+                icon: Icon(Icons.payments,
+                    color: const Color.fromARGB(255, 150, 142, 67)),
                 label: Text('Pay Advance'),
               ),
             ],
@@ -179,7 +224,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 105, 66, 125),
         title: Text(
-          'Available Workshops',
+          'Available Tow Services',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w700,
@@ -209,7 +254,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
               child: TextField(
                 onChanged: (text) {
                   setState(() {
-                    enteredLocation = text; // Update the entered location
+                    enteredLocation = text; // Update search text
                   });
                 },
                 decoration: InputDecoration(
@@ -284,14 +329,13 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                       Colors.deepPurple.withOpacity(0.2),
                                   child: Stack(
                                     children: [
+                                      // Main Card Content
                                       Container(
                                         decoration: BoxDecoration(
                                           gradient: LinearGradient(
                                             colors: [
-                                              const Color.fromARGB(
-                                                  255, 118, 72, 141),
-                                              const Color.fromARGB(
-                                                  255, 116, 29, 29)
+                                              Color.fromARGB(255, 118, 72, 141),
+                                              Color.fromARGB(255, 116, 29, 29)
                                             ],
                                             begin: Alignment.topLeft,
                                             end: Alignment.bottomRight,
@@ -332,9 +376,12 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                                             fontSize: 20,
                                                             fontWeight:
                                                                 FontWeight.bold,
-                                                            color: const Color
-                                                                .fromARGB(255,
-                                                                244, 172, 113),
+                                                            color:
+                                                                Color.fromARGB(
+                                                                    255,
+                                                                    244,
+                                                                    172,
+                                                                    113),
                                                           ),
                                                         ),
                                                         SizedBox(height: 8),
@@ -342,12 +389,12 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                                           children: [
                                                             Icon(
                                                               Icons.location_on,
-                                                              color: const Color
+                                                              color: Color
                                                                   .fromARGB(
-                                                                  255,
-                                                                  122,
-                                                                  118,
-                                                                  207),
+                                                                      255,
+                                                                      122,
+                                                                      118,
+                                                                      207),
                                                               size: 18,
                                                             ),
                                                             SizedBox(width: 8),
@@ -377,12 +424,12 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                                               },
                                                               child: Icon(
                                                                 Icons.phone,
-                                                                color: const Color
+                                                                color: Color
                                                                     .fromARGB(
-                                                                    255,
-                                                                    58,
-                                                                    202,
-                                                                    56),
+                                                                        255,
+                                                                        58,
+                                                                        202,
+                                                                        56),
                                                                 size: 18,
                                                               ),
                                                             ),
@@ -419,12 +466,22 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                                             ),
                                                           ],
                                                         ),
+                                                        SizedBox(height: 8),
+                                                        // Display the calculated distance.
+                                                        Text(
+                                                          "Distance: ${workshop['distance'].toStringAsFixed(2)} km",
+                                                          style: TextStyle(
+                                                              fontSize: 14,
+                                                              color: Colors
+                                                                  .white70),
+                                                        ),
                                                       ],
                                                     ),
                                                   ),
                                                 ],
                                               ),
                                               SizedBox(height: 20),
+                                              // Other Action Buttons (e.g., Payment, Feedback)
                                               Row(
                                                 mainAxisAlignment:
                                                     MainAxisAlignment
@@ -435,8 +492,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                                         _showPaymentDialog(
                                                             workshop),
                                                     icon: Icon(Icons.send,
-                                                        color: const Color
-                                                            .fromARGB(
+                                                        color: Color.fromARGB(
                                                             255, 150, 142, 67)),
                                                     label: Text('Send Request'),
                                                   ),
@@ -461,8 +517,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                                       );
                                                     },
                                                     icon: Icon(Icons.feedback,
-                                                        color: const Color
-                                                            .fromARGB(
+                                                        color: Color.fromARGB(
                                                             255, 83, 56, 46)),
                                                     label: Text('Feedback'),
                                                   ),
@@ -470,6 +525,35 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                               ),
                                             ],
                                           ),
+                                        ),
+                                      ),
+                                      // Uber Section Button Positioned at the Top Right
+                                      Positioned(
+                                        top: 8,
+                                        right: 8,
+                                        child: ElevatedButton.icon(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Color.fromARGB(
+                                                255, 204, 225, 109),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                            ),
+                                          ),
+                                          onPressed: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    UberSection(),
+                                              ),
+                                            );
+                                          },
+                                          icon: Icon(
+                                            Icons.directions_car,
+                                            size: 18,
+                                          ),
+                                          label: Text('Uber'),
                                         ),
                                       ),
                                     ],

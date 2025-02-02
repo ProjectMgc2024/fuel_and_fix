@@ -1,13 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:fuel_and_fix/owner/screens/fuel/fuel_request.dart';
 import 'package:fuel_and_fix/user/screens/repair.dart';
 import 'package:fuel_and_fix/user/screens/tow.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
 class FetchLocationPopup extends StatefulWidget {
-  final String serviceType; // 'Repair' or 'Tow'
+  final String serviceType; // e.g., 'Repair', 'Tow', or 'Fuel'
 
   FetchLocationPopup({required this.serviceType});
 
@@ -27,11 +28,6 @@ class _FetchLocationPopupState extends State<FetchLocationPopup> {
     _getCurrentLocation();
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
   Future<void> _getCurrentLocation() async {
     if (!mounted) return;
 
@@ -40,37 +36,52 @@ class _FetchLocationPopupState extends State<FetchLocationPopup> {
     });
 
     try {
+      // Check location permissions.
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever) {
+          throw Exception("Location permissions are denied");
+        }
+      }
+
+      // Get the current position with high accuracy.
       Position position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
 
       if (!mounted) return;
-
       setState(() {
         _currentPosition = position;
       });
 
+      // Reverse-geocode to obtain a human-readable address.
       List<Placemark> placemarks =
           await placemarkFromCoordinates(position.latitude, position.longitude);
-
       if (!mounted) return;
 
       if (placemarks.isNotEmpty) {
         Placemark place = placemarks.first;
+        String locationName =
+            "${place.locality}, ${place.administrativeArea}, ${place.country}";
         setState(() {
-          _currentLocationName =
-              "${place.locality}, ${place.administrativeArea}, ${place.country}";
+          _currentLocationName = locationName;
           _locationFetched = true;
         });
 
+        // Update user document in Firestore with current location details
         final user = FirebaseAuth.instance.currentUser;
         if (user != null) {
           await FirebaseFirestore.instance
               .collection('user')
               .doc(user.uid)
               .update({
-            'additionalData.latitude': position.latitude,
-            'additionalData.longitude': position.longitude,
-            'additionalData.location_name': _currentLocationName,
+            'additionalData': {
+              'latitude': position.latitude,
+              'longitude': position.longitude,
+              'location_name': locationName,
+            }
           });
         }
       }
@@ -107,6 +118,13 @@ class _FetchLocationPopupState extends State<FetchLocationPopup> {
             builder: (context) => TowingServiceCategories(),
           ),
         );
+      } else if (widget.serviceType == 'Fuel') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FuelFillingRequest(),
+          ),
+        );
       }
     } else {
       if (mounted) {
@@ -120,9 +138,7 @@ class _FetchLocationPopupState extends State<FetchLocationPopup> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async {
-        return false;
-      },
+      onWillPop: () async => false,
       child: Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
@@ -159,6 +175,12 @@ class _FetchLocationPopupState extends State<FetchLocationPopup> {
                           onPressed: _navigateToServiceScreen,
                           child: Text("Go to ${widget.serviceType} Services"),
                         ),
+                        // Retry button if location is not yet fetched.
+                        if (!_locationFetched)
+                          TextButton(
+                            onPressed: _getCurrentLocation,
+                            child: Text("Retry"),
+                          ),
                       ],
                     ),
             ],
