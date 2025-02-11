@@ -7,7 +7,6 @@ import 'package:fuel_and_fix/user/screens/home_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 /// Calculates the great-circle distance between two points (in kilometers)
 /// using the Haversine formula.
@@ -28,36 +27,18 @@ class _FuelStationListState extends State<FuelStationList> {
   List<Map<String, dynamic>> fuelStations = [];
   String enteredLocation = '';
   String? currentUserId;
-  // These will be updated by fetchCurrentLocation(), but here we also
-  // fetch from Firestore user doc.
+  // These will be updated by fetchCurrentLocation(), but here we also fetch from Firestore user doc.
   double? _latitude;
   double? _longitude;
   String? _locationName;
   Map<String, double> fuelPrices = {};
 
-  late Razorpay _razorpay;
-  // Holds details of the current fuel purchase for later use upon payment success.
-  Map<String, dynamic>? _currentFuelPurchase;
-
   @override
   void initState() {
     super.initState();
     fetchCurrentUserId();
-    // Also update the user's current location using geolocation.
     fetchCurrentLocation();
-    // Then fetch the fuel stations; this function now uses the user's location from Firestore.
     fetchFuelStations();
-    // Initialize Razorpay and set up event listeners.
-    _razorpay = Razorpay();
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
-  }
-
-  @override
-  void dispose() {
-    _razorpay.clear();
-    super.dispose();
   }
 
   Future<void> fetchCurrentUserId() async {
@@ -147,11 +128,9 @@ class _FuelStationListState extends State<FuelStationList> {
   /// from the user's current location (from Firestore user doc).
   Future<void> fetchFuelStations() async {
     try {
-      // Ensure currentUserId is available.
       if (currentUserId == null) {
         await fetchCurrentUserId();
       }
-      // Fetch the user document to get the current location.
       DocumentSnapshot userDoc = await FirebaseFirestore.instance
           .collection('user')
           .doc(currentUserId)
@@ -181,7 +160,6 @@ class _FuelStationListState extends State<FuelStationList> {
         };
       }).toList();
 
-      // Calculate distance for each fuel station.
       for (var station in tempStations) {
         double stationLat = station['latitude'] is double
             ? station['latitude']
@@ -194,7 +172,6 @@ class _FuelStationListState extends State<FuelStationList> {
         station['distance'] = distance;
       }
 
-      // Sort the stations by ascending order (shortest distance first).
       tempStations.sort((a, b) => a['distance'].compareTo(b['distance']));
 
       setState(() {
@@ -306,11 +283,11 @@ class _FuelStationListState extends State<FuelStationList> {
                   onPressed: isValid
                       ? () {
                           Navigator.of(context).pop();
-                          _payWithRazorpayForFuel(
+                          _sendFuelRequest(
                               station, fuelType, enteredQuantity, totalAmount);
                         }
                       : null,
-                  child: Text(" Pay Advance"),
+                  child: Text("Send Request"),
                 )
               ],
             );
@@ -320,80 +297,37 @@ class _FuelStationListState extends State<FuelStationList> {
     );
   }
 
-  /// Initiates the Razorpay payment flow for a fuel purchase.
-  void _payWithRazorpayForFuel(Map<String, dynamic> station, String fuelType,
-      double quantity, double totalAmount) {
-    var options = {
-      'key': 'rzp_test_D5Vh3hyi1gRBV0',
-      'amount': (totalAmount * 100).toInt(), // Amount in paise.
-      'name': station['name'],
-      'description':
-          'Purchase of ${quantity.toStringAsFixed(2)} L of $fuelType',
-      'prefill': {
-        'contact': station['contactNumber'] ?? '',
-        'email': 'user@example.com',
-      },
+  /// Sends the fuel purchase request to Firestore (in the "request" subcollection
+  /// of the fuel station document) without any payment processing.
+  Future<void> _sendFuelRequest(Map<String, dynamic> station, String fuelType,
+      double quantity, double totalAmount) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    Map<String, dynamic> requestData = {
+      'fuelType': fuelType,
+      'litres': quantity,
+      'totalAmount': totalAmount,
+      'isPaid': false, // Payment not made yet
+      'status': false, // Initial status (e.g. pending)
+      'timestamp': FieldValue.serverTimestamp(),
+      'userId': user.uid,
     };
 
     try {
-      // Save current purchase details for use after payment.
-      _currentFuelPurchase = {
-        'station': station,
-        'fuelType': fuelType,
-        'quantity': quantity,
-        'totalAmount': totalAmount,
-      };
-      _razorpay.open(options);
-    } catch (e) {
-      debugPrint(e.toString());
+      await FirebaseFirestore.instance
+          .collection('fuel')
+          .doc(station['id'])
+          .collection('request')
+          .add(requestData);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fuel request sent successfully!')),
+      );
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to send request: $error')),
+      );
     }
-  }
-
-  /// Handles successful payment and records the fuel purchase in Firestore.
-  Future<void> _handlePaymentSuccess(PaymentSuccessResponse response) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null && _currentFuelPurchase != null) {
-      DateTime timestamp = DateTime.now();
-      Map<String, dynamic> requestData = {
-        'fuelType': _currentFuelPurchase!['fuelType'],
-        'isPayment': true,
-        'litres': _currentFuelPurchase!['quantity'],
-        'paymentId': response.paymentId,
-        'status': false,
-        'timestamp': timestamp,
-        'userId': user.uid,
-      };
-
-      try {
-        await FirebaseFirestore.instance
-            .collection('fuel')
-            .doc(_currentFuelPurchase!['station']['id'])
-            .collection('request')
-            .add(requestData);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Payment and fuel request recorded successfully!')),
-        );
-      } catch (error) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to record request: $error')),
-        );
-      }
-    }
-  }
-
-  void _handlePaymentError(PaymentFailureResponse response) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Payment Failed: ${response.message}")),
-    );
-  }
-
-  void _handleExternalWallet(ExternalWalletResponse response) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-          content: Text("External Wallet Selected: ${response.walletName}")),
-    );
   }
 
   @override
@@ -571,7 +505,6 @@ class _FuelStationListState extends State<FuelStationList> {
                                 SizedBox(height: 15),
                               ],
                             ),
-                            // Display fuel chips as ActionChips (clickable)
                             Wrap(
                               spacing: 10,
                               children:

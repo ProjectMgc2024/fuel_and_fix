@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/user/screens/feedback.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Calculates the great-circle distance (in kilometers) between two points
@@ -23,32 +22,21 @@ class WorkshopScreen extends StatefulWidget {
 
 class _WorkshopScreenState extends State<WorkshopScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  late Razorpay _razorpay;
   Map<String, dynamic>? _currentWorkshop;
   String? _currentLocationName;
   bool _isUpdatingLocation =
       false; // To show a loading indicator while updating location
   String enteredLocation = ''; // For search filtering
 
-  // Vehicle problems and their checkbox states
-  // (If needed for repair requests, you can add similar functionality here)
-  // For now, we keep the code as-is.
-
   TextEditingController _vehicleSituationController = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    _razorpay = Razorpay();
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
-  }
+  // Temporary variables to store workshop info for which payment is being made.
+  Map<String, dynamic>? _currentWorkshopForPayment;
+  String? _currentWorkshopIdForPayment;
 
   @override
   void dispose() {
     _vehicleSituationController.dispose();
-    _razorpay.clear();
     super.dispose();
   }
 
@@ -127,10 +115,10 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
     }).toList();
   }
 
-  Future<void> _handlePaymentSuccess(PaymentSuccessResponse response) async {
+  // Submits the repair request by storing it in Firestore.
+  Future<void> _submitRequest(Map<String, dynamic> workshop) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null || _currentWorkshop == null) return;
-    // Get user's location from Firestore.
+    if (user == null) return;
     DocumentSnapshot userDoc =
         await _firestore.collection('user').doc(user.uid).get();
     String userLocation =
@@ -138,73 +126,34 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
 
     // Prepare the repair request data.
     Map<String, dynamic> requestData = {
-      'isPayment': true,
-      'paymentId': response.paymentId,
-      'status': true,
+      'status':
+          false, // Initially pending; later service provider will set to true.
+      'isPaid': false, // Advance not paid yet.
       'timestamp': DateTime.now(),
       'userId': user.uid,
       'userLocation': userLocation,
       'vehicleSituation': _vehicleSituationController.text,
-      // Add any additional fields (e.g., vehicle problems) as required.
     };
 
     try {
       await _firestore
           .collection('repair')
-          .doc(_currentWorkshop!['id'])
+          .doc(workshop['id'])
           .collection('request')
           .add(requestData);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Payment and request submitted successfully!')),
+        SnackBar(content: Text('Request submitted successfully!')),
       );
     } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to submit request: $error')),
       );
     }
-
-    setState(() {
-      _currentWorkshop = null;
-    });
   }
 
-  void _handlePaymentError(PaymentFailureResponse response) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Payment Failed: ${response.message}")),
-    );
-  }
-
-  void _handleExternalWallet(ExternalWalletResponse response) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-          content: Text("External Wallet Selected: ${response.walletName}")),
-    );
-  }
-
-  void _payWithRazorpay(Map<String, dynamic> workshop) {
-    var options = {
-      'key': 'rzp_test_D5Vh3hyi1gRBV0',
-      'amount': 50000, // Amount in paise (500.00 INR)
-      'name': 'Repair Service',
-      'description': 'Repair service payment',
-      'prefill': {
-        'contact': '1234567890',
-        'email': 'user@example.com',
-      },
-    };
-
-    try {
-      _currentWorkshop = workshop;
-      _razorpay.open(options);
-    } catch (e) {
-      debugPrint(e.toString());
-    }
-  }
-
-  // Dialog to input vehicle situation and (optionally) additional details.
-  // This is used before initiating the payment.
-  void _showLocationAndPaymentDialog(Map<String, dynamic> workshop) {
+  // Dialog to input vehicle situation and submit the request.
+  void _showRequestDialog(Map<String, dynamic> workshop) {
     showDialog(
       context: context,
       barrierDismissible: false, // Prevent closing by tapping outside.
@@ -221,22 +170,28 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                       controller: _vehicleSituationController,
                       decoration: InputDecoration(
                         labelText: 'Describe the situation',
-                        hintText: 'e.g., engine trouble, brake issues, etc.',
+                        hintText: 'e.g., brake issues, engine trouble, etc.',
                       ),
                       maxLines: 3,
-                    ),
-                    SizedBox(height: 20),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        _payWithRazorpay(workshop);
-                        Navigator.pop(context);
-                      },
-                      icon: Icon(Icons.payments),
-                      label: Text('Pay Advance'),
                     ),
                   ],
                 ),
               ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Cancel the action.
+                  },
+                  child: Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    await _submitRequest(workshop);
+                  },
+                  child: Text('Submit Request'),
+                ),
+              ],
             );
           },
         );
@@ -246,8 +201,6 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredWorkshops = getFilteredWorkshops([]);
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color.fromARGB(255, 50, 78, 104),
@@ -277,6 +230,7 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
         child: Column(
           children: [
+            // Search TextField.
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: TextField(
@@ -313,15 +267,7 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                   return Center(child: Text('No active workshops available.'));
                 } else {
                   List<Map<String, dynamic>> workshops = snapshot.data!;
-                  final filteredWorkshops = enteredLocation.isEmpty
-                      ? workshops
-                      : workshops.where((workshop) {
-                          final loc = workshop['additionalData']
-                                      ?['location_name']
-                                  ?.toLowerCase() ??
-                              '';
-                          return loc.contains(enteredLocation.toLowerCase());
-                        }).toList();
+                  final filteredWorkshops = getFilteredWorkshops(workshops);
 
                   return filteredWorkshops.isEmpty
                       ? Center(
@@ -481,7 +427,6 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                                                           ],
                                                         ),
                                                         SizedBox(height: 8),
-                                                        // Display calculated distance.
                                                         Text(
                                                           "Distance: ${workshop['distance'].toStringAsFixed(2)} km",
                                                           style: TextStyle(
@@ -502,7 +447,7 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                                                 children: [
                                                   ElevatedButton.icon(
                                                     onPressed: () =>
-                                                        _showLocationAndPaymentDialog(
+                                                        _showRequestDialog(
                                                             workshop),
                                                     icon: Icon(Icons.send,
                                                         color: Color.fromARGB(
@@ -536,11 +481,67 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                                                   ),
                                                 ],
                                               ),
+                                              // StreamBuilder to check for an accepted but unpaid repair request.
+                                              StreamBuilder<QuerySnapshot>(
+                                                stream: _firestore
+                                                    .collection('repair')
+                                                    .doc(workshop['id'])
+                                                    .collection('request')
+                                                    .where('userId',
+                                                        isEqualTo: FirebaseAuth
+                                                            .instance
+                                                            .currentUser
+                                                            ?.uid)
+                                                    .snapshots(),
+                                                builder:
+                                                    (context, requestSnapshot) {
+                                                  if (!requestSnapshot
+                                                          .hasData ||
+                                                      requestSnapshot
+                                                          .data!.docs.isEmpty) {
+                                                    return Container();
+                                                  }
+                                                  var requestDoc =
+                                                      requestSnapshot
+                                                          .data!.docs.first;
+                                                  var requestData = requestDoc
+                                                          .data()
+                                                      as Map<String, dynamic>;
+                                                  if (requestData['status'] ==
+                                                          true &&
+                                                      requestData['isPaid'] ==
+                                                          false) {
+                                                    return Align(
+                                                      alignment:
+                                                          Alignment.centerRight,
+                                                      child: ElevatedButton(
+                                                        onPressed: () {
+                                                          (
+                                                            workshop,
+                                                            workshop['id']
+                                                          );
+                                                        },
+                                                        child:
+                                                            Text("Pay Advance"),
+                                                      ),
+                                                    );
+                                                  } else if (requestData[
+                                                              'status'] ==
+                                                          true &&
+                                                      requestData['isPaid'] ==
+                                                          true) {
+                                                    return Align(
+                                                      alignment:
+                                                          Alignment.centerRight,
+                                                    );
+                                                  }
+                                                  return Container();
+                                                },
+                                              ),
                                             ],
                                           ),
                                         ),
                                       ),
-                                      // Optionally add additional buttons (e.g., Uber) here.
                                     ],
                                   ),
                                 ),

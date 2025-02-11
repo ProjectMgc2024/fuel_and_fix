@@ -4,7 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/user/screens/feedback.dart';
 import 'package:fuel_and_fix/user/screens/uber.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Helper function that uses the Haversine formula to calculate the distance (in kilometers)
@@ -26,7 +25,6 @@ class TowingServiceCategories extends StatefulWidget {
 
 class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  late Razorpay _razorpay;
   Map<String, dynamic>? _currentWorkshop;
   String enteredLocation = ''; // Variable to store search text
   String _selectedSituation =
@@ -35,16 +33,6 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
   @override
   void initState() {
     super.initState();
-    _razorpay = Razorpay();
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
-  }
-
-  @override
-  void dispose() {
-    _razorpay.clear();
-    super.dispose();
   }
 
   /// Fetches the current user's location from Firestore (from the "user" collection)
@@ -97,7 +85,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
     return workshops;
   }
 
-  // Function to launch the phone dialer
+  // Function to launch the phone dialer.
   Future<void> _launchPhone(String phoneNumber) async {
     final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
     if (await canLaunch(phoneUri.toString())) {
@@ -107,7 +95,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
     }
   }
 
-  // Filter workshops based on entered location text (case-insensitive)
+  // Filter workshops based on entered location text (case-insensitive).
   List<Map<String, dynamic>> getFilteredWorkshops(
       List<Map<String, dynamic>> workshops) {
     if (enteredLocation.isEmpty) {
@@ -122,10 +110,12 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
         .toList();
   }
 
-  // Payment success handler
-  Future<void> _handlePaymentSuccess(PaymentSuccessResponse response) async {
+  /// Stores the confirmed tow request in Firestore under the
+  /// 'request' subcollection of the corresponding workshop in the 'tow' collection.
+  /// The new request is stored with status false (pending) and isPaid set to false.
+  Future<void> _confirmRequest(Map<String, dynamic> workshop) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null || _currentWorkshop == null) return;
+    if (user == null) return;
     DocumentSnapshot userDoc =
         await _firestore.collection('user').doc(user.uid).get();
     String userLocation =
@@ -133,89 +123,110 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
 
     await _firestore
         .collection('tow')
-        .doc(_currentWorkshop!['id'])
+        .doc(workshop['id'])
         .collection('request')
         .add({
+      'status': false, // Request pending acceptance
+      'isPaid': false, // Advance not paid yet
+      'timestamp': FieldValue.serverTimestamp(),
       'userId': user.uid,
-      'paymentId': response.paymentId,
-      'status': true,
-      'isPayment': true,
-      'timestamp': DateTime.now(),
-      'vehicleSituation': _selectedSituation,
       'userLocation': userLocation,
+      'vehicleSituation': _selectedSituation,
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Payment Successful and Request Sent!")),
-    );
-
-    setState(() {
-      _currentWorkshop = null;
-    });
-  }
-
-  // Payment error handler
-  void _handlePaymentError(PaymentFailureResponse response) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Payment Failed: ${response.message}")),
+      SnackBar(content: Text("Request Sent!")),
     );
   }
 
-  // External wallet handler
-  void _handleExternalWallet(ExternalWalletResponse response) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-          content: Text("External Wallet Selected: ${response.walletName}")),
-    );
-  }
-
-  // Initiates the payment process using Razorpay.
-  void _payWithRazorpay(Map<String, dynamic> workshop) {
-    var options = {
-      'key': 'rzp_test_D5Vh3hyi1gRBV0',
-      'amount': 50000, // Amount in paise (500.00 INR)
-      'name': 'Tow Service',
-      'description': 'Tow service payment',
-      'prefill': {
-        'contact': '1234567890',
-        'email': 'user@example.com',
-      },
-    };
-
-    try {
-      _currentWorkshop = workshop;
-      _razorpay.open(options);
-    } catch (e) {
-      debugPrint(e.toString());
-    }
-  }
-
-  // Shows the dialog to choose the advance payment action.
-  void _showPaymentDialog(Map<String, dynamic> workshop) {
+  /// Displays a confirmation dialog before sending a request.
+  void _showConfirmationDialog(Map<String, dynamic> workshop) {
     showDialog(
       context: context,
       barrierDismissible:
           false, // Prevent closing the dialog by tapping outside.
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Select Action'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () {
-                  _payWithRazorpay(workshop);
-                  Navigator.pop(context);
-                },
-                icon: Icon(Icons.payments,
-                    color: const Color.fromARGB(255, 150, 142, 67)),
-                label: Text('Pay Advance'),
-              ),
-            ],
-          ),
+          title: Text('Confirm Request'),
+          content: Text('Are you sure you want to send this request?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Cancel the action.
+              },
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await _confirmRequest(workshop);
+              },
+              child: Text('Confirm'),
+            ),
+          ],
         );
       },
     );
+  }
+
+  /// Displays a payment dialog to simulate paying the advance.
+  /// In a real scenario, you would integrate a payment gateway.
+  void _showPaymentDialogForTow(Map<String, dynamic> workshop) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Pay Advance'),
+          content: Text('Do you want to pay the advance for this tow service?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await _updateTowPaymentStatus(workshop['id']);
+              },
+              child: Text('Pay Advance'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Queries for the existing tow request for the current user in the given workshop,
+  /// and if found with status true and isPaid false, updates that document to set isPaid to true.
+  Future<void> _updateTowPaymentStatus(String workshopId) async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    QuerySnapshot querySnapshot = await _firestore
+        .collection('tow')
+        .doc(workshopId)
+        .collection('request')
+        .where('userId', isEqualTo: user.uid)
+        .where('status', isEqualTo: true)
+        .where('isPaid', isEqualTo: false)
+        .limit(1)
+        .get();
+
+    if (querySnapshot.docs.isNotEmpty) {
+      DocumentReference requestDoc = querySnapshot.docs.first.reference;
+      await requestDoc.update({
+        'isPaid': true,
+        'timestamp': FieldValue.serverTimestamp(), // Update timestamp if needed
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Advance Payment Successful!")),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("No accepted request found to update.")),
+      );
+    }
   }
 
   @override
@@ -249,12 +260,13 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
         child: Column(
           children: [
+            // Search TextField
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: TextField(
                 onChanged: (text) {
                   setState(() {
-                    enteredLocation = text; // Update search text
+                    enteredLocation = text; // Update search text.
                   });
                 },
                 decoration: InputDecoration(
@@ -270,6 +282,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                 ),
               ),
             ),
+            // Dropdown for vehicle situation
             DropdownButton<String>(
               value: _selectedSituation.isEmpty ? null : _selectedSituation,
               hint: Text('Select Vehicle Situation'),
@@ -291,6 +304,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                 );
               }).toList(),
             ),
+            // Display workshops
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _getWorkshops(),
               builder: (context, snapshot) {
@@ -467,7 +481,6 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                                           ],
                                                         ),
                                                         SizedBox(height: 8),
-                                                        // Display the calculated distance.
                                                         Text(
                                                           "Distance: ${workshop['distance'].toStringAsFixed(2)} km",
                                                           style: TextStyle(
@@ -481,7 +494,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                                 ],
                                               ),
                                               SizedBox(height: 20),
-                                              // Other Action Buttons (e.g., Payment, Feedback)
+                                              // Action Buttons (Send Request, Feedback)
                                               Row(
                                                 mainAxisAlignment:
                                                     MainAxisAlignment
@@ -489,7 +502,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                                 children: [
                                                   ElevatedButton.icon(
                                                     onPressed: () =>
-                                                        _showPaymentDialog(
+                                                        _showConfirmationDialog(
                                                             workshop),
                                                     icon: Icon(Icons.send,
                                                         color: Color.fromARGB(
@@ -509,9 +522,10 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                                                 'companyName'],
                                                             service: 'tow',
                                                             userId: FirebaseAuth
-                                                                .instance
-                                                                .currentUser
-                                                                ?.uid,
+                                                                    .instance
+                                                                    .currentUser
+                                                                    ?.uid ??
+                                                                '',
                                                           ),
                                                         ),
                                                       );
@@ -522,6 +536,44 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                                     label: Text('Feedback'),
                                                   ),
                                                 ],
+                                              ),
+                                              // StreamBuilder to check for an accepted but unpaid request
+                                              StreamBuilder<QuerySnapshot>(
+                                                stream: _firestore
+                                                    .collection('tow')
+                                                    .doc(workshop['id'])
+                                                    .collection('request')
+                                                    .where('userId',
+                                                        isEqualTo: FirebaseAuth
+                                                            .instance
+                                                            .currentUser
+                                                            ?.uid)
+                                                    .snapshots(),
+                                                builder: (context, snapshot) {
+                                                  if (!snapshot.hasData ||
+                                                      snapshot
+                                                          .data!.docs.isEmpty) {
+                                                    return Container();
+                                                  }
+                                                  var requestDoc =
+                                                      snapshot.data!.docs.first;
+                                                  var requestData = requestDoc
+                                                          .data()
+                                                      as Map<String, dynamic>;
+                                                  if (requestData['status'] ==
+                                                          true &&
+                                                      requestData['isPaid'] ==
+                                                          false) {
+                                                    return ElevatedButton(
+                                                      onPressed: () =>
+                                                          _showPaymentDialogForTow(
+                                                              workshop),
+                                                      child:
+                                                          Text("Pay Advance"),
+                                                    );
+                                                  }
+                                                  return Container();
+                                                },
                                               ),
                                             ],
                                           ),

@@ -18,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   // Variables to manage password visibility and loading state
   bool isPasswordVisible = false;
   bool _isLoading = false;
+
   void login() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -54,8 +55,11 @@ class _LoginScreenState extends State<LoginScreen> {
             print('User found in user collection: $email');
             userSnapshot = userQuery;
 
-            // Check if the user is disabled
-            bool isDisabled = userQuery.docs.first['disabled'] ?? false;
+            // Safely check if the user is disabled
+            Map<String, dynamic> userData =
+                userQuery.docs.first.data() as Map<String, dynamic>;
+            bool isDisabled =
+                userData.containsKey('disabled') ? userData['disabled'] : false;
             if (isDisabled) {
               setState(() {
                 _isLoading = false;
@@ -145,14 +149,12 @@ class _LoginScreenState extends State<LoginScreen> {
               fit: BoxFit.cover,
             ),
           ),
-
           // Dark Overlay Effect
           Positioned.fill(
             child: Container(
               color: const Color.fromARGB(255, 171, 185, 219).withOpacity(0.4),
             ),
           ),
-
           // Login Form or Loading Indicator
           Center(
             child: _isLoading
@@ -183,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 30,
-                              color: const Color.fromARGB(255, 0, 0, 0),
+                              color: Colors.black,
                             ),
                           ),
                           SizedBox(height: 40.0),
@@ -275,10 +277,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               TextButton(
                                 onPressed: () {
                                   Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) =>
-                                              const VehicleRegistrationPage()));
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const VehicleRegistrationPage(),
+                                    ),
+                                  );
                                 },
                                 child: Text(
                                   'Create an account',
