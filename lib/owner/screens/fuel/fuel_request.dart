@@ -11,6 +11,8 @@ class FuelFillingRequest extends StatefulWidget {
 
 class _FuelFillingRequestState extends State<FuelFillingRequest> {
   String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? "";
+  // Map to store the status result for each request (true for accepted, false for rejected)
+  Map<String, bool> _statusResult = {};
 
   // Function to fetch the company name
   Future<String> fetchCompanyName() async {
@@ -19,7 +21,6 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
           .collection('fuel')
           .doc(currentUserId)
           .get();
-
       if (companyDoc.exists) {
         return companyDoc['companyName'] ?? 'N/A';
       }
@@ -36,13 +37,16 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
       // Fetch company name
       String companyName = await fetchCompanyName();
 
-      // Update the request status
+      // Update the request status in Firestore and mark it as responded
       await FirebaseFirestore.instance
           .collection('fuel')
           .doc(currentUserId)
           .collection('request')
           .doc(requestId)
-          .update({'status': newStatus});
+          .update({
+        'status': newStatus,
+        'responded': true,
+      });
 
       // Add a notification for the requested user
       await FirebaseFirestore.instance.collection('notifications').add({
@@ -54,6 +58,11 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
             ? '$companyName accepted your request.'
             : '$companyName rejected your request.',
         'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      // Update local state so the UI reflects the response
+      setState(() {
+        _statusResult[requestId] = newStatus;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -71,7 +80,7 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
     try {
       DocumentSnapshot userDoc =
           await FirebaseFirestore.instance.collection('user').doc(userId).get();
-      return userDoc.data() as Map<String, dynamic>?; // Return user data
+      return userDoc.data() as Map<String, dynamic>?;
     } catch (e) {
       print('Error fetching user details: $e');
       return null;
@@ -95,8 +104,7 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
   // Function to format timestamp
   String formatTimestamp(Timestamp timestamp) {
     DateTime date = timestamp.toDate();
-    return DateFormat('MMM d, yyyy, h:mm a')
-        .format(date); // Format as "Feb 1, 2025, 10:30 PM"
+    return DateFormat('MMM d, yyyy, h:mm a').format(date);
   }
 
   @override
@@ -111,6 +119,7 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
             .collection('fuel')
             .doc(currentUserId)
             .collection('request')
+            .orderBy('timestamp', descending: true) // Latest first
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -162,14 +171,26 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
 
                       // Fetch fuel request details
                       var fuelDetails = request['fuelRequestDetails'] ?? {};
-                      String fuelType = fuelDetails['fuelType'] ??
-                          'N/A'; // Ensure to fetch fuelType
-                      double litres = fuelDetails['litres']?.toDouble() ??
-                          0.0; // Ensure to fetch litres
+                      String fuelType = fuelDetails['fuelType'] ?? 'N/A';
+                      double litres = fuelDetails['litres']?.toDouble() ?? 0.0;
                       Timestamp timestamp =
                           request['timestamp'] ?? Timestamp.now();
-                      String timestampString =
-                          formatTimestamp(timestamp); // Use formatted timestamp
+                      String timestampString = formatTimestamp(timestamp);
+
+                      // Check if the request has been responded to (via Firestore or local state)
+                      bool respondedFromFirestore =
+                          request.containsKey('responded') &&
+                              request['responded'] == true;
+                      bool responded = respondedFromFirestore ||
+                          _statusResult.containsKey(requestId);
+                      bool accepted;
+                      if (respondedFromFirestore) {
+                        accepted = request['status'];
+                      } else if (_statusResult.containsKey(requestId)) {
+                        accepted = _statusResult[requestId]!;
+                      } else {
+                        accepted = false;
+                      }
 
                       return Card(
                         elevation: 5,
@@ -194,7 +215,6 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
                                 ),
                               ),
                               SizedBox(height: 16),
-
                               // User Details
                               Text(
                                 userDetails['username'] ?? 'Unknown User',
@@ -215,48 +235,61 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
                               Text(
                                   'Registration No: ${userDetails['registrationNo'] ?? 'N/A'}'),
                               Text('Location: $locationName'),
-
-                              // Display the fuel type, quantity (litres), and timestamp
+                              // Fuel Request Details
                               Text('Fuel Type: $fuelType'),
                               Text('Quantity: $litres Litres'),
                               Text('Timestamp: $timestampString'),
-
                               SizedBox(height: 16),
-
-                              // Buttons
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      updateRequestStatus(
-                                          requestId, true, request['userId']);
-                                    },
-                                    child: Text('Accept'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green,
+                              // If not yet responded, show Accept/Reject buttons.
+                              // Otherwise, display the corresponding status message.
+                              if (!responded)
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        updateRequestStatus(
+                                            requestId, true, request['userId']);
+                                      },
+                                      child: Text('Accept'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        updateRequestStatus(requestId, false,
+                                            request['userId']);
+                                      },
+                                      child: Text('Reject'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.location_on,
+                                          color: Colors.blue),
+                                      onPressed: () {
+                                        openGoogleMaps(latitude, longitude);
+                                      },
+                                    ),
+                                  ],
+                                )
+                              else
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    accepted
+                                        ? 'Request Accepted'
+                                        : 'Request Rejected',
+                                    style: TextStyle(
+                                      color:
+                                          accepted ? Colors.green : Colors.red,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      updateRequestStatus(
-                                          requestId, false, request['userId']);
-                                    },
-                                    child: Text('Reject'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.location_on,
-                                        color: Colors.blue),
-                                    onPressed: () {
-                                      openGoogleMaps(latitude, longitude);
-                                    },
-                                  ),
-                                ],
-                              ),
+                                ),
                             ],
                           ),
                         ),

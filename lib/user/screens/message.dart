@@ -265,6 +265,12 @@ class _UserNotificationPageState extends State<UserNotificationPage> {
               String message =
                   notification['message'] ?? 'No message available';
               Timestamp? timestamp = notification['timestamp'] as Timestamp?;
+              // Check the status from the notification.
+              final String requestStatus =
+                  (notification['status'] ?? '').toString().toLowerCase();
+              // Only allow payment if the status is accepted.
+              bool isAccepted = requestStatus == 'accepted';
+
               return FutureBuilder<Map<String, dynamic>?>(
                 future: fetchCompanyDetails(companyId),
                 builder: (context, companySnapshot) {
@@ -288,7 +294,6 @@ class _UserNotificationPageState extends State<UserNotificationPage> {
                   String formattedTimestamp = timestamp != null
                       ? timestamp.toDate().toLocal().toString()
                       : 'Unknown Timestamp';
-
                   return Card(
                     elevation: 5,
                     shape: RoundedRectangleBorder(
@@ -329,15 +334,19 @@ class _UserNotificationPageState extends State<UserNotificationPage> {
                           Text('Phone: $companyPhone'),
                           SizedBox(height: 8),
                           // Display the "Pay Advance" button only if the service type is fuel, tow, or repair.
+                          // The button is enabled only if the notification status is accepted.
                           if (service == 'fuel' ||
                               service == 'tow' ||
                               service == 'repair')
                             Align(
                               alignment: Alignment.centerRight,
                               child: ElevatedButton(
-                                onPressed: () {
-                                  _showPaymentDialog(companyData, companyId);
-                                },
+                                onPressed: isAccepted
+                                    ? () {
+                                        _showPaymentDialog(
+                                            companyData, companyId);
+                                      }
+                                    : null,
                                 child: Text('Pay Advance'),
                               ),
                             ),

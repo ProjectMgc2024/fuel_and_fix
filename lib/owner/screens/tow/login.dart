@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:fuel_and_fix/owner/SERVICES/firebase_provider_auth.dart';
 import 'package:fuel_and_fix/owner/screens/tow/managetow.dart';
@@ -9,34 +10,74 @@ class TowLoginScreen extends StatefulWidget {
 }
 
 class _TowLoginScreenState extends State<TowLoginScreen> {
-  TextEditingController emailController = TextEditingController();
-  TextEditingController passwordController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   // Variable to manage password visibility
   bool isPasswordVisible = false;
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
 
   void login() async {
     if (_formKey.currentState!.validate()) {
       String email = emailController.text.trim();
       String password = passwordController.text.trim();
 
-      print("$email $password");
-
+      // Attempt to log in using the provided credentials
       bool loginSuccess = await OwnerAuthServices().towLogin(
-          context: context,
-          email: email,
-          password: password); // Updated method for tow login
+        context: context,
+        email: email,
+        password: password,
+      );
 
       if (loginSuccess) {
-        // Navigate to the tow management page if login is successful
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                TowManagementPage(), // Updated navigation to Tow request screen
-          ),
-        );
+        // Query Firestore for the tow account based on email
+        QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+            .collection('tow')
+            .where('email', isEqualTo: email)
+            .get();
+
+        if (querySnapshot.docs.isNotEmpty) {
+          var userData =
+              querySnapshot.docs.first.data() as Map<String, dynamic>;
+          bool isApproved = userData['isApproved'] ?? false;
+
+          if (isApproved) {
+            // If isApproved is true, do not proceed to the management page.
+            // Show a SnackBar message to inform the user.
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Your account is not allowed to login.'),
+                backgroundColor: Colors.redAccent,
+                duration: Duration(seconds: 2),
+              ),
+            );
+            return;
+          } else {
+            // If isApproved is false, navigate to the TowManagementPage.
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TowManagementPage(),
+              ),
+            );
+          }
+        } else {
+          // No account data found in Firestore.
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Account data not found.'),
+              backgroundColor: Colors.redAccent,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
       }
     }
   }
@@ -53,7 +94,6 @@ class _TowLoginScreenState extends State<TowLoginScreen> {
               fit: BoxFit.cover,
             ),
           ),
-
           // Dark Overlay Effect
           Positioned.fill(
             child: Container(
@@ -61,7 +101,6 @@ class _TowLoginScreenState extends State<TowLoginScreen> {
                   .withOpacity(0.4), // Darken effect
             ),
           ),
-
           // Login Form
           Center(
             child: Padding(
@@ -70,44 +109,43 @@ class _TowLoginScreenState extends State<TowLoginScreen> {
                 key: _formKey,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     CircleAvatar(
                       radius: 50.0,
                       backgroundColor: const Color.fromARGB(255, 30, 39, 46),
                       child: Icon(
-                        Icons.person, // Use an icon related to towing
+                        Icons.person, // Icon representing a tow operator
                         size: 60.0,
                         color: const Color.fromARGB(255, 197, 207, 211),
                       ),
                     ),
-                    SizedBox(height: 20.0),
-                    Text(
-                      'Tow Log In', // Updated text for Tow login
+                    const SizedBox(height: 20.0),
+                    const Text(
+                      'Tow Log In',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 30,
-                        color: const Color.fromARGB(255, 0, 0, 0),
+                        color: Colors.black,
                       ),
                     ),
-                    SizedBox(height: 40.0),
+                    const SizedBox(height: 40.0),
                     SizedBox(
                       width: 300,
                       child: TextFormField(
                         controller: emailController,
-                        style: TextStyle(color: Colors.black),
+                        style: const TextStyle(color: Colors.black),
                         decoration: InputDecoration(
                           filled: true,
                           fillColor: const Color.fromARGB(255, 146, 161, 222),
                           labelText: 'Email',
-                          labelStyle: TextStyle(
+                          labelStyle: const TextStyle(
                               fontWeight: FontWeight.bold, color: Colors.black),
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(
                             Icons.email,
                             color: Colors.black,
                           ),
-                          enabledBorder: OutlineInputBorder(
+                          enabledBorder: const OutlineInputBorder(
                             borderSide: BorderSide(width: 1.0),
                           ),
                         ),
@@ -119,31 +157,31 @@ class _TowLoginScreenState extends State<TowLoginScreen> {
                         },
                       ),
                     ),
-                    SizedBox(height: 16.0),
+                    const SizedBox(height: 16.0),
                     SizedBox(
                       width: 300,
                       child: TextFormField(
                         controller: passwordController,
-                        obscureText: !isPasswordVisible, // Toggle visibility
+                        obscureText: !isPasswordVisible,
                         decoration: InputDecoration(
                           filled: true,
                           fillColor: const Color.fromARGB(255, 146, 161, 222),
                           labelText: 'Password',
-                          labelStyle: TextStyle(
+                          labelStyle: const TextStyle(
                               fontWeight: FontWeight.bold, color: Colors.black),
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(
                             Icons.lock,
                             color: Colors.black,
                           ),
-                          enabledBorder: OutlineInputBorder(
+                          enabledBorder: const OutlineInputBorder(
                             borderSide: BorderSide(width: 1.0),
                           ),
                           suffixIcon: IconButton(
                             icon: Icon(
                               isPasswordVisible
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
                               color: Colors.black,
                             ),
                             onPressed: () {
@@ -161,44 +199,45 @@ class _TowLoginScreenState extends State<TowLoginScreen> {
                         },
                       ),
                     ),
-                    SizedBox(height: 20.0),
+                    const SizedBox(height: 20.0),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
+                        const Text(
                           "Don't have an account? ",
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: const Color.fromARGB(255, 3, 35, 153),
+                            color: Color.fromARGB(255, 3, 35, 153),
                           ),
                         ),
                         TextButton(
                           onPressed: () {
-                            // Navigate to tow account creation screen
+                            // Navigate to the tow registration screen
                             Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        TowRegister())); // Replace with Tow register screen
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => TowRegister(),
+                              ),
+                            );
                           },
-                          child: Text(
+                          child: const Text(
                             'Create an account',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: const Color.fromARGB(255, 215, 33, 5),
+                              color: Color.fromARGB(255, 215, 33, 5),
                             ),
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: 20.0),
+                    const SizedBox(height: 20.0),
                     ElevatedButton(
                       onPressed: login,
                       style: ElevatedButton.styleFrom(
                         elevation: 8.0,
                         shadowColor: const Color.fromARGB(255, 4, 0, 255),
                       ),
-                      child: Text('Sign in'),
+                      child: const Text('Sign in'),
                     ),
                   ],
                 ),

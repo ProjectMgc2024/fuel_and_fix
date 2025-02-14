@@ -144,9 +144,8 @@ class _RepairPageState extends State<RepairPage>
   List<Map<String, dynamic>> _getFilteredShops(
       List<Map<String, dynamic>> shops, String status) {
     return shops.where((shop) {
-      bool matchesQuery = shop['companyName']!
-          .toLowerCase()
-          .contains(searchQuery.toLowerCase());
+      bool matchesQuery =
+          shop['companyName'].toLowerCase().contains(searchQuery.toLowerCase());
       bool matchesStatus = status == 'Pending'
           ? shop['isApproved'] == false
           : shop['isApproved'] == true;
@@ -164,7 +163,8 @@ class _RepairPageState extends State<RepairPage>
         borderRadius: BorderRadius.circular(20),
       ),
       child: ExpansionTile(
-        leading: shop['companyLogo'] != null
+        leading: shop['companyLogo'] != null &&
+                shop['companyLogo'].toString().isNotEmpty
             ? CircleAvatar(backgroundImage: NetworkImage(shop['companyLogo']))
             : Icon(Icons.business, color: Colors.deepPurple),
         title: Text(
@@ -239,23 +239,41 @@ class _RepairPageState extends State<RepairPage>
                         ),
                       ),
                     if (status == 'Accepted')
-                      ElevatedButton(
-                        onPressed: () =>
-                            _confirmDeleteRepairShop(context, shop['id']),
-                        child: Text('Delete'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          padding: EdgeInsets.symmetric(
-                              vertical: 10, horizontal: 20),
-                          textStyle: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+                      shop['status']
+                          ? ElevatedButton(
+                              onPressed: () => _confirmDisableRepairShop(
+                                  context, shop['id']),
+                              child: Text('Disable'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                    vertical: 10, horizontal: 20),
+                                textStyle: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            )
+                          : ElevatedButton(
+                              onPressed: () =>
+                                  _confirmEnableRepairShop(context, shop['id']),
+                              child: Text('Enable'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                    vertical: 10, horizontal: 20),
+                                textStyle: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                   ],
                 ),
               ],
@@ -266,7 +284,7 @@ class _RepairPageState extends State<RepairPage>
     );
   }
 
-  // Accept repair shop
+  // Accept repair shop (set isApproved true)
   void _acceptRepairShop(String shopId) {
     _firebaseFirestore
         .collection('repair')
@@ -278,26 +296,63 @@ class _RepairPageState extends State<RepairPage>
     });
   }
 
-  // Confirmation dialog for repair shop deletion
-  void _confirmDeleteRepairShop(BuildContext context, String shopId) {
+  // Confirmation dialog for disabling a repair shop
+  void _confirmDisableRepairShop(BuildContext context, String shopId) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Delete Repair Shop'),
-          content: Text('Are you sure you want to delete this repair shop?'),
+          title: Text('Disable Repair Shop'),
+          content: Text('Are you sure you want to disable this repair shop?'),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context), child: Text('Cancel')),
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel'),
+            ),
             ElevatedButton(
               onPressed: () {
                 setState(() {
-                  _firebaseFirestore.collection('repair').doc(shopId).delete();
+                  _firebaseFirestore
+                      .collection('repair')
+                      .doc(shopId)
+                      .update({'status': false});
                   repairShops = fetchRepairShops();
                 });
                 Navigator.pop(context);
               },
-              child: Text('Delete'),
+              child: Text('Disable'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Confirmation dialog for enabling a repair shop
+  void _confirmEnableRepairShop(BuildContext context, String shopId) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Enable Repair Shop'),
+          content: Text('Are you sure you want to enable this repair shop?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _firebaseFirestore
+                      .collection('repair')
+                      .doc(shopId)
+                      .update({'status': true});
+                  repairShops = fetchRepairShops();
+                });
+                Navigator.pop(context);
+              },
+              child: Text('Enable'),
             ),
           ],
         );

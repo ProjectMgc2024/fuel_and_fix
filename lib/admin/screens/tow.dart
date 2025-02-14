@@ -36,32 +36,33 @@ class _ManageTowStationState extends State<ManageTowStation>
     }
   }
 
-  // Delete the tow shop from Firestore
-  Future<void> _deletetowShop(String id) async {
-    try {
-      await FirebaseFirestore.instance.collection('tow').doc(id).delete();
-      setState(() {
-        towShops.removeWhere((shop) => shop['id'] == id);
-      });
-    } catch (e) {
-      print('Error deleting tow shop: $e');
-    }
-  }
-
-  // Accept the tow shop by updating the isApproved field
-  Future<void> _acceptTowShop(String id) async {
+  // Toggle the tow shop status between approved and not approved
+  Future<void> _toggleTowShopStatus(String id, bool currentStatus) async {
     try {
       await FirebaseFirestore.instance.collection('tow').doc(id).update({
-        'isApproved': true,
+        'isApproved': !currentStatus,
       });
       setState(() {
         int index = towShops.indexWhere((shop) => shop['id'] == id);
         if (index != -1) {
-          towShops[index]['isApproved'] = true;
+          towShops[index]['isApproved'] = !currentStatus;
         }
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Tow shop status updated successfully'),
+          backgroundColor: Colors.greenAccent,
+          duration: Duration(seconds: 2),
+        ),
+      );
     } catch (e) {
-      print('Error accepting tow shop: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update status: $e'),
+          backgroundColor: Colors.redAccent,
+          duration: Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -104,8 +105,8 @@ class _ManageTowStationState extends State<ManageTowStation>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildTowShopList(context, false), // Pending tow shops
-                    _buildTowShopList(context, true), // Accepted tow shops
+                    _buildTowShopList(context, true), // Pending tow shops
+                    _buildTowShopList(context, false), // Accepted tow shops
                   ],
                 ),
               ),
@@ -134,7 +135,7 @@ class _ManageTowStationState extends State<ManageTowStation>
           );
   }
 
-  // Tow Shop Card Widget
+  // Tow Shop Card Widget with a toggle button in the trailing position.
   Widget _towShopCard(
       BuildContext context, Map<String, dynamic> shop, bool isApproved) {
     return Card(
@@ -184,7 +185,6 @@ class _ManageTowStationState extends State<ManageTowStation>
                   ),
                 ),
                 SizedBox(height: 15),
-
                 Text(
                   'Employees:',
                   style: TextStyle(
@@ -221,64 +221,21 @@ class _ManageTowStationState extends State<ManageTowStation>
                         ],
                       )
                     : Text('No employees available'),
-
-                if (!isApproved)
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: ElevatedButton(
-                      onPressed: () => _acceptTowShop(shop['id']),
-                      child: Text('Accept'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                    ),
-                  ),
               ],
             ),
           )
         ],
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) {
-            if (value == 'Delete') {
-              _confirmDeleteTowShop(context, shop['id']);
-            }
-          },
-          itemBuilder: (BuildContext context) {
-            return [
-              PopupMenuItem(value: 'Delete', child: Text('Delete')),
-            ];
-          },
+        // Reversed toggle: If isApproved is true then show a closed lock (Icons.lock) and vice versa.
+        trailing: IconButton(
+          icon: Icon(
+            shop['isApproved'] ? Icons.lock : Icons.lock_open,
+            color: Colors.orange,
+          ),
+          onPressed: () =>
+              _toggleTowShopStatus(shop['id'], shop['isApproved'] ?? false),
+          tooltip: shop['isApproved'] ? 'Disable Tow Shop' : 'Enable Tow Shop',
         ),
       ),
-    );
-  }
-
-  // Confirmation dialog for tow shop deletion
-  void _confirmDeleteTowShop(BuildContext context, String shopId) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Delete Tow Shop'),
-          content: Text('Are you sure you want to delete this tow shop?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                _deletetowShop(shopId);
-                Navigator.pop(context);
-              },
-              child: Text('Delete'),
-            ),
-          ],
-        );
-      },
     );
   }
 }

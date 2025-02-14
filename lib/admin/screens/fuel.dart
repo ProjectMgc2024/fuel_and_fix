@@ -44,6 +44,8 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
           'employees': List<Map<String, dynamic>>.from(data['employees'] ?? []),
           'fuels': List<Map<String, dynamic>>.from(data['fuels'] ?? []),
           'isApproved': data['isApproved'] ?? false,
+          'disabled':
+              data['disabled'] ?? false, // New field for enabling/disabling
         };
       }).toList();
     } catch (e) {
@@ -52,11 +54,39 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
     }
   }
 
+  // Toggle the enable/disable status of a fuel station
+  void _toggleFuelStationStatus(String stationId, bool currentStatus) async {
+    try {
+      await _firebaseFirestore
+          .collection('fuel')
+          .doc(stationId)
+          .update({'disabled': !currentStatus});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Fuel station status updated successfully'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      setState(() {
+        fuelStations = fetchFuelStations();
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update status: $e'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Manage Fuel stations'),
+        title: Text('Manage Fuel Stations'),
         backgroundColor: const Color.fromARGB(255, 101, 186, 139),
         centerTitle: true,
         elevation: 5.0,
@@ -164,9 +194,10 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
     }).toList();
   }
 
-  // Fuel station card widget
+  // Fuel station card widget with enable/disable toggle
   Widget _fuelStationCard(
       BuildContext context, Map<String, dynamic> station, bool isPending) {
+    bool isDisabled = station['disabled'] ?? false;
     return Card(
       elevation: 5,
       margin: EdgeInsets.symmetric(vertical: 12),
@@ -266,17 +297,13 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
             ),
           )
         ],
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) {
-            if (value == 'Delete') {
-              _confirmDeleteFuelStation(context, station['id']);
-            }
-          },
-          itemBuilder: (BuildContext context) {
-            return [
-              PopupMenuItem(value: 'Delete', child: Text('Delete')),
-            ];
-          },
+        // Removed PopupMenuButton delete option and added a toggle button instead
+        trailing: IconButton(
+          icon: Icon(
+            isDisabled ? Icons.lock : Icons.lock_open,
+            color: Colors.orange,
+          ),
+          onPressed: () => _toggleFuelStationStatus(station['id'], isDisabled),
         ),
       ),
     );
@@ -294,33 +321,6 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
     } catch (e) {
       print('Error approving fuel station: $e');
     }
-  }
-
-  // Confirmation dialog for fuel station deletion
-  void _confirmDeleteFuelStation(BuildContext context, String stationId) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Delete Fuel Station'),
-          content: Text('Are you sure you want to delete this fuel station?'),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context), child: Text('Cancel')),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _firebaseFirestore.collection('fuel').doc(stationId).delete();
-                  fuelStations = fetchFuelStations();
-                });
-                Navigator.pop(context);
-              },
-              child: Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   void _showAddFuelDialog(BuildContext context) {
@@ -349,18 +349,15 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
             ElevatedButton(
               onPressed: () async {
                 try {
-                  // Parse the prices from the text fields
                   double petrolPrice =
                       double.tryParse(petrolController.text) ?? 0;
                   double dieselPrice =
                       double.tryParse(dieselController.text) ?? 0;
                   double cngPrice = double.tryParse(cngController.text) ?? 0;
 
-                  // Get a reference to the Firestore collection
                   CollectionReference pricesCollection =
                       FirebaseFirestore.instance.collection('price');
 
-                  // Update the prices in Firestore
                   await pricesCollection.doc('fuelPrices').set({
                     'petrol': petrolPrice,
                     'diesel': dieselPrice,
@@ -368,13 +365,9 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
                   });
 
                   print('Prices updated successfully');
-
-                  // Close the dialog
                   Navigator.pop(context);
                 } catch (e) {
                   print('Error updating prices: $e');
-
-                  // Optionally show an error message to the user
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                         content:

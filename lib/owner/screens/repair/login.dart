@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fuel_and_fix/owner/SERVICES/firebase_provider_auth.dart';
 import 'package:fuel_and_fix/owner/screens/repair/managerepair.dart';
 import 'package:fuel_and_fix/owner/screens/repair/repair_register.dart';
-
-// Add your screen here
 
 class RepairLoginScreen extends StatefulWidget {
   @override
@@ -25,20 +24,48 @@ class _RepairLoginScreenState extends State<RepairLoginScreen> {
 
       print("$email $password");
 
-      bool loginSuccess = await OwnerAuthServices().repairLogin(
-          context: context,
-          email: email,
-          password: password); // Updated method for repair login
+      bool loginSuccess = await OwnerAuthServices()
+          .repairLogin(context: context, email: email, password: password);
 
       if (loginSuccess) {
-        // Navigate to the repair management page if login is successful
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                RepairManagementPage(), // Updated navigation to repair management screen
-          ),
-        );
+        // Query Firestore for the repair shop document matching the email
+        QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+            .collection('repair')
+            .where('email', isEqualTo: email)
+            .get();
+
+        if (querySnapshot.docs.isNotEmpty) {
+          Map<String, dynamic> repairData =
+              querySnapshot.docs.first.data() as Map<String, dynamic>;
+          bool status = repairData['status'] ?? false;
+          if (!status) {
+            // If the shop is disabled, show error and do not navigate
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                    "Your repair shop is disabled. Please contact the administrator."),
+                backgroundColor: Colors.red,
+              ),
+            );
+            return;
+          } else {
+            // If enabled, navigate to the management page
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => RepairManagementPage(),
+              ),
+            );
+          }
+        } else {
+          // No document found: show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("No repair shop record found for this account."),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -55,7 +82,6 @@ class _RepairLoginScreenState extends State<RepairLoginScreen> {
               fit: BoxFit.cover,
             ),
           ),
-
           // Dark Overlay Effect
           Positioned.fill(
             child: Container(
@@ -63,7 +89,6 @@ class _RepairLoginScreenState extends State<RepairLoginScreen> {
                   .withOpacity(0.4), // Darken effect
             ),
           ),
-
           // Login Form
           Center(
             child: Padding(
@@ -85,7 +110,7 @@ class _RepairLoginScreenState extends State<RepairLoginScreen> {
                     ),
                     SizedBox(height: 20.0),
                     Text(
-                      'Repair Log In', // Updated text for Repair login
+                      'Repair Log In',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 30,
@@ -126,7 +151,7 @@ class _RepairLoginScreenState extends State<RepairLoginScreen> {
                       width: 300,
                       child: TextFormField(
                         controller: passwordController,
-                        obscureText: !isPasswordVisible, // Toggle visibility
+                        obscureText: !isPasswordVisible,
                         decoration: InputDecoration(
                           filled: true,
                           fillColor: const Color.fromARGB(255, 146, 161, 222),
@@ -177,10 +202,11 @@ class _RepairLoginScreenState extends State<RepairLoginScreen> {
                         TextButton(
                           onPressed: () {
                             Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        RepairRegister())); // Updated navigation to repair register screen
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RepairRegister(),
+                              ),
+                            );
                           },
                           child: Text(
                             'Create an account',

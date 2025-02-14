@@ -23,10 +23,12 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
     return user?.uid;
   }
 
-  // Formats a Firestore Timestamp into a readable string.
+  // Formats a Firestore Timestamp into a readable string with timezone info.
   String formatTimestamp(Timestamp timestamp) {
     DateTime dateTime = timestamp.toDate();
-    return DateFormat('d MMMM yyyy HH:mm:ss').format(dateTime);
+    // Format like "30 December 2024 at 21:13:56 UTC+5:30"
+    return DateFormat("d MMMM yyyy 'at' HH:mm:ss").format(dateTime) +
+        " UTC+5:30";
   }
 
   @override
@@ -99,15 +101,18 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
     );
   }
 
-  // Updated builder for Fuel orders.
+  // Builder for Fuel orders.
   Widget buildFuelCard(QueryDocumentSnapshot order, Timestamp? time) {
     final Map<String, dynamic> data = order.data() as Map<String, dynamic>;
     final String description =
         data['description'] ?? "No description available";
     final String ownerId = data['ownerId'] ?? "Unknown Owner";
-    final dynamic paymentAmountValue = data['totalAmount'];
-    final String totalAmount =
-        paymentAmountValue != null ? paymentAmountValue.toString() : "0";
+    // For fuel orders, use 'paymentAmount' if available; otherwise, use 'totalAmount'
+    final dynamic amountValue = data.containsKey('paymentAmount')
+        ? data['paymentAmount']
+        : data['totalAmount'];
+    final String paymentAmount =
+        amountValue != null ? amountValue.toString() : "0";
     final String paymentId = data['paymentId'] ?? "N/A";
     final String service = data['service'] ?? "fuel";
 
@@ -120,17 +125,29 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Description: $description", style: TextStyle(fontSize: 16)),
+            Text("description",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("$description", style: TextStyle(fontSize: 16)),
             SizedBox(height: 8),
-            Text("Owner ID: $ownerId", style: TextStyle(fontSize: 16)),
+            Text("ownerId",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("$ownerId", style: TextStyle(fontSize: 16)),
             SizedBox(height: 8),
-            Text("totalAmount: ₹$totalAmount", style: TextStyle(fontSize: 16)),
+            Text("paymentAmount",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("$paymentAmount", style: TextStyle(fontSize: 16)),
             SizedBox(height: 8),
-            Text("Payment ID: $paymentId", style: TextStyle(fontSize: 16)),
+            Text("paymentId",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("$paymentId", style: TextStyle(fontSize: 16)),
             SizedBox(height: 8),
-            Text("Service: $service", style: TextStyle(fontSize: 16)),
+            Text("service",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("$service", style: TextStyle(fontSize: 16)),
             SizedBox(height: 8),
-            Text("Time: ${time != null ? formatTimestamp(time) : 'N/A'}",
+            Text("time",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("${time != null ? formatTimestamp(time) : 'N/A'}",
                 style: TextStyle(fontSize: 16)),
           ],
         ),
@@ -138,14 +155,15 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
     );
   }
 
-  // Updated builder for Repair orders.
+  // Builder for Repair orders.
   Widget buildRepairCard(QueryDocumentSnapshot order, Timestamp? time) {
     final Map<String, dynamic> data = order.data() as Map<String, dynamic>;
     final String description =
         data['description'] ?? "No description available";
     final String ownerId = data['ownerId'] ?? "Unknown Owner";
-    final dynamic paymentAmountValue = data['paymentAmount'];
-
+    final dynamic amountValue = data['paymentAmount'];
+    final String paymentAmount =
+        amountValue != null ? amountValue.toString() : "0";
     final String paymentId = data['paymentId'] ?? "N/A";
     final String service = data['service'] ?? "repair";
 
@@ -158,15 +176,29 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Description: $description", style: TextStyle(fontSize: 16)),
+            Text("description",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("$description", style: TextStyle(fontSize: 16)),
             SizedBox(height: 8),
-            Text("Owner ID: $ownerId", style: TextStyle(fontSize: 16)),
+            Text("ownerId",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("$ownerId", style: TextStyle(fontSize: 16)),
             SizedBox(height: 8),
-            Text("Payment ID: $paymentId", style: TextStyle(fontSize: 16)),
+            Text("paymentAmount",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("$paymentAmount", style: TextStyle(fontSize: 16)),
             SizedBox(height: 8),
-            Text("Service: $service", style: TextStyle(fontSize: 16)),
+            Text("paymentId",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("$paymentId", style: TextStyle(fontSize: 16)),
             SizedBox(height: 8),
-            Text("Time: ${time != null ? formatTimestamp(time) : 'N/A'}",
+            Text("service",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("$service", style: TextStyle(fontSize: 16)),
+            SizedBox(height: 8),
+            Text("time",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("${time != null ? formatTimestamp(time) : 'N/A'}",
                 style: TextStyle(fontSize: 16)),
           ],
         ),
@@ -174,14 +206,15 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
     );
   }
 
-  // Updated builder for Tow orders.
+  // Builder for Tow orders.
   Widget buildTowCard(QueryDocumentSnapshot order, Timestamp? time) {
     final Map<String, dynamic> data = order.data() as Map<String, dynamic>;
     final String description =
         data['description'] ?? "No description available";
     final String ownerId = data['ownerId'] ?? "Unknown Owner";
-    final dynamic paymentAmountValue = data['paymentAmount'];
-
+    final dynamic amountValue = data['paymentAmount'];
+    final String paymentAmount =
+        amountValue != null ? amountValue.toString() : "0";
     final String paymentId = data['paymentId'] ?? "N/A";
     final String service = data['service'] ?? "tow";
 
@@ -194,15 +227,29 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Description: $description", style: TextStyle(fontSize: 16)),
+            Text("description",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("$description", style: TextStyle(fontSize: 16)),
             SizedBox(height: 8),
-            Text("Owner ID: $ownerId", style: TextStyle(fontSize: 16)),
+            Text("ownerId",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("$ownerId", style: TextStyle(fontSize: 16)),
             SizedBox(height: 8),
-            Text("Payment ID: $paymentId", style: TextStyle(fontSize: 16)),
+            Text("paymentAmount",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("$paymentAmount", style: TextStyle(fontSize: 16)),
             SizedBox(height: 8),
-            Text("Service: $service", style: TextStyle(fontSize: 16)),
+            Text("paymentId",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("$paymentId", style: TextStyle(fontSize: 16)),
             SizedBox(height: 8),
-            Text("Time: ${time != null ? formatTimestamp(time) : 'N/A'}",
+            Text("service",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("$service", style: TextStyle(fontSize: 16)),
+            SizedBox(height: 8),
+            Text("time",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text("${time != null ? formatTimestamp(time) : 'N/A'}",
                 style: TextStyle(fontSize: 16)),
           ],
         ),

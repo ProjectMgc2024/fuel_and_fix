@@ -11,6 +11,8 @@ class EmergencyRepairRequest extends StatefulWidget {
 
 class _EmergencyRepairRequestState extends State<EmergencyRepairRequest> {
   String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? "";
+  // Map to store local status results (true for accepted, false for rejected)
+  Map<String, bool> _statusResult = {};
 
   // Function to fetch the company name
   Future<String> fetchCompanyName() async {
@@ -36,24 +38,32 @@ class _EmergencyRepairRequestState extends State<EmergencyRepairRequest> {
       // Fetch company name
       String companyName = await fetchCompanyName();
 
-      // Update the request status
+      // Update the request status and mark it as responded
       await FirebaseFirestore.instance
           .collection('repair')
           .doc(currentUserId)
           .collection('request')
           .doc(requestId)
-          .update({'status': newStatus});
+          .update({
+        'status': newStatus,
+        'responded': true,
+      });
 
-      // Add a notification for the requested user
+      // Add a notification for the requesting user
       await FirebaseFirestore.instance.collection('notifications').add({
         'userId': userId, // The user who made the request
         'companyId': currentUserId, // The service provider's ID
-        'companyName': companyName, // Correct company name
+        'companyName': companyName,
         'status': newStatus ? 'Accepted' : 'Rejected',
         'message': newStatus
-            ? '$companyName accepted your request.'
-            : '$companyName rejected your request.',
+            ? '$companyName accepted your repair request.'
+            : '$companyName rejected your repair request.',
         'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      // Update local state so the UI reflects the new status
+      setState(() {
+        _statusResult[requestId] = newStatus;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -71,7 +81,7 @@ class _EmergencyRepairRequestState extends State<EmergencyRepairRequest> {
     try {
       DocumentSnapshot userDoc =
           await FirebaseFirestore.instance.collection('user').doc(userId).get();
-      return userDoc.data() as Map<String, dynamic>?; // Return user data
+      return userDoc.data() as Map<String, dynamic>?;
     } catch (e) {
       print('Error fetching user details: $e');
       return null;
@@ -95,8 +105,7 @@ class _EmergencyRepairRequestState extends State<EmergencyRepairRequest> {
   // Function to format timestamp
   String formatTimestamp(Timestamp timestamp) {
     DateTime date = timestamp.toDate();
-    return DateFormat('MMM d, yyyy, h:mm a')
-        .format(date); // Format as "Feb 1, 2025, 10:30 PM"
+    return DateFormat('MMM d, yyyy, h:mm a').format(date);
   }
 
   @override
@@ -160,16 +169,29 @@ class _EmergencyRepairRequestState extends State<EmergencyRepairRequest> {
                       String locationName =
                           additionalData['location_name'] ?? 'Unknown Location';
 
-                      // Fetching additional request info like vehicle situation and vehicle problems
+                      // Additional request information
                       String vehicleSituation =
                           request['vehicleSituation'] ?? 'N/A';
                       Timestamp timestamp =
                           request['timestamp'] ?? Timestamp.now();
                       List<dynamic> vehicleProblems =
                           request['vehicleProblems'] ?? [];
-
-                      // Formatting the timestamp
                       String formattedTimestamp = formatTimestamp(timestamp);
+
+                      // Determine if the request has been responded to
+                      bool respondedFromFirestore =
+                          request.containsKey('responded') &&
+                              request['responded'] == true;
+                      bool responded = respondedFromFirestore ||
+                          _statusResult.containsKey(requestId);
+                      bool accepted;
+                      if (respondedFromFirestore) {
+                        accepted = request['status'];
+                      } else if (_statusResult.containsKey(requestId)) {
+                        accepted = _statusResult[requestId]!;
+                      } else {
+                        accepted = false;
+                      }
 
                       return Card(
                         elevation: 5,
@@ -194,7 +216,6 @@ class _EmergencyRepairRequestState extends State<EmergencyRepairRequest> {
                                 ),
                               ),
                               SizedBox(height: 16),
-
                               // User Details
                               Text(
                                 userDetails['username'] ?? 'Unknown User',
@@ -221,8 +242,6 @@ class _EmergencyRepairRequestState extends State<EmergencyRepairRequest> {
                                   'Registration No: ${userDetails['registrationNo'] ?? 'N/A'}'),
                               SizedBox(height: 3),
                               Text('Location: $locationName'),
-
-                              // New Information
                               SizedBox(height: 3),
                               Text('Timestamp: $formattedTimestamp'),
                               SizedBox(height: 5),
@@ -230,48 +249,62 @@ class _EmergencyRepairRequestState extends State<EmergencyRepairRequest> {
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Vehicle Issues: '),
+                                    Text('Vehicle Issues:'),
                                     for (var problem in vehicleProblems)
                                       Text(' - $problem'),
                                   ],
                                 ),
                               Text('Vehicle Situation: $vehicleSituation'),
                               SizedBox(height: 16),
-
-                              // Buttons
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      updateRequestStatus(
-                                          requestId, true, request['userId']);
-                                    },
-                                    child: Text('Accept'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green,
+                              // If not yet responded, show Accept/Reject buttons; otherwise, display the status
+                              if (!responded)
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        updateRequestStatus(
+                                            requestId, true, request['userId']);
+                                      },
+                                      child: Text('Accept'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        updateRequestStatus(requestId, false,
+                                            request['userId']);
+                                      },
+                                      child: Text('Reject'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.location_on,
+                                          color: Colors.blue),
+                                      onPressed: () {
+                                        openGoogleMaps(latitude, longitude);
+                                      },
+                                    ),
+                                  ],
+                                )
+                              else
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    accepted
+                                        ? 'Request Accepted'
+                                        : 'Request Rejected',
+                                    style: TextStyle(
+                                      color:
+                                          accepted ? Colors.green : Colors.red,
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      updateRequestStatus(
-                                          requestId, false, request['userId']);
-                                    },
-                                    child: Text('Reject'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.location_on,
-                                        color: Colors.blue),
-                                    onPressed: () {
-                                      openGoogleMaps(latitude, longitude);
-                                    },
-                                  ),
-                                ],
-                              ),
+                                ),
                             ],
                           ),
                         ),
