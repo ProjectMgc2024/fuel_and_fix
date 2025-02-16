@@ -16,16 +16,14 @@ class OwnerAuthServices {
     Map<String, dynamic>? additionalData,
     required String cname,
     required String clicense,
-    required String collection, // Collection name: 'fuel' or 'tow'
+    required String collection, // Collection name: 'fuel' or 'tow' or 'repair'
   }) async {
     try {
-      // Register the user with Firebase Authentication
       final userCredential = await firebaseAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Check if user is created successfully
       if (userCredential.user == null) {
         throw FirebaseAuthException(
             message: 'User registration failed', code: 'USER_CREATION_FAILED');
@@ -33,7 +31,6 @@ class OwnerAuthServices {
 
       String userId = userCredential.user!.uid;
 
-      // Define the common user data
       Map<String, dynamic> userData = {
         'email': email,
         'companyName': cname,
@@ -42,40 +39,34 @@ class OwnerAuthServices {
         'companyLicense': clicense,
         'additionalData': additionalData,
         'companyLogo':
-            'https://res.cloudinary.com/dnywnuawz/image/upload/v1734347001/public/fuel/hhalljykskzcxxhxomhi.png', // default logo
+            'https://res.cloudinary.com/dnywnuawz/image/upload/v1734347001/public/fuel/hhalljykskzcxxhxomhi.png',
         'status': true,
-        'isApproved': false, // Default status
+        'isApproved': false,
       };
 
-      // Check the collection and add data accordingly
       if (collection == 'fuel') {
-        // Fuel collection registration
         await firebaseFirestore.collection(collection).doc(userId).set({
           ...userData,
-          'employees': null, // Can be updated later
-          'fuels': null, // Can be updated later
+          'employees': null,
+          'fuels': null,
           'service': 'fuel',
         });
       } else if (collection == 'tow') {
-        // Tow collection registration
         await firebaseFirestore.collection(collection).doc(userId).set({
           ...userData,
           'employees': null,
           'servicesOffered': null,
-          'service': 'tow', // Tow service type
+          'service': 'tow',
         });
       } else if (collection == 'repair') {
-        // Tow collection registration
         await firebaseFirestore.collection(collection).doc(userId).set({
           ...userData,
           'employees': null,
           'vehicleTypes': null,
           'service': 'repair',
-        } // Tow service type
-            );
+        });
       }
 
-      // Success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Registration Successful for $email'),
@@ -83,8 +74,7 @@ class OwnerAuthServices {
         ),
       );
     } catch (e) {
-      // Error handling
-      print(e); // Log error for debugging
+      print(e);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -96,99 +86,60 @@ class OwnerAuthServices {
     }
   }
 
-  // Login method with improved error handling
   Future<bool> fuelLogin({
     required BuildContext context,
     required String email,
     required String password,
   }) async {
     try {
-      // Sign in the user with Firebase Authentication
       final userCredential = await firebaseAuth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Fetch user details from Firestore
       final userDoc = await firebaseFirestore
-          .collection('fuel') // Ensure the correct collection
+          .collection('fuel')
           .doc(userCredential.user?.uid)
           .get();
 
       if (userDoc.exists) {
-        final userData =
-            userDoc.data() as Map<String, dynamic>; // Type casting to Map
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text('Login Successful! Welcome, ${userData['ownerName']}'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        print('User Data: $userData');
-        return true; // Login successful
+        final userData = userDoc.data() as Map<String, dynamic>;
+        bool isEnabled = userData['status'] ?? false;
+
+        if (!isEnabled) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  "Your fuel station is disabled. Please contact the administrator."),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return false; // Account is disabled; do not show success.
+        }
+
+        // Simply return true; no success message here.
+        return true;
       } else {
-        // If the user does not exist in Firestore
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('User not found in the database.'),
             backgroundColor: Colors.red,
           ),
         );
-        return false; // User not found in Firestore
+        return false;
       }
     } on FirebaseAuthException catch (e) {
-      // Handle specific FirebaseAuth errors
-      String errorMessage;
-      switch (e.code) {
-        case 'user-not-found':
-          errorMessage = 'No user found with this email.';
-          break;
-        case 'wrong-password':
-          errorMessage = 'Incorrect password.';
-          break;
-        default:
-          errorMessage = 'Login failed. Please try again.';
-      }
-
-      print("Error: $errorMessage");
-
-      // Show the error message
+      String errorMessage = _getFirebaseAuthErrorMessage(e.code);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(errorMessage),
           backgroundColor: Colors.red,
         ),
       );
-      return false; // Login failed
-    } catch (e) {
-      // Handle other unexpected errors
-      String errorMessage = 'An unexpected error occurred: ${e.toString()}';
-      print("Error: $errorMessage");
-
-      // Show the error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMessage),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return false; // Unexpected error
+      return false;
     }
   }
 
-  // Method to check if a user is already logged in
-  Future<bool> isUserLoggedIn() async {
-    final user = firebaseAuth.currentUser;
-    return user != null;
-  }
-
-  // Method to logout user
-  Future<void> logout() async {
-    await firebaseAuth.signOut();
-  }
-
-  // Method for repair login
   Future<bool> repairLogin({
     required BuildContext context,
     required String email,
@@ -200,15 +151,26 @@ class OwnerAuthServices {
         password: password,
       );
 
-      // Fetch user details from Firestore (Assuming repair data is stored in a collection called 'repair')
       final userDoc = await firebaseFirestore
-          .collection(
-              'repair') // Change this to your correct collection for repairs
+          .collection('repair')
           .doc(userCredential.user?.uid)
           .get();
 
       if (userDoc.exists) {
         final userData = userDoc.data() as Map<String, dynamic>;
+        bool isEnabled = userData['status'] ?? false;
+
+        if (!isEnabled) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  "Your repair shop is disabled. Please contact the administrator."),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return false; // Account is disabled
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content:
@@ -216,30 +178,18 @@ class OwnerAuthServices {
             backgroundColor: Colors.green,
           ),
         );
-        print('User Data: $userData');
-        return true; // Login successful
+        return true;
       } else {
-        // If the user does not exist in Firestore
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('User not found in the database.'),
             backgroundColor: Colors.red,
           ),
         );
-        return false; // User not found in Firestore
+        return false;
       }
     } on FirebaseAuthException catch (e) {
-      String errorMessage;
-      switch (e.code) {
-        case 'user-not-found':
-          errorMessage = 'No user found with this email.';
-          break;
-        case 'wrong-password':
-          errorMessage = 'Incorrect password.';
-          break;
-        default:
-          errorMessage = 'Login failed. Please try again.';
-      }
+      String errorMessage = _getFirebaseAuthErrorMessage(e.code);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -247,20 +197,10 @@ class OwnerAuthServices {
           backgroundColor: Colors.red,
         ),
       );
-      return false; // Login failed
-    } catch (e) {
-      String errorMessage = 'An unexpected error occurred: ${e.toString()}';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMessage),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return false; // Unexpected error
+      return false;
     }
   }
 
-  // Tow Login method
   Future<bool> towLogin({
     required BuildContext context,
     required String email,
@@ -272,44 +212,27 @@ class OwnerAuthServices {
         password: password,
       );
 
-      // Fetch user details from Firestore for Tow collection
       final userDoc = await firebaseFirestore
-          .collection('tow') // Make sure to use the correct 'tow' collection
+          .collection('tow')
           .doc(userCredential.user?.uid)
           .get();
 
       if (userDoc.exists) {
         final userData = userDoc.data() as Map<String, dynamic>;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text('Login Successful! Welcome, ${userData['ownerName']}'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        print('User Data: $userData');
-        return true; // Login successful
+        bool isEnabled = userData['status'] ?? false;
+
+        return true;
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('User not found in the Tow database.'),
+            content: Text('User not found in the database.'),
             backgroundColor: Colors.red,
           ),
         );
-        return false; // User not found in the Firestore 'tow' collection
+        return false;
       }
     } on FirebaseAuthException catch (e) {
-      String errorMessage;
-      switch (e.code) {
-        case 'user-not-found':
-          errorMessage = 'No user found with this email.';
-          break;
-        case 'wrong-password':
-          errorMessage = 'Incorrect password.';
-          break;
-        default:
-          errorMessage = 'Login failed. Please try again.';
-      }
+      String errorMessage = _getFirebaseAuthErrorMessage(e.code);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -317,16 +240,26 @@ class OwnerAuthServices {
           backgroundColor: Colors.red,
         ),
       );
-      return false; // Login failed
-    } catch (e) {
-      String errorMessage = 'An unexpected error occurred: ${e.toString()}';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMessage),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return false; // Unexpected error
+      return false;
+    }
+  }
+
+  Future<void> logout() async {
+    await firebaseAuth.signOut();
+  }
+
+  Future<bool> isUserLoggedIn() async {
+    return firebaseAuth.currentUser != null;
+  }
+
+  String _getFirebaseAuthErrorMessage(String errorCode) {
+    switch (errorCode) {
+      case 'user-not-found':
+        return 'No user found with this email.';
+      case 'wrong-password':
+        return 'Incorrect password.';
+      default:
+        return 'Login failed. Please try again.';
     }
   }
 }

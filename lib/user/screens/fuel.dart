@@ -39,6 +39,23 @@ class _FuelStationListState extends State<FuelStationList> {
     fetchCurrentUserId();
     fetchCurrentLocation();
     fetchFuelStations();
+
+    // Listen for changes in fuel prices so that updates made by admin are reflected automatically.
+    FirebaseFirestore.instance
+        .collection('price')
+        .doc('fuelPrices')
+        .snapshots()
+        .listen((docSnapshot) {
+      if (docSnapshot.exists) {
+        setState(() {
+          fuelPrices = {
+            'cng': docSnapshot.data()?['cng']?.toDouble() ?? 0.0,
+            'diesel': docSnapshot.data()?['diesel']?.toDouble() ?? 0.0,
+            'petrol': docSnapshot.data()?['petrol']?.toDouble() ?? 0.0,
+          };
+        });
+      }
+    });
   }
 
   Future<void> fetchCurrentUserId() async {
@@ -178,30 +195,9 @@ class _FuelStationListState extends State<FuelStationList> {
         fuelStations = tempStations;
       });
 
-      await fetchFuelPrices();
+      // You can also call fetchFuelPrices() here if needed, but the snapshot listener will update fuelPrices.
     } catch (e) {
       print('Error fetching fuel stations: $e');
-    }
-  }
-
-  Future<void> fetchFuelPrices() async {
-    try {
-      DocumentSnapshot priceDoc = await FirebaseFirestore.instance
-          .collection('price')
-          .doc('fuelPrices')
-          .get();
-
-      if (priceDoc.exists) {
-        setState(() {
-          fuelPrices = {
-            'cng': priceDoc['cng']?.toDouble() ?? 0.0,
-            'diesel': priceDoc['diesel']?.toDouble() ?? 0.0,
-            'petrol': priceDoc['petrol']?.toDouble() ?? 0.0,
-          };
-        });
-      }
-    } catch (e) {
-      print('Error fetching fuel prices: $e');
     }
   }
 
@@ -466,13 +462,13 @@ class _FuelStationListState extends State<FuelStationList> {
                             Row(
                               children: [
                                 Icon(
-                                  Icons.local_gas_station,
+                                  Icons.email,
                                   color: Color.fromARGB(255, 217, 227, 217),
                                   size: 18,
                                 ),
                                 SizedBox(width: 8),
                                 Text(
-                                  'Address: ${station['address']}',
+                                  'Email: ${station['address']}',
                                   style: TextStyle(
                                       fontSize: 14, color: Colors.white70),
                                 ),

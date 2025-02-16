@@ -53,7 +53,8 @@ class _TowLoginScreenState extends State<TowLoginScreen> {
             // Show a SnackBar message to inform the user.
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Your account is not allowed to login.'),
+                content: Text(
+                    'Your tow shop is disabled. Please contact the administrator.'),
                 backgroundColor: Colors.redAccent,
                 duration: Duration(seconds: 2),
               ),

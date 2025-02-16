@@ -84,6 +84,23 @@ class _ProfileScreenState extends State<EditProfile> {
     }
   }
 
+  // Custom phone number validator
+  String? _validatePhoneNumber(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter a Phone Number';
+    }
+
+    if (value.length != 10) {
+      return 'Phone number must be exactly 10 digits';
+    }
+    // Regex allows an optional '+' and 10 to 15 digits.
+    final RegExp phoneExp = RegExp(r'^\+?\d{10,15}$');
+    if (!phoneExp.hasMatch(value)) {
+      return 'Please enter a valid phone number';
+    }
+    return null;
+  }
+
   // Handle save button press
   Future<void> _handleSave() async {
     if (_formKey.currentState!.validate()) {
@@ -91,11 +108,6 @@ class _ProfileScreenState extends State<EditProfile> {
         User? user = FirebaseAuth.instance.currentUser;
 
         if (user != null) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Profile updated successfully!'),
-            backgroundColor: Colors.green,
-          ));
-
           // Upload image if selected
           String? imageUrl;
           if (_selectedImage != null) {
@@ -115,9 +127,15 @@ class _ProfileScreenState extends State<EditProfile> {
             'registrationNo': registrationController.text.trim(),
             'vehicleType':
                 selectedVehicleType ?? '', // Save the selected vehicle type
-            'userImage':
-                imageUrl ?? _imageUrl, // Save image URL (either new or old)
+            'userImage': imageUrl ?? _imageUrl, // Save image URL (new or old)
           }, SetOptions(merge: true));
+
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Profile updated successfully!'),
+            backgroundColor: Colors.green,
+          ));
+
+          Navigator.pop(context);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text('No user signed in. Please log in.'),
@@ -138,7 +156,7 @@ class _ProfileScreenState extends State<EditProfile> {
     }
   }
 
-  // Pick image from gallery or camera
+  // Pick image from gallery
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? pickedFile =
@@ -195,17 +213,16 @@ class _ProfileScreenState extends State<EditProfile> {
                           TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: 20),
-
                     // Profile picture icon or selected image
                     GestureDetector(
-                      onTap: _pickImage, // Allow user to change image
+                      onTap: _pickImage,
                       child: CircleAvatar(
                         radius: 50,
                         backgroundImage: _selectedImage != null
                             ? FileImage(_selectedImage!)
                             : (_imageUrl != null
                                 ? NetworkImage(_imageUrl!)
-                                : null), // Display selected or saved image
+                                : null),
                         backgroundColor: Colors.grey,
                         child: _selectedImage == null && _imageUrl == null
                             ? Icon(
@@ -217,17 +234,16 @@ class _ProfileScreenState extends State<EditProfile> {
                       ),
                     ),
                     SizedBox(height: 20),
-
                     // Form fields (Username, Phone, etc.)
                     _buildTextFormField(
                         usernameController, 'Username', Icons.person),
                     _buildTextFormField(
-                        phoneNumberController, 'Phone Number', Icons.phone),
+                        phoneNumberController, 'Phone Number', Icons.phone,
+                        validator: _validatePhoneNumber),
                     _buildTextFormField(
                         licenseController, 'License', Icons.card_membership),
                     _buildTextFormField(registrationController,
                         'Registration Number', Icons.details),
-
                     // Vehicle Type Dropdown
                     SizedBox(
                       width: 300,
@@ -258,18 +274,13 @@ class _ProfileScreenState extends State<EditProfile> {
                         }).toList(),
                       ),
                     ),
-                    const SizedBox(height: 20),
-
+                    SizedBox(height: 20),
                     // Save and Cancel buttons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         ElevatedButton(
-                          onPressed: () {
-                            _handleSave();
-                            Navigator.pop(
-                                context); // This will pop the current screen and return to the previous one (profile page)
-                          },
+                          onPressed: _handleSave,
                           child: Text('Save'),
                         ),
                         SizedBox(width: 20),
@@ -289,8 +300,10 @@ class _ProfileScreenState extends State<EditProfile> {
     );
   }
 
+  // Updated text field builder accepting an optional validator
   Widget _buildTextFormField(
-      TextEditingController controller, String label, IconData icon) {
+      TextEditingController controller, String label, IconData icon,
+      {String? Function(String?)? validator}) {
     return Container(
       width: 300,
       margin: EdgeInsets.symmetric(vertical: 8),
@@ -301,12 +314,13 @@ class _ProfileScreenState extends State<EditProfile> {
           border: OutlineInputBorder(),
           prefixIcon: Icon(icon),
         ),
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Please enter a $label';
-          }
-          return null;
-        },
+        validator: validator ??
+            (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter a $label';
+              }
+              return null;
+            },
       ),
     );
   }
@@ -319,7 +333,7 @@ class _ProfileScreenState extends State<EditProfile> {
       registrationController.clear();
       licenseController.clear();
       _selectedImage = null;
-      selectedVehicleType = null; // Clear selected vehicle type
+      selectedVehicleType = null;
     });
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('Changes canceled.'),

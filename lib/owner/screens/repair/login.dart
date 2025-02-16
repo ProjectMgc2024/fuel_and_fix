@@ -38,33 +38,6 @@ class _RepairLoginScreenState extends State<RepairLoginScreen> {
           Map<String, dynamic> repairData =
               querySnapshot.docs.first.data() as Map<String, dynamic>;
           bool status = repairData['status'] ?? false;
-          if (!status) {
-            // If the shop is disabled, show error and do not navigate
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                    "Your repair shop is disabled. Please contact the administrator."),
-                backgroundColor: Colors.red,
-              ),
-            );
-            return;
-          } else {
-            // If enabled, navigate to the management page
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => RepairManagementPage(),
-              ),
-            );
-          }
-        } else {
-          // No document found: show error message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("No repair shop record found for this account."),
-              backgroundColor: Colors.red,
-            ),
-          );
         }
       }
     }

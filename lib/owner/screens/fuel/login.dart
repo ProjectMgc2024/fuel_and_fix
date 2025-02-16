@@ -52,7 +52,8 @@ class _FuelLoginScreenState extends State<FuelLoginScreen> {
             });
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text("Your account has been disabled"),
+                content: Text(
+                    "Your fuel station is disabled. Please contact the administrator."),
                 backgroundColor: Colors.redAccent,
                 duration: Duration(seconds: 2),
               ),

@@ -44,8 +44,7 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
           'employees': List<Map<String, dynamic>>.from(data['employees'] ?? []),
           'fuels': List<Map<String, dynamic>>.from(data['fuels'] ?? []),
           'isApproved': data['isApproved'] ?? false,
-          'disabled':
-              data['disabled'] ?? false, // New field for enabling/disabling
+          'disabled': data['disabled'] ?? false, // Field for enabling/disabling
         };
       }).toList();
     } catch (e) {
@@ -79,6 +78,21 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
           duration: Duration(seconds: 2),
         ),
       );
+    }
+  }
+
+  // Approve a fuel station (only available in the "Pending" tab)
+  void _approveFuelStation(String stationId) async {
+    try {
+      await _firebaseFirestore
+          .collection('fuel')
+          .doc(stationId)
+          .update({'isApproved': true});
+      setState(() {
+        fuelStations = fetchFuelStations();
+      });
+    } catch (e) {
+      print('Error approving fuel station: $e');
     }
   }
 
@@ -127,11 +141,9 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return Center(child: CircularProgressIndicator());
                   }
-
                   if (snapshot.hasError) {
                     return Center(child: Text('Error loading data'));
                   }
-
                   if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return Center(child: Text('No fuel stations available'));
                   }
@@ -194,7 +206,7 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
     }).toList();
   }
 
-  // Fuel station card widget with enable/disable toggle
+  // Fuel station card widget with enable/disable toggle and accept button for pending stations
   Widget _fuelStationCard(
       BuildContext context, Map<String, dynamic> station, bool isPending) {
     bool isDisabled = station['disabled'] ?? false;
@@ -297,7 +309,6 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
             ),
           )
         ],
-        // Removed PopupMenuButton delete option and added a toggle button instead
         trailing: IconButton(
           icon: Icon(
             isDisabled ? Icons.lock : Icons.lock_open,
@@ -309,20 +320,7 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
     );
   }
 
-  void _approveFuelStation(String stationId) async {
-    try {
-      await _firebaseFirestore
-          .collection('fuel')
-          .doc(stationId)
-          .update({'isApproved': true});
-      setState(() {
-        fuelStations = fetchFuelStations();
-      });
-    } catch (e) {
-      print('Error approving fuel station: $e');
-    }
-  }
-
+  // Dialog to add new fuel prices, update the price collection and update all fuel stations
   void _showAddFuelDialog(BuildContext context) {
     TextEditingController petrolController = TextEditingController();
     TextEditingController dieselController = TextEditingController();
@@ -355,16 +353,45 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
                       double.tryParse(dieselController.text) ?? 0;
                   double cngPrice = double.tryParse(cngController.text) ?? 0;
 
+                  // Update the fuel prices in the "price" collection
                   CollectionReference pricesCollection =
                       FirebaseFirestore.instance.collection('price');
-
                   await pricesCollection.doc('fuelPrices').set({
                     'petrol': petrolPrice,
                     'diesel': dieselPrice,
                     'cng': cngPrice,
                   });
 
-                  print('Prices updated successfully');
+                  // Fetch all fuel station documents
+                  QuerySnapshot fuelSnapshot =
+                      await FirebaseFirestore.instance.collection('fuel').get();
+
+                  // Use a batch write to update all stations atomically
+                  WriteBatch batch = FirebaseFirestore.instance.batch();
+
+                  for (DocumentSnapshot doc in fuelSnapshot.docs) {
+                    Map<String, dynamic> stationData =
+                        doc.data() as Map<String, dynamic>;
+                    List fuels = stationData['fuels'] ?? [];
+                    List updatedFuels = fuels.map((fuel) {
+                      if (fuel['type'] == 'Petrol') {
+                        fuel['price'] = petrolPrice;
+                      } else if (fuel['type'] == 'Diesel') {
+                        fuel['price'] = dieselPrice;
+                      } else if (fuel['type'] == 'CNG') {
+                        fuel['price'] = cngPrice;
+                      }
+                      return fuel;
+                    }).toList();
+
+                    batch.update(doc.reference, {'fuels': updatedFuels});
+                  }
+
+                  // Commit the batch update
+                  await batch.commit();
+
+                  print(
+                      'Prices updated successfully in price and fuel collections.');
                   Navigator.pop(context);
                 } catch (e) {
                   print('Error updating prices: $e');
@@ -383,6 +410,7 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
     );
   }
 
+  // Widget to build individual fuel price text fields
   Widget _buildFuelPriceField(
       String fuelType, TextEditingController controller) {
     return Padding(

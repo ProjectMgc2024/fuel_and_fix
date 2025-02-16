@@ -30,8 +30,8 @@ class FuelProfilePageState extends State<FuelProfilePage> {
     ownerNameController = TextEditingController();
     emailController = TextEditingController();
     phoneNoController = TextEditingController();
-    companyNameController = TextEditingController(); // Initialize
-    companyLicenseController = TextEditingController(); // Initialize
+    companyNameController = TextEditingController();
+    companyLicenseController = TextEditingController();
   }
 
   @override
@@ -39,15 +39,14 @@ class FuelProfilePageState extends State<FuelProfilePage> {
     ownerNameController.dispose();
     emailController.dispose();
     phoneNoController.dispose();
-    companyNameController.dispose(); // Dispose
-    companyLicenseController.dispose(); // Dispose
+    companyNameController.dispose();
+    companyLicenseController.dispose();
     super.dispose();
   }
 
   void _showAddFuelDialog() {
     final TextEditingController fuelTypeController = TextEditingController();
-    final TextEditingController fuelPriceController = TextEditingController();
-
+    // Remove the unused fuelPriceController; we will fetch the price automatically
     showDialog(
       context: context,
       builder: (context) {
@@ -69,7 +68,7 @@ class FuelProfilePageState extends State<FuelProfilePage> {
             ),
             TextButton(
               onPressed: () {
-                _addFuel(fuelTypeController.text, fuelPriceController.text);
+                _addFuel(fuelTypeController.text);
                 Navigator.pop(context);
               },
               child: Text("Add"),
@@ -80,56 +79,31 @@ class FuelProfilePageState extends State<FuelProfilePage> {
     );
   }
 
-  void _addFuel(String type, String price) async {
+  /// Adds a new fuel entry.
+  /// The method now fetches the current global price for the given fuel type
+  /// from the "price" collection (document "fuelPrices").
+  void _addFuel(String type) async {
+    double globalPrice = 0.0;
+    DocumentSnapshot priceDoc =
+        await _firestore.collection('price').doc('fuelPrices').get();
+    if (priceDoc.exists) {
+      Map<String, dynamic> priceData = priceDoc.data() as Map<String, dynamic>;
+      // Use the lowercase fuel type to match the key in the price document
+      globalPrice = priceData[type.toLowerCase()]?.toDouble() ?? 0.0;
+    }
+
     final documentSnapshot =
         await _firestore.collection('fuel').doc(documentId).get();
     List fuels = documentSnapshot.data()?['fuels'] ?? [];
     fuels.add({
       'type': type,
+      'price': globalPrice,
     });
 
     await _firestore.collection('fuel').doc(documentId).update({
       'fuels': fuels,
     });
     setState(() {});
-  }
-
-  void _showEditFuelDialog(int index, Map<String, dynamic> fuelData) {
-    final TextEditingController fuelTypeController =
-        TextEditingController(text: fuelData['type']);
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text("Edit Fuel"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: fuelTypeController,
-                decoration: InputDecoration(labelText: 'Fuel Type'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("Cancel"),
-            ),
-            TextButton(
-              onPressed: () {
-                _updateFuel(index, {
-                  'type': fuelTypeController.text,
-                });
-                Navigator.pop(context);
-              },
-              child: Text("Save"),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   void _updateFuel(int index, Map<String, dynamic> updatedFuel) async {
@@ -436,12 +410,10 @@ class FuelProfilePageState extends State<FuelProfilePage> {
       appBar: AppBar(
         title: Text("Fuel Profile"),
         centerTitle: true,
-        backgroundColor:
-            Color.fromARGB(255, 209, 147, 24), // AppBar background color
+        backgroundColor: Color.fromARGB(255, 209, 147, 24),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back), // Custom back button icon
+          icon: Icon(Icons.arrow_back),
           onPressed: () {
-            // Pop the current screen when the button is pressed
             Navigator.pop(context);
           },
         ),
@@ -520,7 +492,6 @@ class FuelProfilePageState extends State<FuelProfilePage> {
                     ),
                   ),
                 ),
-
                 // Fuels Section
                 _buildSectionHeader(
                     title: "Fuels",
@@ -554,7 +525,6 @@ class FuelProfilePageState extends State<FuelProfilePage> {
                     ),
                   ),
                 ),
-
                 // Employees Section
                 _buildSectionHeader(
                     title: "Employees", icon: Icons.group, color: Colors.blue),
@@ -588,7 +558,7 @@ class FuelProfilePageState extends State<FuelProfilePage> {
     );
   }
 
-// Helper Methods
+  // Helper Methods
   Widget _buildSectionHeader(
       {required String title, required IconData icon, required Color color}) {
     return Padding(
@@ -622,7 +592,7 @@ class FuelProfilePageState extends State<FuelProfilePage> {
             colors: [
               Color.fromARGB(255, 219, 160, 51),
               Color.fromARGB(255, 216, 197, 85)
-            ], // Orange gradient
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -649,10 +619,6 @@ class FuelProfilePageState extends State<FuelProfilePage> {
               Row(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.edit, color: Colors.deepPurple),
-                    onPressed: () => _showEditFuelDialog(index, fuel),
-                  ),
-                  IconButton(
                     icon: Icon(Icons.delete, color: Colors.red),
                     onPressed: () => _deleteFuel(index),
                   ),
@@ -678,7 +644,7 @@ class FuelProfilePageState extends State<FuelProfilePage> {
             colors: [
               Color.fromARGB(255, 151, 176, 165),
               Color.fromARGB(222, 196, 196, 227)
-            ], // Purple gradient
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
