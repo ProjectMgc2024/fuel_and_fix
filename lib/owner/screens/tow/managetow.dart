@@ -1,40 +1,105 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fuel_and_fix/owner/screens/feedbackview.dart';
+import 'package:fuel_and_fix/owner/screens/owner.dart';
 import 'package:fuel_and_fix/owner/screens/tow/t_payment.dart';
 import 'package:fuel_and_fix/owner/screens/tow/tow_profile.dart';
 import 'package:fuel_and_fix/owner/screens/tow/tow_request.dart';
-import 'package:fuel_and_fix/user/screens/introduction.dart'; // Import the introduction page
 
-class TowManagementPage extends StatelessWidget {
+import 'package:fuel_and_fix/user/screens/introduction.dart';
+
+class TowManagementPage extends StatefulWidget {
+  @override
+  _TowManagementPageState createState() => _TowManagementPageState();
+}
+
+class _TowManagementPageState extends State<TowManagementPage> {
+  String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? "";
+  int pendingRequestCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchPendingRequestCount();
+  }
+
+  // Listen for tow requests where read is false.
+  // The snapshot listener updates the badge in real time.
+  void fetchPendingRequestCount() {
+    FirebaseFirestore.instance
+        .collection('tow')
+        .doc(currentUserId)
+        .collection('request')
+        .where('read', isEqualTo: false)
+        .snapshots()
+        .listen((snapshot) {
+      setState(() {
+        pendingRequestCount = snapshot.docs.length;
+      });
+    });
+  }
+
+  // When the tow Requests tile is tapped, query the pending requests.
+  // If any exist, show the count in a SnackBar and mark each as read (set read to true).
+  // The badge is cleared only after Firestore confirms the updates.
+  void clearPendingRequests() async {
+    QuerySnapshot pendingSnapshot = await FirebaseFirestore.instance
+        .collection('tow')
+        .doc(currentUserId)
+        .collection('request')
+        .where('read', isEqualTo: false)
+        .get();
+
+    int count = pendingSnapshot.docs.length;
+    if (count > 0) {
+      // Display the count in a SnackBar
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text('You have $count new tow request(s). Marking them as read.'),
+        ),
+      );
+      // Mark all pending requests as read by updating 'read' to true.
+      // We await each update so the UI badge remains until Firestore confirms the change.
+      for (var doc in pendingSnapshot.docs) {
+        await doc.reference.update({'read': true});
+      }
+      // No manual setState here—once Firestore is updated,
+      // the snapshot listener in fetchPendingRequestCount() clears the badge.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        centerTitle: true,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back), // Custom back button icon
+          icon: Icon(Icons.arrow_back),
           onPressed: () {
-            // Pop the current screen when the button is pressed
-            Navigator.pop(context);
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => OwnerIntro()),
+            );
           },
         ),
+        centerTitle: true,
         title: Text(
           'Tow Management',
-          style: TextStyle(
-              fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Color.fromARGB(255, 74, 80, 100),
+        backgroundColor: Color.fromARGB(255, 88, 89, 93),
         actions: [
           IconButton(
             icon: Icon(
               Icons.logout,
               size: 30,
-              color: const Color.fromARGB(255, 141, 29, 29),
+              color: const Color.fromARGB(
+                  255, 101, 21, 21), // Added color for the icon
             ),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Logged out!')),
-              );
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text('Logged out!')));
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => IntroductionPage()),
@@ -55,33 +120,39 @@ class TowManagementPage extends StatelessWidget {
           ),
         ),
         child: Padding(
-          padding: EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(40.0),
           child: ListView(
             children: [
-              _buildVerticalCard(
-                  context,
-                  'Profile',
-                  'Update your provider details',
-                  Icons.person,
-                  TowProfilePage()),
-              _buildVerticalCard(
-                  context,
-                  'Towing Requests',
-                  'Manage incoming towing service requests',
-                  Icons.directions_car,
-                  TowRequest()),
-              _buildVerticalCard(
-                  context,
-                  'Payments & Earnings',
-                  'Track your towing service payments',
-                  Icons.account_balance_wallet,
-                  TPaymentsAndEarningsPage()),
-              _buildVerticalCard(
-                  context,
-                  'Feedback',
-                  'View feedback from your customers',
-                  Icons.feedback,
-                  FeedbackScreen()), // New feedback card
+              _buildDashboardSection(
+                context,
+                'Profile',
+                'Update your provider details',
+                Icons.person,
+                TowProfilePage(),
+              ),
+              _buildDashboardSection(
+                context,
+                'Tow Requests',
+                'Manage incoming Tow service requests',
+                Icons.build,
+                TowRequest(),
+                pendingRequestCount,
+                clearPendingRequests,
+              ),
+              _buildDashboardSection(
+                context,
+                'Payments & Earnings',
+                'Track your Tow service payments',
+                Icons.account_balance_wallet,
+                TPaymentsAndEarningsPage(),
+              ),
+              _buildDashboardSection(
+                context,
+                'Feedback',
+                'View and manage customer feedback',
+                Icons.feedback,
+                FeedbackScreen(),
+              ),
             ],
           ),
         ),
@@ -89,69 +160,84 @@ class TowManagementPage extends StatelessWidget {
     );
   }
 
-  Widget _buildVerticalCard(BuildContext context, String title,
-      String description, IconData icon, Widget page) {
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => page),
-        );
-      },
-      child: Center(
-        // Center the card in the layout
+  Widget _buildDashboardSection(
+    BuildContext context,
+    String title,
+    String description,
+    IconData icon,
+    Widget page, [
+    int? notificationCount,
+    VoidCallback? onTap,
+  ]) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12.0),
+      child: InkWell(
+        onTap: () {
+          if (onTap != null) {
+            onTap();
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => page),
+          );
+        },
         child: Container(
-          width: MediaQuery.of(context).size.width *
-              0.6, // Reduce the width to 80% of the screen width
-          child: Card(
-            elevation: 8.0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16.0),
+          padding: EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color.fromARGB(255, 126, 119, 102), // Gradient color 1
+                const Color.fromARGB(255, 44, 50, 72), // Gradient color 2
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            color: Colors.white,
-            margin: EdgeInsets.symmetric(vertical: 8.0),
-            child: Ink(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color.fromARGB(255, 126, 119, 102), // Gradient color 1
-                    const Color.fromARGB(255, 44, 50, 72), // Gradient color 2
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16.0),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 5,
+                offset: Offset(0, 3),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
+            ],
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 50, color: Colors.white),
+              SizedBox(width: 16),
+              Expanded(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      icon,
-                      size: 50,
-                      color: const Color.fromARGB(255, 255, 255, 255),
-                    ),
-                    SizedBox(height: 16),
                     Text(
                       title,
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: const Color.fromARGB(255, 254, 253, 255),
+                        color: Colors.white,
                       ),
-                      textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 8),
                     Text(
                       description,
-                      style: TextStyle(
-                          color: const Color.fromARGB(224, 255, 248, 248)),
-                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white70),
                     ),
                   ],
                 ),
               ),
-            ),
+              if (notificationCount != null && notificationCount > 0)
+                CircleAvatar(
+                  backgroundColor: Colors.red,
+                  radius: 13,
+                  child: Text(
+                    notificationCount.toString(),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),

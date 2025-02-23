@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -33,6 +34,8 @@ class _FuelStationListState extends State<FuelStationList> {
   String? _locationName;
   Map<String, double> fuelPrices = {};
 
+  StreamSubscription? _priceSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -41,15 +44,14 @@ class _FuelStationListState extends State<FuelStationList> {
     fetchFuelStations();
 
     // Listen for changes in fuel prices so that updates made by admin are reflected automatically.
-    FirebaseFirestore.instance
+    _priceSubscription = FirebaseFirestore.instance
         .collection('price')
         .doc('fuelPrices')
         .snapshots()
         .listen((docSnapshot) {
-      if (docSnapshot.exists) {
+      if (docSnapshot.exists && mounted) {
         setState(() {
           fuelPrices = {
-            'cng': docSnapshot.data()?['cng']?.toDouble() ?? 0.0,
             'diesel': docSnapshot.data()?['diesel']?.toDouble() ?? 0.0,
             'petrol': docSnapshot.data()?['petrol']?.toDouble() ?? 0.0,
           };
@@ -58,12 +60,20 @@ class _FuelStationListState extends State<FuelStationList> {
     });
   }
 
+  @override
+  void dispose() {
+    _priceSubscription?.cancel();
+    super.dispose();
+  }
+
   Future<void> fetchCurrentUserId() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
-      setState(() {
-        currentUserId = user?.uid;
-      });
+      if (mounted) {
+        setState(() {
+          currentUserId = user?.uid;
+        });
+      }
     } catch (e) {
       print('Error fetching current user ID: $e');
     }
@@ -76,11 +86,13 @@ class _FuelStationListState extends State<FuelStationList> {
 
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                'Location services are disabled. Please enable them to proceed.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(
+                  'Location services are disabled. Please enable them to proceed.')),
+        );
+      }
       return Future.error('Location services are disabled.');
     }
 
@@ -88,19 +100,23 @@ class _FuelStationListState extends State<FuelStationList> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Location permissions are denied.')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Location permissions are denied.')),
+          );
+        }
         return Future.error('Location permissions are denied.');
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                'Location permissions are permanently denied. Please update your settings.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(
+                  'Location permissions are permanently denied. Please update your settings.')),
+        );
+      }
       return Future.error(
           'Location permissions are permanently denied, we cannot request permissions.');
     }
@@ -115,6 +131,8 @@ class _FuelStationListState extends State<FuelStationList> {
         position.longitude,
       );
       Placemark place = placemarks.first;
+
+      if (!mounted) return;
 
       setState(() {
         _latitude = position.latitude;
@@ -135,6 +153,7 @@ class _FuelStationListState extends State<FuelStationList> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to get location: $e')),
       );
@@ -152,9 +171,10 @@ class _FuelStationListState extends State<FuelStationList> {
           .collection('user')
           .doc(currentUserId)
           .get();
-      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
-      double userLat = userData["additionalData"]['latitude'] ?? 0.0;
-      double userLon = userData["additionalData"]['longitude'] ?? 0.0;
+      Map<String, dynamic> userData =
+          userDoc.data() as Map<String, dynamic>? ?? {};
+      double userLat = userData["additionalData"]?['latitude'] ?? 0.0;
+      double userLon = userData["additionalData"]?['longitude'] ?? 0.0;
 
       QuerySnapshot querySnapshot = await FirebaseFirestore.instance
           .collection('fuel')
@@ -191,6 +211,7 @@ class _FuelStationListState extends State<FuelStationList> {
 
       tempStations.sort((a, b) => a['distance'].compareTo(b['distance']));
 
+      if (!mounted) return;
       setState(() {
         fuelStations = tempStations;
       });
@@ -241,7 +262,7 @@ class _FuelStationListState extends State<FuelStationList> {
         double enteredQuantity = 0.0;
         return StatefulBuilder(
           builder: (context, setState) {
-            double totalAmount = enteredQuantity * price;
+            double paymentAmount = enteredQuantity * price;
             bool isValid = enteredQuantity > 0 && enteredQuantity <= 10;
             return AlertDialog(
               title: Text("Buy $fuelType"),
@@ -265,7 +286,7 @@ class _FuelStationListState extends State<FuelStationList> {
                     ),
                   ),
                   SizedBox(height: 10),
-                  Text("Total: ₹${totalAmount.toStringAsFixed(2)}"),
+                  Text("Total: ₹${paymentAmount.toStringAsFixed(2)}"),
                 ],
               ),
               actions: [
@@ -279,8 +300,8 @@ class _FuelStationListState extends State<FuelStationList> {
                   onPressed: isValid
                       ? () {
                           Navigator.of(context).pop();
-                          _sendFuelRequest(
-                              station, fuelType, enteredQuantity, totalAmount);
+                          _sendFuelRequest(station, fuelType, enteredQuantity,
+                              paymentAmount);
                         }
                       : null,
                   child: Text("Send Request"),
@@ -296,16 +317,17 @@ class _FuelStationListState extends State<FuelStationList> {
   /// Sends the fuel purchase request to Firestore (in the "request" subcollection
   /// of the fuel station document) without any payment processing.
   Future<void> _sendFuelRequest(Map<String, dynamic> station, String fuelType,
-      double quantity, double totalAmount) async {
+      double quantity, double paymentAmount) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     Map<String, dynamic> requestData = {
       'fuelType': fuelType,
       'litres': quantity,
-      'totalAmount': totalAmount,
+      'paymentAmount': paymentAmount,
       'isPaid': false, // Payment not made yet
       'status': false, // Initial status (e.g. pending)
+      'read': false, // New field added
       'timestamp': FieldValue.serverTimestamp(),
       'userId': user.uid,
     };
@@ -316,13 +338,17 @@ class _FuelStationListState extends State<FuelStationList> {
           .doc(station['id'])
           .collection('request')
           .add(requestData);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Fuel request sent successfully!')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Fuel request sent successfully!')),
+        );
+      }
     } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to send request: $error')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send request: $error')),
+        );
+      }
     }
   }
 

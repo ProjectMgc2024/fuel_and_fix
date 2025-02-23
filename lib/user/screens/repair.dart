@@ -34,10 +34,63 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
   Map<String, dynamic>? _currentWorkshopForPayment;
   String? _currentWorkshopIdForPayment;
 
+  // For the repair requests badge.
+  String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? "";
+  int pendingRepairRequestCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchPendingRepairRequestCount();
+  }
+
   @override
   void dispose() {
     _vehicleSituationController.dispose();
     super.dispose();
+  }
+
+  /// Fetches the pending repair requests (those with read == false)
+  /// from the current workshop's subcollection 'request'.
+  void fetchPendingRepairRequestCount() {
+    _firestore
+        .collection('repair')
+        .doc(currentUserId)
+        .collection('request')
+        .where('read', isEqualTo: false)
+        .snapshots()
+        .listen((snapshot) {
+      setState(() {
+        pendingRepairRequestCount = snapshot.docs.length;
+      });
+    });
+  }
+
+  /// When the "Repair Requests" tile is tapped, this function first queries
+  /// how many pending requests exist. If the count is greater than zero, it
+  /// displays that count via a SnackBar and then marks all those requests as read
+  /// (by updating 'read' to true), which clears the badge.
+  void markRepairRequestsAsRead() async {
+    QuerySnapshot snapshot = await _firestore
+        .collection('repair')
+        .doc(currentUserId)
+        .collection('request')
+        .where('read', isEqualTo: false)
+        .get();
+
+    int count = snapshot.docs.length;
+    if (count > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'You have $count new repair request(s). Marking them as read.'),
+        ),
+      );
+      for (var doc in snapshot.docs) {
+        await doc.reference.update({'read': true});
+      }
+      // The snapshot listener (fetchPendingRepairRequestCount) will update the badge.
+    }
   }
 
   /// Fetches workshops from the 'repair' collection. In addition,
@@ -52,11 +105,12 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
     if (user != null) {
       DocumentSnapshot userDoc =
           await _firestore.collection('user').doc(user.uid).get();
-      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
-      userLat = userData["additionalData"]['latitude'] ?? 0.0;
-      userLon = userData["additionalData"]['longitude'] ?? 0.0;
+      Map<String, dynamic> userData =
+          userDoc.data() as Map<String, dynamic>? ?? {};
+      userLat = userData["additionalData"]?['latitude'] ?? 0.0;
+      userLon = userData["additionalData"]?['longitude'] ?? 0.0;
       _currentLocationName =
-          userData["additionalData"]['location_name'] ?? 'Unknown Location';
+          userData["additionalData"]?['location_name'] ?? 'Unknown Location';
     }
 
     QuerySnapshot querySnapshot = await _firestore
@@ -116,7 +170,8 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
   }
 
   // Submits the repair request by storing it in Firestore.
-  Future<void> _submitRequest(Map<String, dynamic> workshop) async {
+  Future<void> _submitRequest(
+      Map<String, dynamic> workshop, List<String> issues) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     DocumentSnapshot userDoc =
@@ -129,10 +184,12 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
       'status':
           false, // Initially pending; later service provider will set to true.
       'isPaid': false, // Advance not paid yet.
+      'read': false, // Pending request; not accepted/rejected yet.
       'timestamp': DateTime.now(),
       'userId': user.uid,
       'userLocation': userLocation,
       'vehicleSituation': _vehicleSituationController.text,
+      'issues': issues,
     };
 
     try {
@@ -152,8 +209,14 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
     }
   }
 
-  // Dialog to input vehicle situation and submit the request.
+  // Dialog to input vehicle situation, select issues via checkboxes and submit the request.
   void _showRequestDialog(Map<String, dynamic> workshop) {
+    // Local variables to store checkbox selections.
+    bool lightIssue = false;
+    bool tyreIssue = false;
+    bool engineIssue = false;
+    bool smokeIssue = false;
+
     showDialog(
       context: context,
       barrierDismissible: false, // Prevent closing by tapping outside.
@@ -174,6 +237,43 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                       ),
                       maxLines: 3,
                     ),
+                    SizedBox(height: 10),
+                    CheckboxListTile(
+                      title: Text("Light Issue"),
+                      value: lightIssue,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          lightIssue = value ?? false;
+                        });
+                      },
+                    ),
+                    CheckboxListTile(
+                      title: Text("Tyre Issue"),
+                      value: tyreIssue,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          tyreIssue = value ?? false;
+                        });
+                      },
+                    ),
+                    CheckboxListTile(
+                      title: Text("Engine Issue"),
+                      value: engineIssue,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          engineIssue = value ?? false;
+                        });
+                      },
+                    ),
+                    CheckboxListTile(
+                      title: Text("Smoke Issue"),
+                      value: smokeIssue,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          smokeIssue = value ?? false;
+                        });
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -187,7 +287,14 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                 ElevatedButton(
                   onPressed: () async {
                     Navigator.pop(context);
-                    await _submitRequest(workshop);
+                    // Collect selected issues.
+                    List<String> selectedIssues = [];
+                    if (lightIssue) selectedIssues.add("Light Issue");
+                    if (tyreIssue) selectedIssues.add("Tyre Issue");
+                    if (engineIssue) selectedIssues.add("Engine Issue");
+                    if (smokeIssue) selectedIssues.add("Smoke Issue");
+
+                    await _submitRequest(workshop, selectedIssues);
                   },
                   child: Text('Submit Request'),
                 ),
@@ -230,6 +337,8 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
         child: Column(
           children: [
+            // Dashboard Tile for Repair Requests
+            SizedBox(height: 16),
             // Search TextField.
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -514,16 +623,6 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                                                     return Align(
                                                       alignment:
                                                           Alignment.centerRight,
-                                                      child: ElevatedButton(
-                                                        onPressed: () {
-                                                          (
-                                                            workshop,
-                                                            workshop['id']
-                                                          );
-                                                        },
-                                                        child:
-                                                            Text("Pay Advance"),
-                                                      ),
                                                     );
                                                   } else if (requestData[
                                                               'status'] ==
@@ -533,6 +632,7 @@ class _WorkshopScreenState extends State<WorkshopScreen> {
                                                     return Align(
                                                       alignment:
                                                           Alignment.centerRight,
+                                                      child: Container(),
                                                     );
                                                   }
                                                   return Container();

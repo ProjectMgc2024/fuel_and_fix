@@ -128,6 +128,8 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
         .add({
       'status': false, // Request pending acceptance
       'isPaid': false, // Advance not paid yet
+      'read': false, // Pending request; not accepted/rejected yet.
+
       'timestamp': FieldValue.serverTimestamp(),
       'userId': user.uid,
       'userLocation': userLocation,
@@ -183,13 +185,6 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(context);
-                await _updateTowPaymentStatus(workshop['id']);
-              },
-              child: Text('Pay Advance'),
             ),
           ],
         );
@@ -563,15 +558,7 @@ class _TowingServiceCategoriesState extends State<TowingServiceCategories> {
                                                   if (requestData['status'] ==
                                                           true &&
                                                       requestData['isPaid'] ==
-                                                          false) {
-                                                    return ElevatedButton(
-                                                      onPressed: () =>
-                                                          _showPaymentDialogForTow(
-                                                              workshop),
-                                                      child:
-                                                          Text("Pay Advance"),
-                                                    );
-                                                  }
+                                                          false) {}
                                                   return Container();
                                                 },
                                               ),

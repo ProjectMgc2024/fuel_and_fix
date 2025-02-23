@@ -105,8 +105,10 @@ class _ManageTowStationState extends State<ManageTowStation>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildTowShopList(context, true), // Pending tow shops
-                    _buildTowShopList(context, false), // Accepted tow shops
+                    _buildTowShopList(context,
+                        false), // Pending tow shops (non-approved; closed lock)
+                    _buildTowShopList(context,
+                        true), // Accepted tow shops (approved; open lock)
                   ],
                 ),
               ),
@@ -225,10 +227,9 @@ class _ManageTowStationState extends State<ManageTowStation>
             ),
           )
         ],
-        // Reversed toggle: If isApproved is true then show a closed lock (Icons.lock) and vice versa.
         trailing: IconButton(
           icon: Icon(
-            shop['isApproved'] ? Icons.lock : Icons.lock_open,
+            shop['isApproved'] ? Icons.lock_open : Icons.lock,
             color: Colors.orange,
           ),
           onPressed: () =>

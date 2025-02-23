@@ -56,6 +56,8 @@ class _TowRequestState extends State<TowRequest> {
             ? '$companyName accepted your request.'
             : '$companyName rejected your request.',
         'timestamp': FieldValue.serverTimestamp(),
+        'read':
+            false, // <-- New field added to mark the notification as unread.
       });
 
       // Update local state so UI shows the updated response

@@ -48,7 +48,8 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
         'responded': true,
       });
 
-      // Add a notification for the requested user
+      // Add a notification for the requested user.
+      // Note: We now add 'read': false so that it shows up as unread.
       await FirebaseFirestore.instance.collection('notifications').add({
         'userId': userId, // The user who made the request
         'companyId': currentUserId, // The service provider's ID
@@ -58,6 +59,7 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
             ? '$companyName accepted your request.'
             : '$companyName rejected your request.',
         'timestamp': FieldValue.serverTimestamp(),
+        'read': false, // Mark notification as unread initially.
       });
 
       // Update local state so the UI reflects the response
@@ -169,10 +171,9 @@ class _FuelFillingRequestState extends State<FuelFillingRequest> {
                       String locationName =
                           additionalData['location_name'] ?? 'Unknown Location';
 
-                      // Fetch fuel request details
-                      var fuelDetails = request['fuelRequestDetails'] ?? {};
-                      String fuelType = fuelDetails['fuelType'] ?? 'N/A';
-                      double litres = fuelDetails['litres']?.toDouble() ?? 0.0;
+                      // Retrieve fuel type and quantity directly from the request document
+                      String fuelType = request['fuelType'] ?? 'N/A';
+                      double litres = request['litres']?.toDouble() ?? 0.0;
                       Timestamp timestamp =
                           request['timestamp'] ?? Timestamp.now();
                       String timestampString = formatTimestamp(timestamp);

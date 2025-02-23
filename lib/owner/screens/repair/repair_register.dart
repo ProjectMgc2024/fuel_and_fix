@@ -150,7 +150,7 @@ class _RepairRegisterState extends State<RepairRegister> {
             title: const Text('Repair Register',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             centerTitle: true,
-            backgroundColor: const Color.fromARGB(255, 124, 143, 91),
+            backgroundColor: const Color.fromARGB(255, 117, 150, 139),
             elevation: 0,
             // Adding the back button in the app bar
             leading: IconButton(
@@ -168,8 +168,8 @@ class _RepairRegisterState extends State<RepairRegister> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              const Color.fromARGB(255, 197, 174, 100),
-              const Color.fromARGB(255, 184, 103, 76),
+              const Color.fromARGB(255, 79, 126, 105),
+              const Color.fromARGB(139, 134, 145, 124),
             ],
           ),
         ),
@@ -237,7 +237,7 @@ class _RepairRegisterState extends State<RepairRegister> {
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           filled: true,
-          fillColor: const Color.fromARGB(255, 220, 220, 140),
+          fillColor: const Color.fromARGB(255, 177, 177, 168),
         ),
         obscureText: password || confirmPassword,
         keyboardType: phone

@@ -15,6 +15,7 @@ class TowProfilePage extends StatefulWidget {
 class _TowProfilePageState extends State<TowProfilePage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String documentId = FirebaseAuth.instance.currentUser!.uid;
+
   late TextEditingController ownerNameController,
       companyNameController,
       companyLicenseController,
@@ -38,29 +39,44 @@ class _TowProfilePageState extends State<TowProfilePage> {
     super.dispose();
   }
 
+  // Manager Edit Dialog using Form and scrollable AlertDialog
   void _showEditManagerDialog(Map<String, dynamic> managerData) async {
     File? newLogoFile;
-    ownerNameController.text = managerData['ownerName'];
-    companyNameController.text = managerData['companyName'];
+    ownerNameController.text = managerData['ownerName'] ?? '';
+    companyNameController.text = managerData['companyName'] ?? '';
     companyLicenseController.text = managerData['companyLicense'] ?? '';
-    phoneNoController.text = managerData['phoneNo'];
+    phoneNoController.text = managerData['phoneNo'] ?? '';
+
+    final GlobalKey<FormState> _managerFormKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text("Edit Manager Details"),
-              content: Column(
+        return StatefulBuilder(builder: (context, setState) {
+          return AlertDialog(
+            scrollable: true, // Makes the dialog scrollable to avoid overflow
+            title: Text("Edit Manager Details"),
+            content: Form(
+              key: _managerFormKey,
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (managerData['companyLogo'] != null && newLogoFile == null)
-                    Image.network(managerData['companyLogo'],
-                        height: 100, width: 100, fit: BoxFit.cover),
+                    Image.network(
+                      managerData['companyLogo'],
+                      height: 100,
+                      width: 100,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          Icon(Icons.error),
+                    ),
                   if (newLogoFile != null)
-                    Image.file(newLogoFile!,
-                        height: 100, width: 100, fit: BoxFit.cover),
+                    Image.file(
+                      newLogoFile!,
+                      height: 100,
+                      width: 100,
+                      fit: BoxFit.cover,
+                    ),
                   TextButton(
                     onPressed: () async {
                       final pickedImage = await _pickImage();
@@ -71,44 +87,79 @@ class _TowProfilePageState extends State<TowProfilePage> {
                     child: Text(
                         newLogoFile == null ? "Change Logo" : "Replace Logo"),
                   ),
-                  ..._buildTextFields(),
+                  TextFormField(
+                    controller: ownerNameController,
+                    decoration: InputDecoration(labelText: 'Owner Name'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter owner name';
+                      }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: companyNameController,
+                    decoration: InputDecoration(labelText: 'Company Name'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter company name';
+                      }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: companyLicenseController,
+                    decoration: InputDecoration(labelText: 'Company ID'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter company ID';
+                      }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: phoneNoController,
+                    decoration: InputDecoration(labelText: 'Phone Number'),
+                    keyboardType: TextInputType.number,
+                    maxLength: 10,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter phone number';
+                      }
+                      if (value.length != 10) {
+                        return 'Phone number must be exactly 10 digits';
+                      }
+                      if (!RegExp(r'^\d{10}$').hasMatch(value)) {
+                        return 'Enter a valid phone number';
+                      }
+                      return null;
+                    },
+                  ),
                 ],
               ),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text("Cancel")),
-                TextButton(
-                  onPressed: () async {
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text("Cancel")),
+              TextButton(
+                onPressed: () async {
+                  if (_managerFormKey.currentState!.validate()) {
                     String? newLogoUrl;
                     if (newLogoFile != null) {
                       newLogoUrl = await _uploadLogoToCloudinary(newLogoFile!);
                     }
                     _updateManagerDetails(newLogoUrl: newLogoUrl);
                     Navigator.pop(context);
-                  },
-                  child: Text("Save"),
-                ),
-              ],
-            );
-          },
-        );
+                  }
+                },
+                child: Text("Save"),
+              ),
+            ],
+          );
+        });
       },
     );
-  }
-
-  List<Widget> _buildTextFields() {
-    return [
-      _buildTextField(ownerNameController, 'Owner Name'),
-      _buildTextField(companyNameController, 'Company Name'),
-      _buildTextField(companyLicenseController, 'Company ID'),
-      _buildTextField(phoneNoController, 'Phone Number'),
-    ];
-  }
-
-  TextField _buildTextField(TextEditingController controller, String label) {
-    return TextField(
-        controller: controller, decoration: InputDecoration(labelText: label));
   }
 
   Future<File?> _pickImage() async {
@@ -134,7 +185,9 @@ class _TowProfilePageState extends State<TowProfilePage> {
     setState(() {});
   }
 
+  // Employee Add Dialog using Form and validations for email and phone
   void _showAddEmployeeDialog() {
+    final GlobalKey<FormState> _employeeFormKey = GlobalKey<FormState>();
     final TextEditingController employeeNameController =
         TextEditingController();
     final TextEditingController employeeEmailController =
@@ -149,26 +202,81 @@ class _TowProfilePageState extends State<TowProfilePage> {
       builder: (context) {
         return AlertDialog(
           title: Text("Add Employee"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildTextField(employeeNameController, 'Employee Name'),
-              _buildTextField(employeeEmailController, 'Employee Email'),
-              _buildTextField(employeePhoneNoController, 'Employee Phone No'),
-              _buildTextField(employeeRoleController, 'Employee Role'),
-            ],
+          content: Form(
+            key: _employeeFormKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: employeeNameController,
+                  decoration: InputDecoration(labelText: 'Employee Name'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter employee name';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: employeeEmailController,
+                  decoration: InputDecoration(labelText: 'Employee Email'),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter employee email';
+                    }
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                        .hasMatch(value)) {
+                      return 'Enter a valid email';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: employeePhoneNoController,
+                  decoration: InputDecoration(labelText: 'Employee Phone No'),
+                  keyboardType: TextInputType.number,
+                  maxLength: 10,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter phone number';
+                    }
+                    if (value.length != 10) {
+                      return 'Phone number must be exactly 10 digits';
+                    }
+                    if (!RegExp(r'^\d{10}$').hasMatch(value)) {
+                      return 'Enter a valid phone number';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: employeeRoleController,
+                  decoration: InputDecoration(labelText: 'Employee Role'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter employee role';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context), child: Text("Cancel")),
             TextButton(
               onPressed: () {
-                _addEmployee(
+                if (_employeeFormKey.currentState!.validate()) {
+                  _addEmployee(
                     employeeNameController.text,
                     employeeEmailController.text,
                     employeePhoneNoController.text,
-                    employeeRoleController.text);
-                Navigator.pop(context);
+                    employeeRoleController.text,
+                  );
+                  Navigator.pop(context);
+                }
               },
               child: Text("Add"),
             ),
@@ -187,7 +295,7 @@ class _TowProfilePageState extends State<TowProfilePage> {
       'employeeName': name,
       'employeeEmail': email,
       'employeePhoneNo': phoneNo,
-      'employeeRole': role
+      'employeeRole': role,
     });
     await _firestore
         .collection('tow')
@@ -196,11 +304,11 @@ class _TowProfilePageState extends State<TowProfilePage> {
     setState(() {});
   }
 
+  // Employee Edit Dialog using Form with validations; email is preserved and not editable.
   void _showEditEmployeeDialog(int index, Map<String, dynamic> employeeData) {
+    final GlobalKey<FormState> _editEmployeeFormKey = GlobalKey<FormState>();
     final TextEditingController employeeNameController =
         TextEditingController(text: employeeData['employeeName']);
-    final TextEditingController employeeEmailController =
-        TextEditingController(text: employeeData['employeeEmail']);
     final TextEditingController employeePhoneNoController =
         TextEditingController(text: employeeData['employeePhoneNo']);
     final TextEditingController employeeRoleController =
@@ -211,27 +319,67 @@ class _TowProfilePageState extends State<TowProfilePage> {
       builder: (context) {
         return AlertDialog(
           title: Text("Edit Employee"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildTextField(employeeNameController, 'Employee Name'),
-              _buildTextField(employeeEmailController, 'Employee Email'),
-              _buildTextField(employeePhoneNoController, 'Employee Phone No'),
-              _buildTextField(employeeRoleController, 'Employee Role'),
-            ],
+          content: Form(
+            key: _editEmployeeFormKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: employeeNameController,
+                  decoration: InputDecoration(labelText: 'Employee Name'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter employee name';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: employeePhoneNoController,
+                  decoration: InputDecoration(labelText: 'Employee Phone No'),
+                  keyboardType: TextInputType.number,
+                  maxLength: 10,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter phone number';
+                    }
+                    if (value.length != 10) {
+                      return 'Phone number must be exactly 10 digits';
+                    }
+                    if (!RegExp(r'^\d{10}$').hasMatch(value)) {
+                      return 'Enter a valid phone number';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: employeeRoleController,
+                  decoration: InputDecoration(labelText: 'Employee Role'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter employee role';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context), child: Text("Cancel")),
             TextButton(
               onPressed: () {
-                _updateEmployee(index, {
-                  'employeeName': employeeNameController.text,
-                  'employeeEmail': employeeEmailController.text,
-                  'employeePhoneNo': employeePhoneNoController.text,
-                  'employeeRole': employeeRoleController.text,
-                });
-                Navigator.pop(context);
+                if (_editEmployeeFormKey.currentState!.validate()) {
+                  _updateEmployee(index, {
+                    'employeeName': employeeNameController.text,
+                    'employeePhoneNo': employeePhoneNoController.text,
+                    'employeeRole': employeeRoleController.text,
+                    // Preserve the original email since it is not editable.
+                    'employeeEmail': employeeData['employeeEmail'],
+                  });
+                  Navigator.pop(context);
+                }
               },
               child: Text("Save"),
             ),
@@ -254,7 +402,6 @@ class _TowProfilePageState extends State<TowProfilePage> {
   }
 
   void _deleteEmployee(int index) async {
-    // Show a confirmation dialog before deleting the employee
     showDialog(
       context: context,
       builder: (context) {
@@ -263,12 +410,11 @@ class _TowProfilePageState extends State<TowProfilePage> {
           content: Text("Are you sure you want to delete this employee?"),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context), // Close the dialog
+              onPressed: () => Navigator.pop(context),
               child: Text("Cancel"),
             ),
             TextButton(
               onPressed: () async {
-                // Proceed with deleting the employee
                 final documentSnapshot =
                     await _firestore.collection('tow').doc(documentId).get();
                 List employees = documentSnapshot.data()?['employees'] ?? [];
@@ -277,8 +423,8 @@ class _TowProfilePageState extends State<TowProfilePage> {
                     .collection('tow')
                     .doc(documentId)
                     .update({'employees': employees});
-                setState(() {}); // Refresh the UI
-                Navigator.pop(context); // Close the dialog
+                setState(() {});
+                Navigator.pop(context);
               },
               child: Text("Delete"),
             ),
@@ -294,9 +440,8 @@ class _TowProfilePageState extends State<TowProfilePage> {
       appBar: AppBar(
         title: Text("Tow Profile",
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-        backgroundColor:
-            const Color.fromARGB(255, 187, 210, 250), // AppBar background color
-        elevation: 8.0, // Shadow effect
+        backgroundColor: const Color.fromARGB(255, 187, 210, 250),
+        elevation: 8.0,
       ),
       body: FutureBuilder<DocumentSnapshot>(
         future: _firestore.collection('tow').doc(documentId).get(),
@@ -323,12 +468,12 @@ class _TowProfilePageState extends State<TowProfilePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Manager's Card with gradient background and shadow
+                // Manager Card
                 Card(
                   margin: EdgeInsets.only(bottom: 16.0),
-                  elevation: 5.0, // Add shadow for depth
+                  elevation: 5.0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12), // Rounded corners
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Container(
                     decoration: BoxDecoration(
@@ -336,7 +481,7 @@ class _TowProfilePageState extends State<TowProfilePage> {
                         colors: [
                           const Color.fromARGB(255, 187, 210, 250),
                           const Color.fromARGB(255, 131, 115, 154)
-                        ], // Gradient effect
+                        ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -346,29 +491,23 @@ class _TowProfilePageState extends State<TowProfilePage> {
                       leading: managerDetails['companyLogo'] != null
                           ? Image.network(managerDetails['companyLogo'],
                               width: 50, height: 50, fit: BoxFit.cover)
-                          : Icon(Icons.business,
-                              size: 50,
-                              color: const Color.fromARGB(255, 0, 0, 0)),
+                          : Icon(Icons.business, size: 50, color: Colors.black),
                       title: Text('Company: ${managerDetails['companyName']}',
                           style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: const Color.fromARGB(255, 0, 0, 0))),
+                              color: Colors.black)),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Owner: ${managerDetails['ownerName']}',
-                              style: TextStyle(
-                                  color: const Color.fromARGB(179, 0, 0, 0))),
+                              style: TextStyle(color: Colors.black87)),
                           Text('License: ${managerDetails['companyLicense']}',
-                              style: TextStyle(
-                                  color: const Color.fromARGB(179, 0, 0, 0))),
+                              style: TextStyle(color: Colors.black87)),
                           Text('Email: ${managerDetails['email']}',
-                              style: TextStyle(
-                                  color: const Color.fromARGB(179, 0, 0, 0))),
+                              style: TextStyle(color: Colors.black87)),
                           Text('Phone: ${managerDetails['phoneNo']}',
-                              style: TextStyle(
-                                  color: const Color.fromARGB(179, 0, 0, 0))),
+                              style: TextStyle(color: Colors.black87)),
                         ],
                       ),
                       trailing: IconButton(
@@ -391,11 +530,9 @@ class _TowProfilePageState extends State<TowProfilePage> {
                     ElevatedButton(
                       onPressed: _showAddEmployeeDialog,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromARGB(
-                            255, 50, 78, 181), // Button background color
+                        backgroundColor: const Color.fromARGB(255, 50, 78, 181),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                              8), // Rounded corners for button
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                       child: Row(
@@ -409,7 +546,7 @@ class _TowProfilePageState extends State<TowProfilePage> {
                     ),
                   ],
                 ),
-                // Employee List with Card Backgrounds and Shadows
+                // Employee List
                 ListView.builder(
                   shrinkWrap: true,
                   physics: NeverScrollableScrollPhysics(),
@@ -418,10 +555,9 @@ class _TowProfilePageState extends State<TowProfilePage> {
                     final employee = employees[index];
                     return Card(
                       margin: EdgeInsets.only(top: 8.0),
-                      elevation: 5.0, // Shadow effect for cards
+                      elevation: 5.0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                            10), // Rounded corners for cards
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: ListTile(
                         title: Text('Name: ${employee['employeeName']}',
@@ -438,10 +574,7 @@ class _TowProfilePageState extends State<TowProfilePage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              icon: Icon(
-                                Icons.edit,
-                                color: Colors.blueAccent,
-                              ),
+                              icon: Icon(Icons.edit, color: Colors.blueAccent),
                               onPressed: () =>
                                   _showEditEmployeeDialog(index, employee),
                             ),

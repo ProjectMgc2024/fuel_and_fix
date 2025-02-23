@@ -324,7 +324,6 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
   void _showAddFuelDialog(BuildContext context) {
     TextEditingController petrolController = TextEditingController();
     TextEditingController dieselController = TextEditingController();
-    TextEditingController cngController = TextEditingController();
 
     showDialog(
       context: context,
@@ -336,7 +335,6 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
             children: [
               _buildFuelPriceField('Petrol', petrolController),
               _buildFuelPriceField('Diesel', dieselController),
-              _buildFuelPriceField('CNG', cngController),
             ],
           ),
           actions: [
@@ -351,7 +349,6 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
                       double.tryParse(petrolController.text) ?? 0;
                   double dieselPrice =
                       double.tryParse(dieselController.text) ?? 0;
-                  double cngPrice = double.tryParse(cngController.text) ?? 0;
 
                   // Update the fuel prices in the "price" collection
                   CollectionReference pricesCollection =
@@ -359,7 +356,6 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
                   await pricesCollection.doc('fuelPrices').set({
                     'petrol': petrolPrice,
                     'diesel': dieselPrice,
-                    'cng': cngPrice,
                   });
 
                   // Fetch all fuel station documents
@@ -378,8 +374,6 @@ class _ManageFuelStationsPageState extends State<ManageFuelStation>
                         fuel['price'] = petrolPrice;
                       } else if (fuel['type'] == 'Diesel') {
                         fuel['price'] = dieselPrice;
-                      } else if (fuel['type'] == 'CNG') {
-                        fuel['price'] = cngPrice;
                       }
                       return fuel;
                     }).toList();

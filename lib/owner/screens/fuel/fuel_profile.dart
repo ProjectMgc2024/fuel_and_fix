@@ -46,7 +46,6 @@ class FuelProfilePageState extends State<FuelProfilePage> {
 
   void _showAddFuelDialog() {
     final TextEditingController fuelTypeController = TextEditingController();
-    // Remove the unused fuelPriceController; we will fetch the price automatically
     showDialog(
       context: context,
       builder: (context) {
@@ -137,61 +136,99 @@ class FuelProfilePageState extends State<FuelProfilePage> {
     companyLicenseController.text = managerData['CompanyLicense'] ?? '';
     phoneNoController.text = managerData['phoneNo'];
 
+    final GlobalKey<FormState> _managerFormKey = GlobalKey<FormState>();
+
     showDialog(
       context: context,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
+              scrollable: true, // Enables scrolling if content overflows
               title: Text("Edit Manager Details"),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (managerData['companyLogo'] != null && newLogoFile == null)
-                    Image.network(
-                      managerData['companyLogo'],
-                      height: 100,
-                      width: 100,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          Icon(Icons.error),
+              content: Form(
+                key: _managerFormKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (managerData['companyLogo'] != null &&
+                        newLogoFile == null)
+                      Image.network(
+                        managerData['companyLogo'],
+                        height: 100,
+                        width: 100,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            Icon(Icons.error),
+                      ),
+                    if (newLogoFile != null)
+                      Image.file(
+                        newLogoFile!,
+                        height: 100,
+                        width: 100,
+                        fit: BoxFit.cover,
+                      ),
+                    TextButton(
+                      onPressed: () async {
+                        final pickedImage = await _pickImage();
+                        if (pickedImage != null) {
+                          setState(() {
+                            newLogoFile = pickedImage;
+                          });
+                        }
+                      },
+                      child: Text(
+                          newLogoFile == null ? "Change Logo" : "Replace Logo"),
                     ),
-                  if (newLogoFile != null)
-                    Image.file(
-                      newLogoFile!,
-                      height: 100,
-                      width: 100,
-                      fit: BoxFit.cover,
+                    TextFormField(
+                      controller: ownerNameController,
+                      decoration: InputDecoration(labelText: 'Owner Name'),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter owner name';
+                        }
+                        return null;
+                      },
                     ),
-                  TextButton(
-                    onPressed: () async {
-                      final pickedImage = await _pickImage();
-                      if (pickedImage != null) {
-                        setState(() {
-                          newLogoFile = pickedImage;
-                        });
-                      }
-                    },
-                    child: Text(
-                        newLogoFile == null ? "Change Logo" : "Replace Logo"),
-                  ),
-                  TextField(
-                    controller: ownerNameController,
-                    decoration: InputDecoration(labelText: 'Owner Name'),
-                  ),
-                  TextField(
-                    controller: companyNameController,
-                    decoration: InputDecoration(labelText: 'Company Name'),
-                  ),
-                  TextField(
-                    controller: companyLicenseController,
-                    decoration: InputDecoration(labelText: 'Company licence'),
-                  ),
-                  TextField(
-                    controller: phoneNoController,
-                    decoration: InputDecoration(labelText: 'Phone Number'),
-                  ),
-                ],
+                    TextFormField(
+                      controller: companyNameController,
+                      decoration: InputDecoration(labelText: 'Company Name'),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter company name';
+                        }
+                        return null;
+                      },
+                    ),
+                    TextFormField(
+                      controller: companyLicenseController,
+                      decoration: InputDecoration(labelText: 'Company Licence'),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter company licence';
+                        }
+                        return null;
+                      },
+                    ),
+                    TextFormField(
+                      controller: phoneNoController,
+                      decoration: InputDecoration(labelText: 'Phone Number'),
+                      maxLength: 10,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter phone number';
+                        }
+                        if (value.length != 10) {
+                          return 'Phone number must be exactly 10 digits';
+                        }
+                        if (!RegExp(r'^\d{10}$').hasMatch(value)) {
+                          return 'Enter a valid phone number';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -200,12 +237,15 @@ class FuelProfilePageState extends State<FuelProfilePage> {
                 ),
                 TextButton(
                   onPressed: () async {
-                    String? newLogoUrl;
-                    if (newLogoFile != null) {
-                      newLogoUrl = await _uploadLogoToCloudinary(newLogoFile!);
+                    if (_managerFormKey.currentState!.validate()) {
+                      String? newLogoUrl;
+                      if (newLogoFile != null) {
+                        newLogoUrl =
+                            await _uploadLogoToCloudinary(newLogoFile!);
+                      }
+                      _updateManagerDetails(newLogoUrl: newLogoUrl);
+                      Navigator.pop(context);
                     }
-                    _updateManagerDetails(newLogoUrl: newLogoUrl);
-                    Navigator.pop(context);
                   },
                   child: Text("Save"),
                 ),
@@ -245,6 +285,7 @@ class FuelProfilePageState extends State<FuelProfilePage> {
   }
 
   void _showAddEmployeeDialog() {
+    final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
     final TextEditingController employeeNameController =
         TextEditingController();
     final TextEditingController employeeEmailController =
@@ -259,26 +300,64 @@ class FuelProfilePageState extends State<FuelProfilePage> {
       builder: (context) {
         return AlertDialog(
           title: Text("Add Employee"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: employeeNameController,
-                decoration: InputDecoration(labelText: 'Employee Name'),
-              ),
-              TextField(
-                controller: employeeEmailController,
-                decoration: InputDecoration(labelText: 'Employee Email'),
-              ),
-              TextField(
-                controller: employeePhoneNoController,
-                decoration: InputDecoration(labelText: 'Employee Phone No'),
-              ),
-              TextField(
-                controller: employeeRoleController,
-                decoration: InputDecoration(labelText: 'Employee Role'),
-              ),
-            ],
+          content: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: employeeNameController,
+                  decoration: InputDecoration(labelText: 'Employee Name'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter employee name';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: employeeEmailController,
+                  decoration: InputDecoration(labelText: 'Employee Email'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter employee email';
+                    }
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                        .hasMatch(value)) {
+                      return 'Enter a valid email';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: employeePhoneNoController,
+                  decoration: InputDecoration(labelText: 'Employee Phone No'),
+                  maxLength: 10,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter phone number';
+                    }
+                    if (value.length != 10) {
+                      return 'Phone number must be exactly 10 digits';
+                    }
+                    if (!RegExp(r'^\d{10}$').hasMatch(value)) {
+                      return 'Enter a valid phone number';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: employeeRoleController,
+                  decoration: InputDecoration(labelText: 'Employee Role'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter employee role';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -287,13 +366,15 @@ class FuelProfilePageState extends State<FuelProfilePage> {
             ),
             TextButton(
               onPressed: () {
-                _addEmployee(
-                  employeeNameController.text,
-                  employeeEmailController.text,
-                  employeePhoneNoController.text,
-                  employeeRoleController.text,
-                );
-                Navigator.pop(context);
+                if (_formKey.currentState!.validate()) {
+                  _addEmployee(
+                    employeeNameController.text,
+                    employeeEmailController.text,
+                    employeePhoneNoController.text,
+                    employeeRoleController.text,
+                  );
+                  Navigator.pop(context);
+                }
               },
               child: Text("Add"),
             ),
@@ -322,10 +403,10 @@ class FuelProfilePageState extends State<FuelProfilePage> {
   }
 
   void _showEditEmployeeDialog(int index, Map<String, dynamic> employeeData) {
+    final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
     final TextEditingController employeeNameController =
         TextEditingController(text: employeeData['employeeName']);
-    final TextEditingController employeeEmailController =
-        TextEditingController(text: employeeData['employeeEmail']);
+    // Email is not editable in this dialog, so we preserve it.
     final TextEditingController employeePhoneNoController =
         TextEditingController(text: employeeData['employeePhoneNo']);
     final TextEditingController employeeRoleController =
@@ -336,26 +417,50 @@ class FuelProfilePageState extends State<FuelProfilePage> {
       builder: (context) {
         return AlertDialog(
           title: Text("Edit Employee"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: employeeNameController,
-                decoration: InputDecoration(labelText: 'Employee Name'),
-              ),
-              TextField(
-                controller: employeeEmailController,
-                decoration: InputDecoration(labelText: 'Employee Email'),
-              ),
-              TextField(
-                controller: employeePhoneNoController,
-                decoration: InputDecoration(labelText: 'Employee Phone No'),
-              ),
-              TextField(
-                controller: employeeRoleController,
-                decoration: InputDecoration(labelText: 'Employee Role'),
-              ),
-            ],
+          content: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: employeeNameController,
+                  decoration: InputDecoration(labelText: 'Employee Name'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter employee name';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: employeePhoneNoController,
+                  decoration: InputDecoration(labelText: 'Employee Phone No'),
+                  maxLength: 10,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter phone number';
+                    }
+                    if (value.length != 10) {
+                      return 'Phone number must be exactly 10 digits';
+                    }
+                    if (!RegExp(r'^\d{10}$').hasMatch(value)) {
+                      return 'Enter a valid phone number';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: employeeRoleController,
+                  decoration: InputDecoration(labelText: 'Employee Role'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter employee role';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -364,13 +469,16 @@ class FuelProfilePageState extends State<FuelProfilePage> {
             ),
             TextButton(
               onPressed: () {
-                _updateEmployee(index, {
-                  'employeeName': employeeNameController.text,
-                  'employeeEmail': employeeEmailController.text,
-                  'employeePhoneNo': employeePhoneNoController.text,
-                  'employeeRole': employeeRoleController.text,
-                });
-                Navigator.pop(context);
+                if (_formKey.currentState!.validate()) {
+                  _updateEmployee(index, {
+                    'employeeName': employeeNameController.text,
+                    'employeePhoneNo': employeePhoneNoController.text,
+                    'employeeRole': employeeRoleController.text,
+                    // Preserve the original email since it is not editable.
+                    'employeeEmail': employeeData['employeeEmail'],
+                  });
+                  Navigator.pop(context);
+                }
               },
               child: Text("Save"),
             ),

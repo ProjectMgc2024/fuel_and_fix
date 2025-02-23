@@ -99,7 +99,7 @@ class KeyFeaturesSection extends StatelessWidget {
       'Key Features',
       '• Fuel Delivery: We provide fuel delivery services for both petrol and diesel. No matter where you are, we’ll come to your location, saving you time and effort. Whether you’re stranded at home, at work, or on the road, our fuel delivery service will get you back on track.\n\n'
           '• Emergency Repairs: If you experience a breakdown or other issues, we offer emergency repair services. From battery jump-starts to flat tire replacements, our trained professionals will arrive quickly and resolve the problem.\n\n'
-          '• Towing Services: If your vehicle is unable to be repaired on-site, we offer towing services to safely transport your car to the nearest repair shop. Our towing trucks are equipped to handle all vehicle types, ensuring a smooth and secure tow.\n\n',
+          '• Towing Services: If your vehicle is unable to be repaired on-site, we offer towing services to safely transport your car to the nearest repair shop. Our towing trucks are equipped to handle all vehicle types, ensuring a smooth and secure tow.\n\n • Fix AI Chatbot: Our AI-powered chatbot, Fix AI, allows users to ask vehicle-related questions and receive instant answers.\n\n',
       Icons.featured_play_list,
     );
   }

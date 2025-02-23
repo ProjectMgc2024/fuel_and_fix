@@ -14,7 +14,7 @@ class _TowLoginScreenState extends State<TowLoginScreen> {
   final TextEditingController passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
-  // Variable to manage password visibility
+  // Manage password visibility
   bool isPasswordVisible = false;
 
   @override
@@ -48,9 +48,8 @@ class _TowLoginScreenState extends State<TowLoginScreen> {
               querySnapshot.docs.first.data() as Map<String, dynamic>;
           bool isApproved = userData['isApproved'] ?? false;
 
-          if (isApproved) {
-            // If isApproved is true, do not proceed to the management page.
-            // Show a SnackBar message to inform the user.
+          if (!isApproved) {
+            // If isApproved is false (locked), show a message and prevent login
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
@@ -59,9 +58,9 @@ class _TowLoginScreenState extends State<TowLoginScreen> {
                 duration: Duration(seconds: 2),
               ),
             );
-            return;
+            return; // Stop further execution
           } else {
-            // If isApproved is false, navigate to the TowManagementPage.
+            // If isApproved is true (lock open), allow login
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
@@ -70,7 +69,7 @@ class _TowLoginScreenState extends State<TowLoginScreen> {
             );
           }
         } else {
-          // No account data found in Firestore.
+          // No account data found in Firestore
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Account data not found.'),

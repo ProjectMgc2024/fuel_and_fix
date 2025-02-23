@@ -19,6 +19,9 @@ class _UserNotificationPageState extends State<UserNotificationPage> {
   String? _currentCompanyId;
   String? _currentServiceType; // Expected to be "fuel", "tow", or "repair"
 
+  // Payment amount is always set to 100.
+  int _paymentAmount = 100;
+
   @override
   void initState() {
     super.initState();
@@ -44,8 +47,6 @@ class _UserNotificationPageState extends State<UserNotificationPage> {
   }
 
   // Fetch company details from one of the service collections (fuel, tow, repair).
-  // If the document is from the repair collection and contains a field 'repairType',
-  // we set serviceType to "repair". Otherwise, we simply set it to the collection name.
   Future<Map<String, dynamic>?> fetchCompanyDetails(String companyId) async {
     List<String> serviceCollections = ['fuel', 'tow', 'repair'];
     for (String collection in serviceCollections) {
@@ -56,11 +57,7 @@ class _UserNotificationPageState extends State<UserNotificationPage> {
       if (doc.exists) {
         Map<String, dynamic>? data = doc.data() as Map<String, dynamic>?;
         if (data != null) {
-          if (collection == 'repair' && data.containsKey('repairType')) {
-            data['service'] = 'repair';
-          } else {
-            data['service'] = collection;
-          }
+          data['service'] = collection;
         }
         return data;
       }
@@ -69,10 +66,12 @@ class _UserNotificationPageState extends State<UserNotificationPage> {
   }
 
   // Initiates the Razorpay payment process using the fetched company data.
+  // The paymentAmount is always set to 100.
   void _payWithRazorpay(Map<String, dynamic> companyData, String companyId) {
     _currentCompany = companyData;
     _currentCompanyId = companyId;
-    _currentServiceType = companyData['service']; // "fuel", "tow", or "repair"
+    _currentServiceType = companyData['service'];
+    _paymentAmount = 100; // Always set payment amount to 100
 
     String paymentName;
     String description;
@@ -92,13 +91,11 @@ class _UserNotificationPageState extends State<UserNotificationPage> {
 
     var options = {
       'key': 'rzp_test_D5Vh3hyi1gRBV0',
-      'amount': 20000, // Amount in paise (i.e., 200.00 INR)
+      'amount': _paymentAmount *
+          100, // Convert rupees to paise (100 rupees = 10000 paise)
       'name': paymentName,
       'description': description,
-      'prefill': {
-        'contact': '1234567890',
-        'email': 'user@example.com',
-      },
+      'prefill': {'contact': '1234567890', 'email': 'user@example.com'},
     };
 
     try {
@@ -108,28 +105,17 @@ class _UserNotificationPageState extends State<UserNotificationPage> {
     }
   }
 
-  // On successful payment, update the pending service request document and store the order
-  // in the user's orders subcollection with the specified fields.
+  // On successful payment, update the pending service request and store the order
+  // in the user's orders subcollection with the required fields.
   Future<void> _handlePaymentSuccess(PaymentSuccessResponse response) async {
     if (_currentCompany == null ||
         _currentCompanyId == null ||
         _currentServiceType == null) return;
 
     // Select the correct collection based on service type.
-    DocumentReference docRef;
-    if (_currentServiceType == 'fuel') {
-      docRef =
-          FirebaseFirestore.instance.collection('fuel').doc(_currentCompanyId);
-    } else if (_currentServiceType == 'tow') {
-      docRef =
-          FirebaseFirestore.instance.collection('tow').doc(_currentCompanyId);
-    } else if (_currentServiceType == 'repair') {
-      docRef = FirebaseFirestore.instance
-          .collection('repair')
-          .doc(_currentCompanyId);
-    } else {
-      return; // Unsupported service type.
-    }
+    DocumentReference docRef = FirebaseFirestore.instance
+        .collection(_currentServiceType!)
+        .doc(_currentCompanyId);
 
     // Query for the pending request (isPaid false) for this user.
     QuerySnapshot querySnapshot = await docRef
@@ -153,27 +139,25 @@ class _UserNotificationPageState extends State<UserNotificationPage> {
       Map<String, dynamic> requestData =
           (await requestDoc.get()).data() as Map<String, dynamic>;
 
-      // Create order data with specific fields.
-      Map<String, dynamic> orderData;
-      if (_currentServiceType == 'repair') {
-        // For repair service, store the fields as specified.
-        orderData = {
-          'description': "Repair service payment",
-          'ownerId': "aVo34xBgfDbufDAza5rl8BuHRhf1",
-          'paymentAmount': 500,
-          'paymentId': response.paymentId,
-          'service': "repair",
-          'time': FieldValue.serverTimestamp(),
-        };
-      } else {
-        // For other services, use the requestData and update common fields.
-        orderData = {
-          ...requestData,
-          'paymentId': response.paymentId,
-          'time': FieldValue.serverTimestamp(),
-          'service': _currentServiceType,
-        };
-      }
+      // Fetch the correct company name from the company data.
+      String companyName = _currentCompany?['companyName'] ?? 'Unknown Company';
+
+      // Create order data with the required fields.
+      Map<String, dynamic> orderData = {
+        'companyName': companyName,
+        'fuelType': _currentServiceType == 'fuel'
+            ? (requestData['fuelType'] ?? 'Petrol')
+            : '',
+        'isPaid': true,
+        'litres': requestData['litres'] ?? 1,
+        'paymentAmount': _paymentAmount, // Always 100
+        'paymentId': response.paymentId,
+        'responded': true,
+        'service': _currentServiceType,
+        'status': true,
+        'time': FieldValue.serverTimestamp(),
+        'userId': currentUserId,
+      };
 
       // Store the order in the user's orders subcollection.
       DocumentReference userOrderRef = FirebaseFirestore.instance
@@ -194,6 +178,7 @@ class _UserNotificationPageState extends State<UserNotificationPage> {
       );
     }
 
+    // Reset temporary variables.
     _currentCompany = null;
     _currentCompanyId = null;
     _currentServiceType = null;
@@ -220,7 +205,8 @@ class _UserNotificationPageState extends State<UserNotificationPage> {
       builder: (context) {
         return AlertDialog(
           title: Text('Confirm Payment'),
-          content: Text('Do you want to proceed with the advance payment?'),
+          content:
+              Text('Do you want to proceed with the advance payment of ₹100?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -265,7 +251,6 @@ class _UserNotificationPageState extends State<UserNotificationPage> {
               String message =
                   notification['message'] ?? 'No message available';
               Timestamp? timestamp = notification['timestamp'] as Timestamp?;
-              // Check the status from the notification.
               final String requestStatus =
                   (notification['status'] ?? '').toString().toLowerCase();
               // Only allow payment if the status is accepted.
@@ -334,7 +319,6 @@ class _UserNotificationPageState extends State<UserNotificationPage> {
                           Text('Phone: $companyPhone'),
                           SizedBox(height: 8),
                           // Display the "Pay Advance" button only if the service type is fuel, tow, or repair.
-                          // The button is enabled only if the notification status is accepted.
                           if (service == 'fuel' ||
                               service == 'tow' ||
                               service == 'repair')
@@ -347,7 +331,7 @@ class _UserNotificationPageState extends State<UserNotificationPage> {
                                             companyData, companyId);
                                       }
                                     : null,
-                                child: Text('Pay Advance'),
+                                child: Text('Pay Advance ₹100'),
                               ),
                             ),
                         ],

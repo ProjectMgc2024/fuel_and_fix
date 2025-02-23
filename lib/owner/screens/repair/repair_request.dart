@@ -59,6 +59,7 @@ class _EmergencyRepairRequestState extends State<EmergencyRepairRequest> {
             ? '$companyName accepted your repair request.'
             : '$companyName rejected your repair request.',
         'timestamp': FieldValue.serverTimestamp(),
+        'read': false, // New field added to mark the notification as unread.
       });
 
       // Update local state so the UI reflects the new status
@@ -120,6 +121,8 @@ class _EmergencyRepairRequestState extends State<EmergencyRepairRequest> {
             .collection('repair')
             .doc(currentUserId)
             .collection('request')
+            .orderBy('timestamp',
+                descending: true) // Sorted in descending order
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -146,6 +149,9 @@ class _EmergencyRepairRequestState extends State<EmergencyRepairRequest> {
                 itemBuilder: (context, index) {
                   var request = requests[index].data() as Map<String, dynamic>;
                   String requestId = requests[index].id;
+
+                  // New: fetch issues array from request
+                  List<dynamic> issues = request['issues'] ?? [];
 
                   return FutureBuilder<Map<String, dynamic>?>(
                     future: fetchUserDetails(request['userId']),
@@ -255,6 +261,12 @@ class _EmergencyRepairRequestState extends State<EmergencyRepairRequest> {
                                   ],
                                 ),
                               Text('Vehicle Situation: $vehicleSituation'),
+                              // New: Display issues array below vehicle situation
+                              if (issues.isNotEmpty) ...[
+                                SizedBox(height: 8),
+                                Text('Issues:'),
+                                for (var issue in issues) Text(' - $issue'),
+                              ],
                               SizedBox(height: 16),
                               // If not yet responded, show Accept/Reject buttons; otherwise, display the status
                               if (!responded)

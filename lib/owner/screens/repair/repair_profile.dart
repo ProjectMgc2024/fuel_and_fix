@@ -69,21 +69,26 @@ class RepairProfilePageState extends State<RepairProfilePage> {
     });
   }
 
+  // Manager Edit Dialog with scrollable content and validations
   void _showEditManagerDialog(Map<String, dynamic> managerData) async {
     File? newLogoFile;
-    ownerNameController.text = managerData['ownerName'];
-    companyNameController.text = managerData['companyName'];
-    companyLicenseController.text = managerData['companyLicense'];
-    phoneNoController.text = managerData['phoneNo'];
+    ownerNameController.text = managerData['ownerName'] ?? '';
+    companyNameController.text = managerData['companyName'] ?? '';
+    companyLicenseController.text = managerData['companyLicense'] ?? '';
+    phoneNoController.text = managerData['phoneNo'] ?? '';
+
+    final GlobalKey<FormState> _managerFormKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text("Edit Manager Details"),
-              content: Column(
+        return StatefulBuilder(builder: (context, setState) {
+          return AlertDialog(
+            scrollable: true, // Prevents overflow by allowing scrolling
+            title: Text("Edit Manager Details"),
+            content: Form(
+              key: _managerFormKey,
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (managerData['companyLogo'] != null && newLogoFile == null)
@@ -111,47 +116,80 @@ class RepairProfilePageState extends State<RepairProfilePage> {
                         });
                       }
                     },
-                    child: Text(
-                        newLogoFile == null ? "Change Logo" : "Replace Logo"),
+                    child: Text(newLogoFile == null ? "Change Logo" : "Replace Logo"),
                   ),
-                  TextField(
+                  TextFormField(
                     controller: ownerNameController,
                     decoration: InputDecoration(labelText: 'Owner Name'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter owner name';
+                      }
+                      return null;
+                    },
                   ),
-                  TextField(
+                  TextFormField(
                     controller: companyNameController,
                     decoration: InputDecoration(labelText: 'Company Name'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter company name';
+                      }
+                      return null;
+                    },
                   ),
-                  TextField(
+                  TextFormField(
                     controller: companyLicenseController,
                     decoration: InputDecoration(labelText: 'Company ID'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter company ID';
+                      }
+                      return null;
+                    },
                   ),
-                  TextField(
+                  TextFormField(
                     controller: phoneNoController,
                     decoration: InputDecoration(labelText: 'Phone Number'),
+                    keyboardType: TextInputType.number,
+                    maxLength: 10,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter phone number';
+                      }
+                      if (value.length != 10) {
+                        return 'Phone number must be exactly 10 digits';
+                      }
+                      if (!RegExp(r'^\d{10}$').hasMatch(value)) {
+                        return 'Enter a valid phone number';
+                      }
+                      return null;
+                    },
                   ),
                 ],
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text("Cancel"),
-                ),
-                TextButton(
-                  onPressed: () async {
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text("Cancel"),
+              ),
+              TextButton(
+                onPressed: () async {
+                  if (_managerFormKey.currentState!.validate()) {
                     String? newLogoUrl;
                     if (newLogoFile != null) {
                       newLogoUrl = await _uploadLogoToCloudinary(newLogoFile!);
                     }
                     _updateManagerDetails(newLogoUrl: newLogoUrl);
                     Navigator.pop(context);
-                  },
-                  child: Text("Save"),
-                ),
-              ],
-            );
-          },
-        );
+                  }
+                },
+                child: Text("Save"),
+              ),
+            ],
+          );
+        });
       },
     );
   }
@@ -183,41 +221,79 @@ class RepairProfilePageState extends State<RepairProfilePage> {
     setState(() {});
   }
 
+  // Employee Add Dialog with validations for phone number and email
   void _showAddEmployeeDialog() {
-    final TextEditingController employeeNameController =
-        TextEditingController();
-    final TextEditingController employeeEmailController =
-        TextEditingController();
-    final TextEditingController employeePhoneNoController =
-        TextEditingController();
-    final TextEditingController employeeRoleController =
-        TextEditingController();
+    final GlobalKey<FormState> _employeeFormKey = GlobalKey<FormState>();
+    final TextEditingController employeeNameController = TextEditingController();
+    final TextEditingController employeeEmailController = TextEditingController();
+    final TextEditingController employeePhoneNoController = TextEditingController();
+    final TextEditingController employeeRoleController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Text("Add Employee"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: employeeNameController,
-                decoration: InputDecoration(labelText: 'Employee Name'),
-              ),
-              TextField(
-                controller: employeeEmailController,
-                decoration: InputDecoration(labelText: 'Employee Email'),
-              ),
-              TextField(
-                controller: employeePhoneNoController,
-                decoration: InputDecoration(labelText: 'Employee Phone No'),
-              ),
-              TextField(
-                controller: employeeRoleController,
-                decoration: InputDecoration(labelText: 'Employee Role'),
-              ),
-            ],
+          content: Form(
+            key: _employeeFormKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: employeeNameController,
+                  decoration: InputDecoration(labelText: 'Employee Name'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter employee name';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: employeeEmailController,
+                  decoration: InputDecoration(labelText: 'Employee Email'),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter employee email';
+                    }
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                        .hasMatch(value)) {
+                      return 'Enter a valid email';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: employeePhoneNoController,
+                  decoration: InputDecoration(labelText: 'Employee Phone No'),
+                  keyboardType: TextInputType.number,
+                  maxLength: 10,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter phone number';
+                    }
+                    if (value.length != 10) {
+                      return 'Phone number must be exactly 10 digits';
+                    }
+                    if (!RegExp(r'^\d{10}$').hasMatch(value)) {
+                      return 'Enter a valid phone number';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: employeeRoleController,
+                  decoration: InputDecoration(labelText: 'Employee Role'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter employee role';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -226,13 +302,15 @@ class RepairProfilePageState extends State<RepairProfilePage> {
             ),
             TextButton(
               onPressed: () {
-                _addEmployee(
-                  employeeNameController.text,
-                  employeeEmailController.text,
-                  employeePhoneNoController.text,
-                  employeeRoleController.text,
-                );
-                Navigator.pop(context);
+                if (_employeeFormKey.currentState!.validate()) {
+                  _addEmployee(
+                    employeeNameController.text,
+                    employeeEmailController.text,
+                    employeePhoneNoController.text,
+                    employeeRoleController.text,
+                  );
+                  Navigator.pop(context);
+                }
               },
               child: Text("Add"),
             ),
@@ -242,8 +320,7 @@ class RepairProfilePageState extends State<RepairProfilePage> {
     );
   }
 
-  void _addEmployee(
-      String name, String email, String phoneNo, String role) async {
+  void _addEmployee(String name, String email, String phoneNo, String role) async {
     final documentSnapshot =
         await _firestore.collection('repair').doc(documentId).get();
     List employees = documentSnapshot.data()?['employees'] ?? [];
@@ -260,11 +337,11 @@ class RepairProfilePageState extends State<RepairProfilePage> {
     setState(() {});
   }
 
+  // Employee Edit Dialog with validations and preserving email
   void _showEditEmployeeDialog(int index, Map<String, dynamic> employeeData) {
+    final GlobalKey<FormState> _editEmployeeFormKey = GlobalKey<FormState>();
     final TextEditingController employeeNameController =
         TextEditingController(text: employeeData['employeeName']);
-    final TextEditingController employeeEmailController =
-        TextEditingController(text: employeeData['employeeEmail']);
     final TextEditingController employeePhoneNoController =
         TextEditingController(text: employeeData['employeePhoneNo']);
     final TextEditingController employeeRoleController =
@@ -275,26 +352,51 @@ class RepairProfilePageState extends State<RepairProfilePage> {
       builder: (context) {
         return AlertDialog(
           title: Text("Edit Employee"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: employeeNameController,
-                decoration: InputDecoration(labelText: 'Employee Name'),
-              ),
-              TextField(
-                controller: employeeEmailController,
-                decoration: InputDecoration(labelText: 'Employee Email'),
-              ),
-              TextField(
-                controller: employeePhoneNoController,
-                decoration: InputDecoration(labelText: 'Employee Phone No'),
-              ),
-              TextField(
-                controller: employeeRoleController,
-                decoration: InputDecoration(labelText: 'Employee Role'),
-              ),
-            ],
+          content: Form(
+            key: _editEmployeeFormKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: employeeNameController,
+                  decoration: InputDecoration(labelText: 'Employee Name'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter employee name';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: employeePhoneNoController,
+                  decoration: InputDecoration(labelText: 'Employee Phone No'),
+                  keyboardType: TextInputType.number,
+                  maxLength: 10,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter phone number';
+                    }
+                    if (value.length != 10) {
+                      return 'Phone number must be exactly 10 digits';
+                    }
+                    if (!RegExp(r'^\d{10}$').hasMatch(value)) {
+                      return 'Enter a valid phone number';
+                    }
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: employeeRoleController,
+                  decoration: InputDecoration(labelText: 'Employee Role'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter employee role';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -303,13 +405,16 @@ class RepairProfilePageState extends State<RepairProfilePage> {
             ),
             TextButton(
               onPressed: () {
-                _updateEmployee(index, {
-                  'employeeName': employeeNameController.text,
-                  'employeeEmail': employeeEmailController.text,
-                  'employeePhoneNo': employeePhoneNoController.text,
-                  'employeeRole': employeeRoleController.text,
-                });
-                Navigator.pop(context);
+                if (_editEmployeeFormKey.currentState!.validate()) {
+                  _updateEmployee(index, {
+                    'employeeName': employeeNameController.text,
+                    'employeePhoneNo': employeePhoneNoController.text,
+                    'employeeRole': employeeRoleController.text,
+                    // Preserve the original email as it is not editable.
+                    'employeeEmail': employeeData['employeeEmail'],
+                  });
+                  Navigator.pop(context);
+                }
               },
               child: Text("Save"),
             ),
@@ -348,17 +453,15 @@ class RepairProfilePageState extends State<RepairProfilePage> {
     return Scaffold(
       appBar: AppBar(
         title: Text("Repair Profile"),
-        backgroundColor:
-            const Color.fromARGB(255, 189, 176, 117), // AppBar color
+        backgroundColor: const Color.fromARGB(255, 189, 176, 117),
         actions: [
           IconButton(
             icon: Icon(
               isActive ? Icons.toggle_on : Icons.toggle_off,
-              size: 60, // Making the toggle button larger
+              size: 60,
               color: isActive
                   ? const Color.fromARGB(255, 52, 64, 165)
-                  : const Color.fromARGB(
-                      255, 102, 81, 80), // Color change based on status
+                  : const Color.fromARGB(255, 102, 81, 80),
             ),
             onPressed: _toggleStatus,
           ),
@@ -394,29 +497,26 @@ class RepairProfilePageState extends State<RepairProfilePage> {
               children: [
                 Card(
                   margin: EdgeInsets.only(bottom: 16.0),
-                  color: const Color.fromARGB(
-                      255, 189, 185, 138), // Light blue background for the card
-                  elevation: 5, // Add shadow effect
+                  color: const Color.fromARGB(255, 189, 185, 138),
+                  elevation: 5,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15), // Rounded corners
+                    borderRadius: BorderRadius.circular(15),
                   ),
                   child: ListTile(
                     leading: managerDetails['companyLogo'] != null
                         ? Image.network(
                             managerDetails['companyLogo'],
-                            width: 50, // Adjust width as needed
-                            height: 50, // Adjust height as needed
+                            width: 50,
+                            height: 50,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) =>
                                 Icon(Icons.error),
                           )
-                        : Icon(Icons.business,
-                            size: 50), // Placeholder if no logo is available
+                        : Icon(Icons.business, size: 50),
                     title: Text(
                       'Company Name: ${managerDetails['companyName']}',
                       style: TextStyle(
-                        color: const Color.fromARGB(
-                            255, 12, 19, 29), // Dark blue color for text
+                        color: const Color.fromARGB(255, 12, 19, 29),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -425,14 +525,13 @@ class RepairProfilePageState extends State<RepairProfilePage> {
                       children: [
                         Text('Owner: ${managerDetails['ownerName']}'),
                         Text('License: ${managerDetails['companyLicense']}'),
-                        Text('Email:${managerDetails['email']}'),
+                        Text('Email: ${managerDetails['email']}'),
                         Text('Phone: ${managerDetails['phoneNo']}'),
                       ],
                     ),
                     trailing: IconButton(
                       icon: Icon(Icons.edit),
-                      color: const Color.fromARGB(
-                          255, 121, 6, 6), // Edit icon color
+                      color: const Color.fromARGB(255, 121, 6, 6),
                       onPressed: () => _showEditManagerDialog(managerDetails),
                     ),
                   ),
@@ -445,39 +544,34 @@ class RepairProfilePageState extends State<RepairProfilePage> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.blue[800], // Dark blue color for title
+                        color: Colors.blue[800],
                       ),
                     ),
                     ElevatedButton(
                       onPressed: _showAddEmployeeDialog,
                       style: ElevatedButton.styleFrom(
-                        foregroundColor:
-                            const Color.fromARGB(255, 255, 255, 255),
-                        backgroundColor: const Color.fromARGB(
-                            255, 95, 110, 172), // Button color
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 12), // Padding
+                        foregroundColor: const Color.fromARGB(255, 255, 255, 255),
+                        backgroundColor: const Color.fromARGB(255, 95, 110, 172),
+                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(8), // Rounded corners
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        elevation: 4, // Shadow effect
+                        elevation: 4,
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            Icons.person_add, // Icon to display
-                            size: 18, // Icon size
-                            color: const Color.fromARGB(
-                                255, 255, 246, 246), // Icon color
+                            Icons.person_add,
+                            size: 18,
+                            color: const Color.fromARGB(255, 255, 246, 246),
                           ),
-                          SizedBox(width: 8), // Space between icon and text
+                          SizedBox(width: 8),
                           Text(
                             "Add Employee",
                             style: TextStyle(
-                              fontSize: 16, // Font size
-                              fontWeight: FontWeight.bold, // Font weight
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
@@ -493,12 +587,10 @@ class RepairProfilePageState extends State<RepairProfilePage> {
                     final employee = employees[index];
                     return Card(
                       margin: EdgeInsets.only(top: 8.0),
-                      color: const Color.fromARGB(
-                          255, 193, 203, 182), // Light green background
-                      elevation: 3, // Add shadow effect
+                      color: const Color.fromARGB(255, 193, 203, 182),
+                      elevation: 3,
                       shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(10), // Rounded corners
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: ListTile(
                         title: Text('Name: ${employee['employeeName']}'),
@@ -515,7 +607,7 @@ class RepairProfilePageState extends State<RepairProfilePage> {
                           children: [
                             IconButton(
                               icon: Icon(Icons.edit),
-                              color: Colors.blueAccent, // Edit icon color
+                              color: Colors.blueAccent,
                               onPressed: () =>
                                   _showEditEmployeeDialog(index, employee),
                             ),
@@ -528,12 +620,10 @@ class RepairProfilePageState extends State<RepairProfilePage> {
                                   builder: (context) {
                                     return AlertDialog(
                                       title: Text("Delete Employee"),
-                                      content: Text(
-                                          "Are you sure you want to delete this employee?"),
+                                      content: Text("Are you sure you want to delete this employee?"),
                                       actions: [
                                         TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context),
+                                          onPressed: () => Navigator.pop(context),
                                           child: Text("Cancel"),
                                         ),
                                         TextButton(

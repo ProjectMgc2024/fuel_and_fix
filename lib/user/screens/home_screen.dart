@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fuel_and_fix/user/screens/about.dart';
 import 'package:fuel_and_fix/user/screens/chatbot.dart';
 import 'package:fuel_and_fix/user/screens/currentlocation.dart';
@@ -10,43 +12,64 @@ import 'package:fuel_and_fix/user/screens/repair.dart';
 import 'package:fuel_and_fix/user/screens/tow.dart';
 import 'package:fuel_and_fix/user/screens/viewfeedback.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  // Flag to prevent multiple navigations
+  bool _isNavigating = false;
+  final String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? "";
+
+  // Use a batch update to mark all unread notifications as read.
+  Future<void> markNotificationsAsRead() async {
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('notifications')
+        .where('userId', isEqualTo: currentUserId)
+        .where('read', isEqualTo: false)
+        .get();
+
+    var batch = FirebaseFirestore.instance.batch();
+    for (var doc in snapshot.docs) {
+      batch.update(doc.reference, {'read': true});
+    }
+    await batch.commit();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Scaffold Background set to the image
+      // Background image and dark overlay
       body: Stack(
         children: [
-          // Background Image (No blur effect, only opacity)
+          // Background Image
           Positioned.fill(
             child: Image.asset(
-              'asset/pic2.jpg', // Your image asset
-              fit: BoxFit.cover, // Ensure the image covers the screen
+              'asset/pic2.jpg',
+              fit: BoxFit.cover,
             ),
           ),
-          // Dark overlay to simulate the blur effect
+          // Dark overlay
           Positioned.fill(
             child: Container(
-              color: const Color.fromARGB(255, 25, 15, 12)
-                  .withOpacity(0.4), // Darken the background
+              color: const Color.fromARGB(255, 25, 15, 12).withOpacity(0.4),
             ),
           ),
-          // Main content of the screen (AppBar and options)
+          // Main content: AppBar and Body
           Column(
             children: [
-              // AppBar section
               appBarSection(),
-              // Body content
               Expanded(child: bodyContent(context)),
             ],
           ),
-          // Manually positioned icons at the bottom (without footer bar)
+          // Footer Icons
           Positioned(
-            bottom: 0, // Positioning at the bottom of the screen
+            bottom: 0,
             left: 0,
             right: 0,
             child: Padding(
-              padding: const EdgeInsets.all(16.0), // Padding around the icons
+              padding: const EdgeInsets.all(16.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -55,7 +78,6 @@ class HomeScreen extends StatelessWidget {
                     iconSize: 25,
                     icon: Icon(Icons.home, color: Colors.white),
                     onPressed: () {
-                      // Navigate to HomePage
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => HomeScreen()),
@@ -68,7 +90,6 @@ class HomeScreen extends StatelessWidget {
                     icon: Icon(Icons.account_circle,
                         color: const Color.fromARGB(255, 93, 180, 53)),
                     onPressed: () {
-                      // Navigate to ProfilePage
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -82,7 +103,6 @@ class HomeScreen extends StatelessWidget {
                     icon: Icon(Icons.history,
                         color: const Color.fromARGB(255, 255, 136, 136)),
                     onPressed: () {
-                      // Navigate to HistoryPage
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -96,7 +116,6 @@ class HomeScreen extends StatelessWidget {
                     icon: Icon(Icons.feedback,
                         color: const Color.fromARGB(255, 165, 162, 97)),
                     onPressed: () {
-                      // Navigate to ViewFeedbackPage
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -110,25 +129,75 @@ class HomeScreen extends StatelessWidget {
                     icon: Icon(Icons.help,
                         color: const Color.fromARGB(255, 132, 146, 255)),
                     onPressed: () {
-                      // Navigate to AboutPage
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => AboutHelp()),
                       );
                     },
                   ),
-                  // Notification Icon (new icon)
-                  IconButton(
-                    iconSize: 25,
-                    icon: Icon(Icons.notifications,
-                        color: const Color.fromARGB(255, 217, 223, 33)),
-                    onPressed: () {
-                      // Navigate to NotificationPage
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) =>
-                                UserNotificationPage()), // Add your notification page here
+                  // Notification Icon with Badge
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('notifications')
+                        .where('userId', isEqualTo: currentUserId)
+                        .where('read', isEqualTo: false)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      int unreadCount = 0;
+                      if (snapshot.hasData) {
+                        unreadCount = snapshot.data!.docs.length;
+                      }
+                      return Stack(
+                        children: [
+                          IconButton(
+                            iconSize: 25,
+                            icon: Icon(Icons.notifications,
+                                color: const Color.fromARGB(255, 217, 223, 33)),
+                            onPressed: () async {
+                              if (!_isNavigating) {
+                                setState(() {
+                                  _isNavigating = true;
+                                });
+                                await markNotificationsAsRead();
+                                // Navigate to UserNotificationPage on first tap
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) =>
+                                          UserNotificationPage()),
+                                );
+                                // When coming back, allow navigation again.
+                                setState(() {
+                                  _isNavigating = false;
+                                });
+                              }
+                            },
+                          ),
+                          if (unreadCount > 0)
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                padding: EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                constraints: BoxConstraints(
+                                  minWidth: 14,
+                                  minHeight: 14,
+                                ),
+                                child: Text(
+                                  '$unreadCount',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
                       );
                     },
                   ),
@@ -136,9 +205,9 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ),
-          // Chat Button positioned above the bottom navigation bar
+          // Chat Button positioned above the footer
           Positioned(
-            bottom: 60, // Position above the bottom navigation bar
+            bottom: 60,
             right: 10,
             child: TextButton(
               onPressed: () {
@@ -164,13 +233,12 @@ class HomeScreen extends StatelessWidget {
     return PreferredSize(
       preferredSize: Size.fromHeight(kToolbarHeight),
       child: AppBar(
-        automaticallyImplyLeading: false, // This will remove the back button
+        automaticallyImplyLeading: false, // Remove back button
         title: Text(
           'Fuel & Fix Assist System',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: const Color.fromARGB(
-                255, 255, 255, 255), // Set text color to white
+            color: Colors.white,
             fontSize: 25,
             letterSpacing: 1,
           ),
@@ -178,7 +246,6 @@ class HomeScreen extends StatelessWidget {
         centerTitle: true,
         backgroundColor: const Color.fromARGB(184, 28, 8, 8),
         elevation: 10,
-        // Add slight shadow to AppBar
       ),
     );
   }
@@ -202,7 +269,6 @@ class HomeScreen extends StatelessWidget {
                   Color.fromARGB(255, 39, 35, 36),
                 ],
                 onTap: () {
-                  // Navigate to FetchLocationPopup first
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -211,7 +277,6 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                   ).then((value) {
-                    // After FetchLocationPopup, proceed to FuelScreen
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -229,7 +294,6 @@ class HomeScreen extends StatelessWidget {
                   Color.fromARGB(255, 45, 39, 39),
                 ],
                 onTap: () {
-                  // Navigate to FetchLocationPopup first
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -237,7 +301,6 @@ class HomeScreen extends StatelessWidget {
                               serviceType: '',
                             )),
                   ).then((value) {
-                    // After FetchLocationPopup, proceed to WorkshopScreen
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => WorkshopScreen()),
@@ -247,7 +310,7 @@ class HomeScreen extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 30), // Space between rows
+          SizedBox(height: 30),
           // Second Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -261,7 +324,6 @@ class HomeScreen extends StatelessWidget {
                   Color.fromARGB(255, 39, 35, 36),
                 ],
                 onTap: () {
-                  // Navigate to FetchLocationPopup first
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -269,7 +331,6 @@ class HomeScreen extends StatelessWidget {
                               serviceType: '',
                             )),
                   ).then((value) {
-                    // After FetchLocationPopup, proceed to TowingServiceCategories
                     Navigator.push(
                       context,
                       MaterialPageRoute(

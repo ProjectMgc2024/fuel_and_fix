@@ -150,7 +150,7 @@ class _TowRegisterState extends State<TowRegister> {
             title: const Text('Tow Register',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             centerTitle: true,
-            backgroundColor: const Color.fromARGB(255, 175, 177, 125),
+            backgroundColor: const Color.fromARGB(255, 157, 192, 191),
             elevation: 0,
             // Adding the back button in the app bar
             leading: IconButton(
@@ -168,8 +168,8 @@ class _TowRegisterState extends State<TowRegister> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              const Color.fromARGB(255, 197, 174, 100),
-              const Color.fromARGB(255, 184, 103, 76),
+              const Color.fromARGB(255, 163, 197, 211),
+              const Color.fromARGB(255, 235, 181, 164),
             ],
           ),
         ),
@@ -237,7 +237,7 @@ class _TowRegisterState extends State<TowRegister> {
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           filled: true,
-          fillColor: const Color.fromARGB(255, 201, 201, 160),
+          fillColor: const Color.fromARGB(255, 182, 182, 162),
         ),
         obscureText: password || confirmPassword,
         keyboardType: phone
